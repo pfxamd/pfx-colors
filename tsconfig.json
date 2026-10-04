@@ -11,7 +11,12 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
-    "types": ["vitest/globals", "node"]
+    "types": ["vitest/globals", "node"],
+    "paths": {
+      "@pfx/interaction-core": ["./vendor/PFx-Interaction-Core/packages/interaction-core/src/index.ts"],
+      "@pfx/interaction-dom": ["./vendor/PFx-Interaction-Core/packages/interaction-dom/src/index.ts"],
+      "@pfx/interaction-react": ["./vendor/PFx-Interaction-Core/packages/interaction-react/src/index.ts"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "vite.config.ts"]
 }
