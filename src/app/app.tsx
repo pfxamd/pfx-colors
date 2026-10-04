@@ -21,6 +21,7 @@ import {
   type HarmonyScheme,
 } from "../tools";
 import { useNormalizedDragSurface } from "../interaction/use-normalized-drag-surface";
+import { useHorizontalTrackDrag } from "../interaction/use-horizontal-track-drag";
 import { useRadialDrag } from "../interaction/use-radial-drag";
 import { useScalarDial } from "../interaction/use-scalar-dial";
 import { PfxColorsWorkspace, type WorkspaceState } from "../workspace";
@@ -1098,6 +1099,72 @@ function Harmony({
   );
 }
 
+function GradientStopHandle({
+  railRef,
+  index,
+  position,
+  hex,
+  min,
+  max,
+  selected,
+  onChange,
+  onSelect,
+}: {
+  railRef: RefObject<HTMLDivElement | null>;
+  index: number;
+  position: number;
+  hex: string;
+  min: number;
+  max: number;
+  selected: boolean;
+  onChange: (value: number) => void;
+  onSelect: () => void;
+}) {
+  const handleRef = useRef<HTMLButtonElement>(null);
+
+  useHorizontalTrackDrag(handleRef, railRef, {
+    value: position,
+    min,
+    max,
+    step: 0.005,
+    onChange,
+  });
+
+  return (
+    <button
+      ref={handleRef}
+      type="button"
+      className={
+        "pfx-c-gradient-stop-handle" + (selected ? " pfx-is-selected" : "")
+      }
+      style={{
+        left: String(position * 100) + "%",
+        "--pfx-stop-color": hex,
+      } as CSSProperties}
+      onPointerDown={() => onSelect()}
+      onClick={() => onSelect()}
+      role="slider"
+      aria-label={"Gradient stop " + String(index + 1)}
+      aria-valuemin={Math.round(min * 100)}
+      aria-valuemax={Math.round(max * 100)}
+      aria-valuenow={Math.round(position * 100)}
+      title={hex.toUpperCase() + " · " + String(Math.round(position * 100)) + "%"}
+    >
+      <span />
+      <i />
+    </button>
+  );
+}
+
+function GradientTypeGlyph({ type }: { type: GradientType }) {
+  return (
+    <span
+      className={"pfx-c-gradient-type-glyph pfx-is-" + type}
+      aria-hidden="true"
+    />
+  );
+}
+
 function Gradient({
   state,
   workspace,
@@ -1113,6 +1180,17 @@ function Gradient({
   const [angle, setAngle] = useState(90);
   const [space, setSpace] = useState("oklch");
   const [hue, setHue] = useState<"shorter" | "longer" | "increasing" | "decreasing">("shorter");
+  const [selectedStop, setSelectedStop] = useState(0);
+  const railRef = useRef<HTMLDivElement>(null);
+  const angleDialRef = useRef<HTMLDivElement>(null);
+
+  useScalarDial(angleDialRef, {
+    value: angle,
+    min: 0,
+    max: 359,
+    step: 1,
+    onChange: setAngle,
+  });
 
   const fallback = useMemo(() => {
     const harmony = generateHarmony(asInput(state.color.source), "complementary");
@@ -1138,123 +1216,285 @@ function Gradient({
     [angle, hue, source, space, type],
   );
 
+  useEffect(() => {
+    setSelectedStop((current) =>
+      Math.max(0, Math.min(current, gradient.stops.length - 1)),
+    );
+  }, [gradient.stops.length]);
+
   const css = gradientToCss(gradient);
+  const activeStop = gradient.stops[selectedStop] ?? gradient.stops[0];
 
   const commitStops = (stops: GradientStopInput[]) => {
-    sync(workspace.createGradient(stops, { type, angle, interpolationSpace: space, hue }));
+    sync(
+      workspace.createGradient(stops, {
+        type,
+        angle,
+        interpolationSpace: space,
+        hue,
+      }),
+    );
   };
 
-  const addStop = () => {
-    const sampled = sampleGradient(gradient, 0.5);
+  const updateStopPosition = (index: number, position: number) => {
+    commitStops(
+      gradient.stops.map((item, itemIndex) => ({
+        color: asInput(item.source),
+        position: itemIndex === index ? position : item.position,
+      })),
+    );
+  };
+
+  const updateStopColor = (index: number, color: ColorInput) => {
+    commitStops(
+      gradient.stops.map((item, itemIndex) => ({
+        color: itemIndex === index ? color : asInput(item.source),
+        position: item.position,
+      })),
+    );
+  };
+
+  const addStopAt = (position: number) => {
+    const at = Math.max(0, Math.min(1, position));
+    const sampled = sampleGradient(gradient, at);
+    const insertionIndex = gradient.stops.filter(
+      (stop) => stop.position <= at,
+    ).length;
+
     commitStops([
-      ...gradient.stops.map((stop) => ({ color: asInput(stop.source), position: stop.position })),
-      { color: asInput(sampled), position: 0.5 },
+      ...gradient.stops.map((stop) => ({
+        color: asInput(stop.source),
+        position: stop.position,
+      })),
+      { color: asInput(sampled), position: at },
     ]);
+    setSelectedStop(Math.min(insertionIndex, gradient.stops.length));
+  };
+
+  const removeStop = (index: number) => {
+    if (gradient.stops.length <= 2) return;
+    commitStops(
+      gradient.stops
+        .filter((_, itemIndex) => itemIndex !== index)
+        .map((item) => ({
+          color: asInput(item.source),
+          position: item.position,
+        })),
+    );
+    setSelectedStop((current) =>
+      Math.max(0, Math.min(current - (index <= current ? 1 : 0), gradient.stops.length - 2)),
+    );
+  };
+
+  const nudgeActiveStop = (direction: -1 | 1) => {
+    if (!activeStop) return;
+    const previous = gradient.stops[selectedStop - 1];
+    const next = gradient.stops[selectedStop + 1];
+    const min = previous ? previous.position + 0.005 : 0;
+    const max = next ? next.position - 0.005 : 1;
+    updateStopPosition(
+      selectedStop,
+      Math.max(min, Math.min(max, activeStop.position + direction * 0.01)),
+    );
   };
 
   return (
     <section className="pfx-c-workbench pfx-c-workbench--gradient">
       <div className="pfx-c-gradient-zone">
-        <button
-          type="button"
-          className="pfx-c-gradient-preview"
-          style={{ background: css }}
-          onClick={(event) => {
-            const rect = event.currentTarget.getBoundingClientRect();
-            const at = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-            commitColor(asInput(sampleGradient(gradient, at)));
-          }}
-        />
+        <div className="pfx-c-gradient-editor">
+          <button
+            type="button"
+            className="pfx-c-gradient-preview"
+            style={{ background: css }}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const at = Math.max(
+                0,
+                Math.min(1, (event.clientX - rect.left) / rect.width),
+              );
+              commitColor(asInput(sampleGradient(gradient, at)));
+            }}
+            aria-label="Sample gradient"
+          />
 
-        <div className="pfx-c-stop-line">
-          {gradient.stops.map((stop) => (
-            <div className="pfx-c-stop" key={stop.index} style={{ left: String(stop.position * 100) + "%" }}>
-              <input
-                type="color"
-                value={stop.hex}
-                onChange={(event) =>
-                  commitStops(
-                    gradient.stops.map((item, index) => ({
-                      color: index === stop.index ? event.target.value : asInput(item.source),
-                      position: item.position,
-                    })),
-                  )
-                }
-              />
-              <span>{stop.hex.toUpperCase()}</span>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={stop.position}
-                onChange={(event) =>
-                  commitStops(
-                    gradient.stops.map((item, index) => ({
-                      color: asInput(item.source),
-                      position: index === stop.index ? Number(event.target.value) : item.position,
-                    })),
-                  )
-                }
-              />
-              {gradient.stops.length > 2 && (
-                <button
-                  type="button"
-                  className="pfx-c-stop__remove"
-                  onClick={() =>
-                    commitStops(
-                      gradient.stops
-                        .filter((_, index) => index !== stop.index)
-                        .map((item) => ({
-                          color: asInput(item.source),
-                          position: item.position,
-                        })),
-                    )
-                  }
-                  aria-label={"Remove stop " + String(stop.index + 1)}
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          ))}
+          <div
+            ref={railRef}
+            className="pfx-c-gradient-rail"
+            style={{ "--pfx-gradient": css } as CSSProperties}
+            onDoubleClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              addStopAt((event.clientX - rect.left) / rect.width);
+            }}
+            aria-label="Gradient stop rail"
+          >
+            <span className="pfx-c-gradient-rail__line" />
+            {gradient.stops.map((stop, index) => {
+              const previous = gradient.stops[index - 1];
+              const next = gradient.stops[index + 1];
+              const min = previous ? previous.position + 0.005 : 0;
+              const max = next ? next.position - 0.005 : 1;
+
+              return (
+                <GradientStopHandle
+                  key={index}
+                  railRef={railRef}
+                  index={index}
+                  position={stop.position}
+                  hex={stop.hex}
+                  min={min}
+                  max={max}
+                  selected={selectedStop === index}
+                  onChange={(value) => updateStopPosition(index, value)}
+                  onSelect={() => setSelectedStop(index)}
+                />
+              );
+            })}
+          </div>
+
+          <div className="pfx-c-gradient-editor__hint">
+            <span>DRAG</span>
+            <i />
+            <span>DOUBLE CLICK + STOP</span>
+          </div>
         </div>
       </div>
 
-      <aside className="pfx-c-gradient-controls">
-        <div className="pfx-c-segmented">
+      <aside className="pfx-c-gradient-deck">
+        <header className="pfx-c-gradient-deck__head">
+          <span>GRADIENT</span>
+          <i />
+          <strong>{String(gradient.stops.length).padStart(2, "0")} STOPS</strong>
+        </header>
+
+        <div className="pfx-c-gradient-types" aria-label="Gradient type">
           {(["linear", "radial", "conic"] as GradientType[]).map((item) => (
-            <button key={item} type="button" className={item === type ? "pfx-is-current" : ""} onClick={() => setType(item)}>
-              {item}
+            <button
+              key={item}
+              type="button"
+              className={item === type ? "pfx-is-current" : ""}
+              onClick={() => setType(item)}
+              aria-label={item + " gradient"}
+              aria-pressed={item === type}
+              title={item}
+            >
+              <GradientTypeGlyph type={item} />
             </button>
           ))}
         </div>
 
-        <Slider label="ANGLE" value={angle} min={0} max={359} step={1} suffix="°" onChange={setAngle} />
+        <div className="pfx-c-gradient-angle-stage">
+          <div
+            ref={angleDialRef}
+            className="pfx-c-gradient-angle-dial"
+            style={{ "--pfx-dial-angle": angle + "deg" } as CSSProperties}
+            role="slider"
+            tabIndex={0}
+            aria-label="Gradient angle"
+            aria-valuemin={0}
+            aria-valuemax={359}
+            aria-valuenow={Math.round(angle)}
+            title="Gradient angle"
+          >
+            <span />
+            <i />
+            <strong>{String(Math.round(angle)).padStart(3, "0")}°</strong>
+          </div>
+        </div>
 
-        <label className="pfx-c-select">
-          <span>INTERPOLATION</span>
-          <select value={space} onChange={(event) => setSpace(event.target.value)}>
-            <option value="oklch">OKLCH</option>
-            <option value="oklab">OKLAB</option>
-            <option value="srgb">sRGB</option>
-            <option value="lab">LAB</option>
-          </select>
-        </label>
+        {activeStop && (
+          <div className="pfx-c-gradient-stop-panel">
+            <div className="pfx-c-gradient-stop-panel__color">
+              <input
+                type="color"
+                value={activeStop.hex}
+                onChange={(event) =>
+                  updateStopColor(selectedStop, event.target.value)
+                }
+                aria-label="Selected stop color"
+              />
+              <strong>{activeStop.hex.toUpperCase()}</strong>
+            </div>
 
-        <label className="pfx-c-select">
-          <span>HUE PATH</span>
-          <select value={hue} onChange={(event) => setHue(event.target.value as typeof hue)}>
-            <option value="shorter">SHORTER</option>
-            <option value="longer">LONGER</option>
-            <option value="increasing">INCREASING</option>
-            <option value="decreasing">DECREASING</option>
-          </select>
-        </label>
+            <div className="pfx-c-gradient-stop-panel__position">
+              <button
+                type="button"
+                onClick={() => nudgeActiveStop(-1)}
+                aria-label="Move stop left"
+              >
+                −
+              </button>
+              <output>{String(Math.round(activeStop.position * 100)).padStart(3, "0")}%</output>
+              <button
+                type="button"
+                onClick={() => nudgeActiveStop(1)}
+                aria-label="Move stop right"
+              >
+                +
+              </button>
+            </div>
 
-        <button type="button" className="pfx-c-action" onClick={addStop}>
-          + ADD STOP
-        </button>
+            <div className="pfx-c-gradient-stop-panel__actions">
+              <button
+                type="button"
+                onClick={() => addStopAt(activeStop.position + 0.1)}
+                aria-label="Add gradient stop"
+                title="Add stop"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                onClick={() => removeStop(selectedStop)}
+                disabled={gradient.stops.length <= 2}
+                aria-label="Remove selected gradient stop"
+                title="Remove stop"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="pfx-c-gradient-space-grid" aria-label="Interpolation space">
+          {[
+            ["oklch", "OKLCH"],
+            ["oklab", "OKLAB"],
+            ["srgb", "RGB"],
+            ["lab", "LAB"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={space === value ? "pfx-is-current" : ""}
+              onClick={() => setSpace(value)}
+              aria-pressed={space === value}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="pfx-c-gradient-hue-path" aria-label="Hue path">
+          {[
+            ["shorter", "↔"],
+            ["longer", "↹"],
+            ["increasing", "↻"],
+            ["decreasing", "↺"],
+          ].map(([value, icon]) => (
+            <button
+              key={value}
+              type="button"
+              className={hue === value ? "pfx-is-current" : ""}
+              onClick={() => setHue(value as typeof hue)}
+              aria-label={value + " hue path"}
+              aria-pressed={hue === value}
+              title={value}
+            >
+              {icon}
+            </button>
+          ))}
+        </div>
+
         <code>{css}</code>
       </aside>
     </section>
