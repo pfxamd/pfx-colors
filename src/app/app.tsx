@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
 import { colorEngine, type ColorInput, type ColorValue } from "../engine";
@@ -1465,7 +1466,7 @@ function Gradient({
     setSelectedStop(gradient.stops.length - 1 - selectedStop);
   };
 
-  const handleRailPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleRailPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
     const rect = event.currentTarget.getBoundingClientRect();
     addStopAt((event.clientX - rect.left) / rect.width);
@@ -1555,7 +1556,9 @@ function Gradient({
                 updateStopPosition(
                   selectedStop,
                   Math.max(
-                    gradient.stops[selectedStop - 1]?.position ?? 0,
+                    gradient.stops[selectedStop - 1]
+                      ? gradient.stops[selectedStop - 1].position + 0.005
+                      : 0,
                     activeStop.position - 0.01,
                   ),
                 )
@@ -1571,7 +1574,9 @@ function Gradient({
                 updateStopPosition(
                   selectedStop,
                   Math.min(
-                    gradient.stops[selectedStop + 1]?.position ?? 1,
+                    gradient.stops[selectedStop + 1]
+                      ? gradient.stops[selectedStop + 1].position - 0.005
+                      : 1,
                     activeStop.position + 0.01,
                   ),
                 )
