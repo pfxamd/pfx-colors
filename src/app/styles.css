@@ -500,9 +500,22 @@ select:focus-visible {
   content: "";
 }
 
-.pfx-c-wheel__center {
+.pfx-c-harmony-arm {
   position: absolute;
   z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: 40%;
+  height: 1px;
+  transform: rotate(calc(var(--pfx-angle) - 90deg));
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.7));
+  pointer-events: none;
+}
+
+.pfx-c-wheel__center {
+  position: absolute;
+  z-index: 4;
   inset: 38%;
   display: grid;
   place-items: center;
@@ -519,7 +532,7 @@ select:focus-visible {
 
 .pfx-c-node {
   position: absolute;
-  z-index: 3;
+  z-index: 5;
   display: grid;
   width: 46px;
   height: 46px;
@@ -531,7 +544,13 @@ select:focus-visible {
   font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
   text-shadow: 0 1px 3px #000;
   box-shadow: 0 0 0 2px #000;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.pfx-c-node:active {
+  cursor: grabbing;
 }
 
 .pfx-c-harmony-list {
