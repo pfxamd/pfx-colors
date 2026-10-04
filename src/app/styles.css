@@ -1202,7 +1202,7 @@ select:focus-visible {
   letter-spacing: 0.02em;
 }
 
-.pfx-c-tension {
+.pfx-c-tensor {
   position: relative;
   display: grid;
   grid-template-rows: 68px minmax(0, 1fr) 52px;
@@ -1214,7 +1214,7 @@ select:focus-visible {
     #0b0b0d;
 }
 
-.pfx-c-tension__head {
+.pfx-c-tensor__head {
   display: grid;
   place-items: center;
   align-content: center;
@@ -1222,19 +1222,19 @@ select:focus-visible {
   border-bottom: 1px solid var(--pfx-line);
 }
 
-.pfx-c-tension__head span,
-.pfx-c-tension__state span {
+.pfx-c-tensor__head span,
+.pfx-c-tensor__state span {
   color: #8e8e96;
   font: 7px ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.13em;
 }
 
-.pfx-c-tension__head strong {
+.pfx-c-tensor__head strong {
   color: #f1f1ee;
   font: 13px ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.pfx-c-tension__rail {
+.pfx-c-tensor__rail {
   position: relative;
   display: grid;
   place-items: center;
@@ -1242,7 +1242,7 @@ select:focus-visible {
   overflow: hidden;
 }
 
-.pfx-c-tension__rail::before {
+.pfx-c-tensor__rail::before {
   position: absolute;
   top: 22px;
   bottom: 22px;
@@ -1258,7 +1258,7 @@ select:focus-visible {
   transform: translateX(-50%);
 }
 
-.pfx-c-tension__rail input {
+.pfx-c-tensor__rail input {
   position: relative;
   z-index: 3;
   width: 28px;
@@ -1272,13 +1272,13 @@ select:focus-visible {
   cursor: ns-resize;
 }
 
-.pfx-c-tension__rail input::-webkit-slider-runnable-track {
+.pfx-c-tensor__rail input::-webkit-slider-runnable-track {
   width: 3px;
   border: 0;
   background: #323238;
 }
 
-.pfx-c-tension__rail input::-webkit-slider-thumb {
+.pfx-c-tensor__rail input::-webkit-slider-thumb {
   width: 30px;
   height: 58px;
   margin-left: -13.5px;
@@ -1294,13 +1294,13 @@ select:focus-visible {
     0 8px 28px rgba(0,0,0,0.35);
 }
 
-.pfx-c-tension__rail input::-moz-range-track {
+.pfx-c-tensor__rail input::-moz-range-track {
   width: 3px;
   border: 0;
   background: #323238;
 }
 
-.pfx-c-tension__rail input::-moz-range-thumb {
+.pfx-c-tensor__rail input::-moz-range-thumb {
   width: 30px;
   height: 58px;
   border: 1px solid #ecece8;
@@ -1310,7 +1310,7 @@ select:focus-visible {
     #f0f0ec;
 }
 
-.pfx-c-tension__meter {
+.pfx-c-tensor__meter {
   position: absolute;
   z-index: 1;
   left: calc(50% - 1px);
@@ -1321,8 +1321,8 @@ select:focus-visible {
   pointer-events: none;
 }
 
-.pfx-c-tension__high,
-.pfx-c-tension__low {
+.pfx-c-tensor__high,
+.pfx-c-tensor__low {
   position: absolute;
   z-index: 2;
   left: 7px;
@@ -1333,21 +1333,21 @@ select:focus-visible {
   transform: rotate(180deg);
 }
 
-.pfx-c-tension__high {
+.pfx-c-tensor__high {
   top: 7px;
 }
 
-.pfx-c-tension__low {
+.pfx-c-tensor__low {
   bottom: 7px;
 }
 
-.pfx-c-tension__state {
+.pfx-c-tensor__state {
   display: grid;
   place-items: center;
   border-top: 1px solid var(--pfx-line);
 }
 
-.pfx-c-tension__state span {
+.pfx-c-tensor__state span {
   color: #d9d9d5;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
@@ -1363,38 +1363,83 @@ select:focus-visible {
 
 .pfx-c-study__control-slot {
   position: relative;
+  display: grid;
   min-height: 0;
+  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  padding: 10px 9px;
+  overflow: hidden;
+  border: 0;
   border-bottom: 1px solid var(--pfx-line);
   background:
     linear-gradient(135deg, rgba(255,255,255,0.014), transparent 46%),
     #0d0d0f;
+  color: #777780;
+  text-align: left;
+  cursor: pointer;
 }
 
 .pfx-c-study__control-slot:last-child {
   border-bottom: 0;
 }
 
-.pfx-c-study__control-slot::before,
-.pfx-c-study__control-slot::after {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  content: "";
-  opacity: 0.55;
-}
-
 .pfx-c-study__control-slot::before {
-  top: 10px;
-  left: 10px;
-  border-top: 1px solid #4a4a51;
-  border-left: 1px solid #4a4a51;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: transparent;
+  content: "";
 }
 
-.pfx-c-study__control-slot::after {
-  right: 10px;
-  bottom: 10px;
-  border-right: 1px solid #29292f;
-  border-bottom: 1px solid #29292f;
+.pfx-c-study__control-slot:hover {
+  background: #131316;
+  color: #c6c6cc;
+}
+
+.pfx-c-study__control-slot.pfx-is-active {
+  background:
+    linear-gradient(90deg, rgba(255,0,20,0.075), transparent 72%),
+    #151518;
+  color: #f1f1ee;
+}
+
+.pfx-c-study__control-slot.pfx-is-active::before {
+  background: var(--pfx-red);
+  box-shadow: 0 0 8px rgba(255,0,20,0.48);
+}
+
+.pfx-c-study__control-slot small {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  color: #4e4e56;
+  font: 7px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+}
+
+.pfx-c-study__control-slot span {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  overflow-wrap: anywhere;
+  font: 8px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+}
+
+.pfx-c-study__control-slot strong {
+  grid-column: 2;
+  grid-row: 2;
+  color: #5f5f68;
+  font: 8px ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 500;
+}
+
+.pfx-c-study__control-slot.pfx-is-active strong {
+  color: #bdbdc4;
 }
 
 @media (max-width: 980px) {
@@ -1501,7 +1546,7 @@ select:focus-visible {
     grid-row: 1;
   }
 
-  .pfx-c-tension {
+  .pfx-c-tensor {
     grid-column: 2;
     grid-row: 1;
   }
