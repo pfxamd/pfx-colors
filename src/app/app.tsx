@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
 } from "react";
 import type { ColorInput, ColorValue } from "../engine";
 import {
@@ -20,6 +19,7 @@ import {
   type GradientType,
   type HarmonyScheme,
 } from "../tools";
+import { useNormalizedDragSurface } from "../interaction/use-normalized-drag-surface";
 import { PfxColorsWorkspace, type WorkspaceState } from "../workspace";
 
 type ToolId = "home" | "picker" | "palette" | "harmony" | "gradient";
@@ -420,11 +420,9 @@ function Picker({
   const hue = Number(hsl?.coordinates[0] ?? 0);
   const saturation = Number(hsl?.coordinates[1] ?? 0);
   const lightness = Number(hsl?.coordinates[2] ?? 0);
+  const fieldRef = useRef<HTMLDivElement>(null);
 
-  const update = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-    const y = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+  useNormalizedDragSurface(fieldRef, ({ x, y }) => {
     commitColor(
       "hsl(" +
         round(hue) +
@@ -434,22 +432,16 @@ function Picker({
         round((1 - y) * 100) +
         "%)",
     );
-  };
+  });
 
   const fieldStyle = { "--pfx-hue": String(hue) } as CSSProperties;
 
   return (
     <section className="pfx-c-workbench pfx-c-workbench--picker">
       <div
+        ref={fieldRef}
         className="pfx-c-color-field"
         style={fieldStyle}
-        onPointerDown={(event) => {
-          event.currentTarget.setPointerCapture(event.pointerId);
-          update(event);
-        }}
-        onPointerMove={(event) => {
-          if (event.currentTarget.hasPointerCapture(event.pointerId)) update(event);
-        }}
       >
         <i
           style={{
