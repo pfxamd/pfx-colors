@@ -4,10 +4,15 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "sync:interaction": "node scripts/sync-interaction-core.mjs",
+    "predev": "npm run sync:interaction",
     "dev": "vite",
+    "prebuild": "npm run sync:interaction",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "pretest": "npm run sync:interaction",
     "test": "vitest run",
+    "pretypecheck": "npm run sync:interaction",
     "typecheck": "tsc --noEmit",
     "check": "npm run test && npm run build"
   },
