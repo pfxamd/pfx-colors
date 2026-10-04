@@ -1035,7 +1035,9 @@ select:focus-visible {
   position: relative;
   grid-column: 3;
   display: flex;
-  min-width: 0;
+  width: 148px;
+  min-width: 148px;
+  justify-self: end;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
@@ -1123,9 +1125,9 @@ select:focus-visible {
 }
 
 .pfx-c-study__generate span {
-  font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
   font-weight: 700;
-  letter-spacing: 0.075em;
+  letter-spacing: 0.035em;
   white-space: nowrap;
 }
 
@@ -1466,11 +1468,13 @@ select:focus-visible {
   }
 
   .pfx-c-study__generate {
-    padding: 0 10px;
+    width: 132px;
+    min-width: 132px;
+    padding: 0 12px;
   }
 
   .pfx-c-study__generate span {
-    font-size: 8px;
+    font-size: 11px;
   }
 }
 
@@ -1499,6 +1503,8 @@ select:focus-visible {
 
   .pfx-c-study__generate {
     grid-column: 2;
+    width: 112px;
+    min-width: 112px;
   }
 
   .pfx-c-study__body {
