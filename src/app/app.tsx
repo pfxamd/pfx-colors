@@ -216,6 +216,30 @@ export function App() {
   );
 }
 
+type StudyControlId = "lightness" | "chroma" | "hueRange" | "toneRange";
+
+const STUDY_CONTROLS: Array<{
+  id: StudyControlId;
+  label: string;
+  high: string;
+  low: string;
+}> = [
+  { id: "lightness", label: "LIGHTNESS", high: "LIGHT", low: "DARK" },
+  { id: "chroma", label: "CHROMA", high: "VIVID", low: "MUTED" },
+  { id: "hueRange", label: "HUE RANGE", high: "WIDE", low: "TIGHT" },
+  { id: "toneRange", label: "TONE RANGE", high: "WIDE", low: "TIGHT" },
+];
+
+function studyControlState(control: StudyControlId, value: number) {
+  if (control === "lightness") {
+    return value < 34 ? "DARK" : value < 67 ? "MID" : "LIGHT";
+  }
+  if (control === "chroma") {
+    return value < 34 ? "MUTED" : value < 67 ? "BALANCED" : "VIVID";
+  }
+  return value < 34 ? "TIGHT" : value < 67 ? "BALANCED" : "WIDE";
+}
+
 function Home({
   state,
   commitColor,
@@ -223,7 +247,14 @@ function Home({
   state: WorkspaceState;
   commitColor: (input: ColorInput) => void;
 }) {
-  const [tension, setTension] = useState(58);
+  const [controls, setControls] = useState<Record<StudyControlId, number>>({
+    lightness: 58,
+    chroma: 58,
+    hueRange: 58,
+    toneRange: 58,
+  });
+  const [activeControl, setActiveControl] =
+    useState<StudyControlId>("lightness");
   const [generation, setGeneration] = useState(1);
   const [studySeed, setStudySeed] = useState(state.color.hex);
   const [activeColorIndex, setActiveColorIndex] = useState<number | null>(null);
@@ -234,10 +265,10 @@ function Home({
   const study = useMemo(
     () =>
       generateColorStudy(studySeed, {
-        tension,
+        ...controls,
         random: createStudyRandom(randomSeed),
       }),
-    [randomSeed, studySeed, tension],
+    [controls, randomSeed, studySeed],
   );
 
   const regenerate = () => {
@@ -247,8 +278,18 @@ function Home({
     setActiveColorIndex(null);
   };
 
-  const tensionLabel =
-    tension < 34 ? "SOFT" : tension < 67 ? "BALANCED" : "VIVID";
+  const activeSetting =
+    STUDY_CONTROLS.find((control) => control.id === activeControl) ??
+    STUDY_CONTROLS[0];
+  const activeValue = controls[activeControl];
+  const activeState = studyControlState(activeControl, activeValue);
+
+  const updateActiveControl = (value: number) => {
+    setControls((current) => ({
+      ...current,
+      [activeControl]: value,
+    }));
+  };
 
   return (
     <section className="pfx-c-home">
@@ -299,46 +340,63 @@ function Home({
                 ))}
               </div>
 
-              <aside className="pfx-c-tension">
-                <div className="pfx-c-tension__head">
-                  <span>TENSION</span>
-                  <strong>{String(tension).padStart(3, "0")}</strong>
+              <aside className="pfx-c-tensor">
+                <div className="pfx-c-tensor__head">
+                  <span>{activeSetting.label}</span>
+                  <strong>{String(activeValue).padStart(3, "0")}</strong>
                 </div>
 
-                <div className="pfx-c-tension__rail">
-                  <span className="pfx-c-tension__high">VIVID</span>
+                <div className="pfx-c-tensor__rail">
+                  <span className="pfx-c-tensor__high">
+                    {activeSetting.high}
+                  </span>
                   <input
                     type="range"
                     min={0}
                     max={100}
                     step={1}
-                    value={tension}
-                    onChange={(event) => setTension(Number(event.target.value))}
-                    aria-label="Color tension"
+                    value={activeValue}
+                    onChange={(event) =>
+                      updateActiveControl(Number(event.target.value))
+                    }
+                    aria-label={activeSetting.label + " control"}
                   />
-                  <span className="pfx-c-tension__low">SOFT</span>
+                  <span className="pfx-c-tensor__low">
+                    {activeSetting.low}
+                  </span>
                   <i
-                    className="pfx-c-tension__meter"
-                    style={{ height: tension + "%" }}
+                    className="pfx-c-tensor__meter"
+                    style={{ height: activeValue + "%" }}
                   />
                 </div>
 
-                <div className="pfx-c-tension__state">
-                  <span>{tensionLabel}</span>
+                <div className="pfx-c-tensor__state">
+                  <span>{activeState}</span>
                 </div>
               </aside>
 
               <aside
                 className="pfx-c-study__controls"
-                aria-label="Reserved generator controls"
+                aria-label="Palette controls"
               >
-                {[0, 1, 2, 3].map((slot) => (
-                  <div
-                    key={slot}
-                    className="pfx-c-study__control-slot"
-                    data-control-slot={slot + 1}
-                    aria-hidden="true"
-                  />
+                {STUDY_CONTROLS.map((control, index) => (
+                  <button
+                    key={control.id}
+                    type="button"
+                    className={
+                      "pfx-c-study__control-slot" +
+                      (activeControl === control.id ? " pfx-is-active" : "")
+                    }
+                    data-control-slot={index + 1}
+                    aria-pressed={activeControl === control.id}
+                    onClick={() => setActiveControl(control.id)}
+                  >
+                    <small>{String(index + 1).padStart(2, "0")}</small>
+                    <span>{control.label}</span>
+                    <strong>
+                      {String(controls[control.id]).padStart(3, "0")}
+                    </strong>
+                  </button>
                 ))}
               </aside>
             </div>
