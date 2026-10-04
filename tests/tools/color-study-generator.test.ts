@@ -26,6 +26,35 @@ describe("generateColorStudy", () => {
     expect(Math.max(...lightness) - Math.min(...lightness)).toBeGreaterThan(0.5);
   });
 
+  it("increases perceptual spread when Tension rises", () => {
+    const sequence = [0.18, 0.72, 0.34, 0.91, 0.43, 0.62, 0.27, 0.79];
+    const makeRandom = () => {
+      let index = 0;
+      return () => sequence[index++ % sequence.length];
+    };
+
+    const soft = generateColorStudy("#ff0014", {
+      tension: 10,
+      random: makeRandom(),
+    });
+    const vivid = generateColorStudy("#ff0014", {
+      tension: 90,
+      random: makeRandom(),
+    });
+
+    const lightnessRange = (values: typeof soft.colors) => {
+      const levels = values.map((color) => color.oklch.l);
+      return Math.max(...levels) - Math.min(...levels);
+    };
+    const averageChroma = (values: typeof soft.colors) =>
+      values.reduce((total, color) => total + color.oklch.c, 0) / values.length;
+
+    expect(vivid.tension).toBe(90);
+    expect(soft.tension).toBe(10);
+    expect(lightnessRange(vivid.colors)).toBeGreaterThan(lightnessRange(soft.colors));
+    expect(averageChroma(vivid.colors)).toBeGreaterThan(averageChroma(soft.colors));
+  });
+
   it("uses the seed while changing the generated study", () => {
     const first = generateColorStudy("#336699", { random: () => 0.12 });
     const second = generateColorStudy("#ffb000", { random: () => 0.12 });
