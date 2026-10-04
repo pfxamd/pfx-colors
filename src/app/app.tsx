@@ -7,7 +7,7 @@ import {
   type CSSProperties,
   type RefObject,
 } from "react";
-import type { ColorInput, ColorValue } from "../engine";
+import { colorEngine, type ColorInput, type ColorValue } from "../engine";
 import {
   createGradient,
   generateColorStudy,
@@ -1141,8 +1141,14 @@ function GradientStopHandle({
         left: String(position * 100) + "%",
         "--pfx-stop-color": hex,
       } as CSSProperties}
-      onPointerDown={() => onSelect()}
-      onClick={() => onSelect()}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        onSelect();
+      }}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect();
+      }}
       role="slider"
       aria-label={"Gradient stop " + String(index + 1)}
       aria-valuemin={Math.round(min * 100)}
@@ -1151,7 +1157,6 @@ function GradientStopHandle({
       title={hex.toUpperCase() + " · " + String(Math.round(position * 100)) + "%"}
     >
       <span />
-      <i />
     </button>
   );
 }
@@ -1162,6 +1167,160 @@ function GradientTypeGlyph({ type }: { type: GradientType }) {
       className={"pfx-c-gradient-type-glyph pfx-is-" + type}
       aria-hidden="true"
     />
+  );
+}
+
+function GradientHexInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: ColorInput) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const apply = () => {
+    try {
+      onChange(draft);
+    } catch {
+      setDraft(value);
+    }
+  };
+
+  return (
+    <input
+      className="pfx-c-gradient-color-editor__hex"
+      value={draft.toUpperCase()}
+      spellCheck={false}
+      aria-label="Selected stop hex color"
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={apply}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          apply();
+          event.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
+function GradientColorEditor({
+  color,
+  onChange,
+}: {
+  color: ColorValue;
+  onChange: (value: ColorInput) => void;
+}) {
+  const hsl = colorEngine.color.convert(asInput(color), "hsl");
+  const hue = Number(hsl.coordinates[0] ?? 0);
+  const saturation = Number(hsl.coordinates[1] ?? 0);
+  const lightness = Number(hsl.coordinates[2] ?? 0);
+  const alpha = Number(hsl.alpha ?? 1);
+
+  const fieldRef = useRef<HTMLDivElement>(null);
+  const hueTrackRef = useRef<HTMLDivElement>(null);
+  const hueHandleRef = useRef<HTMLButtonElement>(null);
+  const alphaTrackRef = useRef<HTMLDivElement>(null);
+  const alphaHandleRef = useRef<HTMLButtonElement>(null);
+
+  const commitHsl = (
+    nextHue = hue,
+    nextSaturation = saturation,
+    nextLightness = lightness,
+    nextAlpha = alpha,
+  ) => {
+    onChange({
+      space: "hsl",
+      coordinates: [nextHue, nextSaturation, nextLightness],
+      alpha: nextAlpha,
+    });
+  };
+
+  useNormalizedDragSurface(fieldRef, ({ x, y }) => {
+    commitHsl(hue, x * 100, (1 - y) * 100, alpha);
+  });
+
+  useHorizontalTrackDrag(hueHandleRef, hueTrackRef, {
+    value: hue / 360,
+    min: 0,
+    max: 1,
+    step: 1 / 360,
+    onChange(value) {
+      commitHsl(value * 360, saturation, lightness, alpha);
+    },
+  });
+
+  useHorizontalTrackDrag(alphaHandleRef, alphaTrackRef, {
+    value: alpha,
+    min: 0,
+    max: 1,
+    step: 0.01,
+    onChange(value) {
+      commitHsl(hue, saturation, lightness, value);
+    },
+  });
+
+  return (
+    <div className="pfx-c-gradient-color-editor">
+      <div
+        ref={fieldRef}
+        className="pfx-c-gradient-color-editor__field"
+        style={{ "--pfx-hue": String(hue) } as CSSProperties}
+      >
+        <i
+          style={{
+            left: String(saturation) + "%",
+            top: String(100 - lightness) + "%",
+            background: color.hex ?? color.css,
+          }}
+        />
+      </div>
+
+      <div ref={hueTrackRef} className="pfx-c-gradient-color-editor__hue">
+        <button
+          ref={hueHandleRef}
+          type="button"
+          style={{ left: String((hue / 360) * 100) + "%" }}
+          aria-label="Hue"
+          aria-valuemin={0}
+          aria-valuemax={360}
+          aria-valuenow={Math.round(hue)}
+        />
+      </div>
+
+      <div className="pfx-c-gradient-color-editor__meta">
+        <GradientHexInput
+          value={color.hex ?? colorEngine.color.formatHex(asInput(color))}
+          onChange={onChange}
+        />
+        <output>{String(Math.round(alpha * 100)).padStart(3, "0")}%</output>
+      </div>
+
+      <div
+        ref={alphaTrackRef}
+        className="pfx-c-gradient-color-editor__alpha"
+        style={
+          {
+            "--pfx-alpha-color": color.hex ?? color.css,
+          } as CSSProperties
+        }
+      >
+        <button
+          ref={alphaHandleRef}
+          type="button"
+          style={{ left: String(alpha * 100) + "%" }}
+          aria-label="Opacity"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(alpha * 100)}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -1179,7 +1338,6 @@ function Gradient({
   const [type, setType] = useState<GradientType>("linear");
   const [angle, setAngle] = useState(90);
   const [space, setSpace] = useState("oklch");
-  const [hue, setHue] = useState<"shorter" | "longer" | "increasing" | "decreasing">("shorter");
   const [selectedStop, setSelectedStop] = useState(0);
   const railRef = useRef<HTMLDivElement>(null);
   const angleDialRef = useRef<HTMLDivElement>(null);
@@ -1199,9 +1357,9 @@ function Gradient({
         { color: asInput(harmony.colors[0].value), position: 0 },
         { color: asInput(harmony.colors[1].value), position: 1 },
       ],
-      { type, angle, interpolationSpace: space, hue },
+      { type, angle, interpolationSpace: space, hue: "shorter" },
     );
-  }, [angle, hue, space, state.color.source, type]);
+  }, [angle, space, state.color.source, type]);
 
   const source = state.gradient ?? fallback;
   const gradient = useMemo(
@@ -1211,9 +1369,14 @@ function Gradient({
           color: asInput(stop.source),
           position: stop.position,
         })),
-        { type, angle, interpolationSpace: space, hue },
+        {
+          type,
+          angle,
+          interpolationSpace: space,
+          hue: "shorter",
+        },
       ),
-    [angle, hue, source, space, type],
+    [angle, source, space, type],
   );
 
   useEffect(() => {
@@ -1231,7 +1394,7 @@ function Gradient({
         type,
         angle,
         interpolationSpace: space,
-        hue,
+        hue: "shorter",
       }),
     );
   };
@@ -1282,20 +1445,30 @@ function Gradient({
         })),
     );
     setSelectedStop((current) =>
-      Math.max(0, Math.min(current - (index <= current ? 1 : 0), gradient.stops.length - 2)),
+      Math.max(
+        0,
+        Math.min(
+          current - (index <= current ? 1 : 0),
+          gradient.stops.length - 2,
+        ),
+      ),
     );
   };
 
-  const nudgeActiveStop = (direction: -1 | 1) => {
-    if (!activeStop) return;
-    const previous = gradient.stops[selectedStop - 1];
-    const next = gradient.stops[selectedStop + 1];
-    const min = previous ? previous.position + 0.005 : 0;
-    const max = next ? next.position - 0.005 : 1;
-    updateStopPosition(
-      selectedStop,
-      Math.max(min, Math.min(max, activeStop.position + direction * 0.01)),
+  const reverseGradient = () => {
+    commitStops(
+      gradient.stops.map((stop) => ({
+        color: asInput(stop.source),
+        position: 1 - stop.position,
+      })),
     );
+    setSelectedStop(gradient.stops.length - 1 - selectedStop);
+  };
+
+  const handleRailPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    addStopAt((event.clientX - rect.left) / rect.width);
   };
 
   return (
@@ -1321,10 +1494,7 @@ function Gradient({
             ref={railRef}
             className="pfx-c-gradient-rail"
             style={{ "--pfx-gradient": css } as CSSProperties}
-            onDoubleClick={(event) => {
-              const rect = event.currentTarget.getBoundingClientRect();
-              addStopAt((event.clientX - rect.left) / rect.width);
-            }}
+            onPointerDown={handleRailPointerDown}
             aria-label="Gradient stop rail"
           >
             <span className="pfx-c-gradient-rail__line" />
@@ -1350,22 +1520,10 @@ function Gradient({
               );
             })}
           </div>
-
-          <div className="pfx-c-gradient-editor__hint">
-            <span>DRAG</span>
-            <i />
-            <span>DOUBLE CLICK + STOP</span>
-          </div>
         </div>
       </div>
 
       <aside className="pfx-c-gradient-deck">
-        <header className="pfx-c-gradient-deck__head">
-          <span>GRADIENT</span>
-          <i />
-          <strong>{String(gradient.stops.length).padStart(2, "0")} STOPS</strong>
-        </header>
-
         <div className="pfx-c-gradient-types" aria-label="Gradient type">
           {(["linear", "radial", "conic"] as GradientType[]).map((item) => (
             <button
@@ -1382,75 +1540,95 @@ function Gradient({
           ))}
         </div>
 
-        <div className="pfx-c-gradient-angle-stage">
-          <div
-            ref={angleDialRef}
-            className="pfx-c-gradient-angle-dial"
-            style={{ "--pfx-dial-angle": angle + "deg" } as CSSProperties}
-            role="slider"
-            tabIndex={0}
-            aria-label="Gradient angle"
-            aria-valuemin={0}
-            aria-valuemax={359}
-            aria-valuenow={Math.round(angle)}
-            title="Gradient angle"
-          >
-            <span />
-            <i />
-            <strong>{String(Math.round(angle)).padStart(3, "0")}°</strong>
+        {activeStop && (
+          <GradientColorEditor
+            color={activeStop.source}
+            onChange={(value) => updateStopColor(selectedStop, value)}
+          />
+        )}
+
+        <div className="pfx-c-gradient-stop-tools">
+          <div className="pfx-c-gradient-stop-tools__position">
+            <button
+              type="button"
+              onClick={() =>
+                updateStopPosition(
+                  selectedStop,
+                  Math.max(
+                    gradient.stops[selectedStop - 1]?.position ?? 0,
+                    activeStop.position - 0.01,
+                  ),
+                )
+              }
+              aria-label="Move selected stop left"
+            >
+              −
+            </button>
+            <output>{String(Math.round(activeStop.position * 100)).padStart(3, "0")}%</output>
+            <button
+              type="button"
+              onClick={() =>
+                updateStopPosition(
+                  selectedStop,
+                  Math.min(
+                    gradient.stops[selectedStop + 1]?.position ?? 1,
+                    activeStop.position + 0.01,
+                  ),
+                )
+              }
+              aria-label="Move selected stop right"
+            >
+              +
+            </button>
           </div>
+
+          <button
+            type="button"
+            className="pfx-c-gradient-stop-tools__remove"
+            onClick={() => removeStop(selectedStop)}
+            disabled={gradient.stops.length <= 2}
+            aria-label="Remove selected stop"
+            title="Remove selected stop"
+          >
+            ×
+          </button>
         </div>
 
-        {activeStop && (
-          <div className="pfx-c-gradient-stop-panel">
-            <div className="pfx-c-gradient-stop-panel__color">
-              <input
-                type="color"
-                value={activeStop.hex}
-                onChange={(event) =>
-                  updateStopColor(selectedStop, event.target.value)
-                }
-                aria-label="Selected stop color"
-              />
-              <strong>{activeStop.hex.toUpperCase()}</strong>
-            </div>
+        <div className="pfx-c-gradient-actions">
+          <button
+            type="button"
+            onClick={() => addStopAt(0.5)}
+            aria-label="Add gradient stop"
+            title="Add stop"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={reverseGradient}
+            aria-label="Reverse gradient"
+            title="Reverse gradient"
+          >
+            ⇄
+          </button>
+        </div>
 
-            <div className="pfx-c-gradient-stop-panel__position">
-              <button
-                type="button"
-                onClick={() => nudgeActiveStop(-1)}
-                aria-label="Move stop left"
-              >
-                −
-              </button>
-              <output>{String(Math.round(activeStop.position * 100)).padStart(3, "0")}%</output>
-              <button
-                type="button"
-                onClick={() => nudgeActiveStop(1)}
-                aria-label="Move stop right"
-              >
-                +
-              </button>
-            </div>
-
-            <div className="pfx-c-gradient-stop-panel__actions">
-              <button
-                type="button"
-                onClick={() => addStopAt(activeStop.position + 0.1)}
-                aria-label="Add gradient stop"
-                title="Add stop"
-              >
-                +
-              </button>
-              <button
-                type="button"
-                onClick={() => removeStop(selectedStop)}
-                disabled={gradient.stops.length <= 2}
-                aria-label="Remove selected gradient stop"
-                title="Remove stop"
-              >
-                ×
-              </button>
+        {type !== "radial" && (
+          <div className="pfx-c-gradient-angle-compact">
+            <div
+              ref={angleDialRef}
+              className="pfx-c-gradient-angle-dial"
+              style={{ "--pfx-dial-angle": angle + "deg" } as CSSProperties}
+              role="slider"
+              tabIndex={0}
+              aria-label="Gradient angle"
+              aria-valuemin={0}
+              aria-valuemax={359}
+              aria-valuenow={Math.round(angle)}
+              title="Gradient angle"
+            >
+              <span />
+              <strong>{String(Math.round(angle)).padStart(3, "0")}°</strong>
             </div>
           </div>
         )}
@@ -1473,29 +1651,6 @@ function Gradient({
             </button>
           ))}
         </div>
-
-        <div className="pfx-c-gradient-hue-path" aria-label="Hue path">
-          {[
-            ["shorter", "↔"],
-            ["longer", "↹"],
-            ["increasing", "↻"],
-            ["decreasing", "↺"],
-          ].map(([value, icon]) => (
-            <button
-              key={value}
-              type="button"
-              className={hue === value ? "pfx-is-current" : ""}
-              onClick={() => setHue(value as typeof hue)}
-              aria-label={value + " hue path"}
-              aria-pressed={hue === value}
-              title={value}
-            >
-              {icon}
-            </button>
-          ))}
-        </div>
-
-        <code>{css}</code>
       </aside>
     </section>
   );
