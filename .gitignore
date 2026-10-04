@@ -12,4 +12,3 @@ playwright-report/
 .DS_Store
 Thumbs.db
 *.zip
-vendor/PFx-Interaction-Core/
