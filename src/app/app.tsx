@@ -45,6 +45,17 @@ function round(value: number | null | undefined, digits = 2): string {
   return Number(value.toFixed(digits)).toString();
 }
 
+function createStudyRandom(seed: number) {
+  let value = seed >>> 0;
+  return () => {
+    value += 0x6d2b79f5;
+    let result = value;
+    result = Math.imul(result ^ (result >>> 15), result | 1);
+    result ^= result + Math.imul(result ^ (result >>> 7), result | 61);
+    return ((result ^ (result >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function useWorkspace() {
   const ref = useRef<PfxColorsWorkspace | null>(null);
   if (!ref.current) {
@@ -212,88 +223,135 @@ function Home({
   state: WorkspaceState;
   commitColor: (input: ColorInput) => void;
 }) {
-  const [study, setStudy] = useState(() =>
-    generateColorStudy(asInput(state.color.source)),
-  );
+  const [tension, setTension] = useState(58);
   const [generation, setGeneration] = useState(1);
+  const [studySeed, setStudySeed] = useState(state.color.hex);
+  const [randomSeed, setRandomSeed] = useState(() =>
+    Math.floor(Math.random() * 0x7fffffff),
+  );
+
+  const study = useMemo(
+    () =>
+      generateColorStudy(studySeed, {
+        tension,
+        random: createStudyRandom(randomSeed),
+      }),
+    [randomSeed, studySeed, tension],
+  );
 
   const regenerate = () => {
-    setStudy(generateColorStudy(asInput(state.color.source)));
+    setStudySeed(state.color.hex);
+    setRandomSeed(Math.floor(Math.random() * 0x7fffffff));
     setGeneration((value) => value + 1);
   };
+
+  const tensionLabel =
+    tension < 34 ? "SOFT" : tension < 67 ? "BALANCED" : "VIVID";
 
   return (
     <section className="pfx-c-home">
       <div className="pfx-c-home__canvas">
-        <article className="pfx-c-study">
-          <header className="pfx-c-study__head">
-            <div className="pfx-c-study__title">
-              <span>COLOR STUDY / 10</span>
-              <strong>Guided random.</strong>
-            </div>
+        <div className="pfx-c-home__study-zone">
+          <article className="pfx-c-study">
+            <header className="pfx-c-study__head">
+              <div className="pfx-c-study__title">
+                <span>COLOR STUDY / 10</span>
+                <strong>Guided random.</strong>
+              </div>
 
-            <div className="pfx-c-study__meta">
-              <span>
-                <small>SEED</small>
-                {study.seedHex.toUpperCase()}
-              </span>
-              <span>
-                <small>STRUCTURE</small>
-                {study.scheme.replaceAll("-", " ").toUpperCase()}
-              </span>
-              <span>
-                <small>SPACE</small>
-                OKLCH → sRGB
-              </span>
-            </div>
+              <div className="pfx-c-study__meta">
+                <span>
+                  <small>SEED</small>
+                  {study.seedHex.toUpperCase()}
+                </span>
+                <span>
+                  <small>STRUCTURE</small>
+                  {study.scheme.replaceAll("-", " ").toUpperCase()}
+                </span>
+                <span>
+                  <small>SPACE</small>
+                  OKLCH → sRGB
+                </span>
+              </div>
 
-            <button
-              type="button"
-              className="pfx-c-study__generate"
-              onClick={regenerate}
-            >
-              <span>GENERATE 10</span>
-              <small>#{String(generation).padStart(2, "0")}</small>
-            </button>
-          </header>
-
-          <div className="pfx-c-study__colors" aria-label="Generated color study">
-            {study.colors.map((color) => (
               <button
-                key={generation + "-" + color.index + "-" + color.hex}
                 type="button"
-                className="pfx-c-study__swatch"
-                style={{
-                  background: color.hex,
-                  flexGrow: 0.8 + color.oklch.c * 3.2,
-                }}
-                onClick={() => commitColor(asInput(color.value))}
-                aria-label={"Use generated color " + color.hex}
+                className="pfx-c-study__generate"
+                onClick={regenerate}
               >
-                <span>{String(color.index + 1).padStart(2, "0")}</span>
-                <div>
-                  <strong>{color.hex.toUpperCase()}</strong>
-                  <small>
-                    L {round(color.oklch.l, 2)} · C {round(color.oklch.c, 2)}
-                  </small>
-                </div>
+                <span>GENERATE 10</span>
+                <small>#{String(generation).padStart(2, "0")}</small>
               </button>
-            ))}
-          </div>
+            </header>
 
-          <footer className="pfx-c-study__foot">
-            <span>
-              HARMONY GEOMETRY
-              <i />
-              LIGHTNESS SPREAD
-              <i />
-              CHROMA BALANCE
-              <i />
-              GAMUT SAFE
-            </span>
-            <small>CLICK A COLOR TO MAKE IT CURRENT</small>
-          </footer>
-        </article>
+            <div className="pfx-c-study__colors" aria-label="Generated color study">
+              {study.colors.map((color) => (
+                <button
+                  key={generation + "-" + color.index + "-" + color.hex}
+                  type="button"
+                  className="pfx-c-study__swatch"
+                  style={{
+                    background: color.hex,
+                    flexGrow: 0.8 + color.oklch.c * 3.2,
+                  }}
+                  onClick={() => commitColor(asInput(color.value))}
+                  aria-label={"Use generated color " + color.hex}
+                >
+                  <span>{String(color.index + 1).padStart(2, "0")}</span>
+                  <div>
+                    <strong>{color.hex.toUpperCase()}</strong>
+                    <small>
+                      L {round(color.oklch.l, 2)} · C {round(color.oklch.c, 2)}
+                    </small>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <footer className="pfx-c-study__foot">
+              <span>
+                HARMONY GEOMETRY
+                <i />
+                LIGHTNESS SPREAD
+                <i />
+                CHROMA BALANCE
+                <i />
+                GAMUT SAFE
+              </span>
+              <small>CLICK A COLOR TO MAKE IT CURRENT</small>
+            </footer>
+          </article>
+
+          <aside className="pfx-c-tension">
+            <div className="pfx-c-tension__head">
+              <span>TENSION</span>
+              <strong>{String(tension).padStart(3, "0")}</strong>
+            </div>
+
+            <div className="pfx-c-tension__rail">
+              <span className="pfx-c-tension__high">VIVID</span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={tension}
+                onChange={(event) => setTension(Number(event.target.value))}
+                aria-label="Color tension"
+              />
+              <span className="pfx-c-tension__low">SOFT</span>
+              <i
+                className="pfx-c-tension__meter"
+                style={{ height: tension + "%" }}
+              />
+            </div>
+
+            <div className="pfx-c-tension__state">
+              <span>{tensionLabel}</span>
+              <small>HUE / CHROMA / LIGHT</small>
+            </div>
+          </aside>
+        </div>
 
         <div className="pfx-c-home__future-space" aria-hidden="true">
           <span>PFx / COLOR WORKSPACE</span>
