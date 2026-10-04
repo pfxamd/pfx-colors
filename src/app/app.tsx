@@ -925,7 +925,13 @@ function Harmony({
   };
 
   const sendToGradient = () => {
-    sync(workspace.generateHarmony(scheme));
+    sync(
+      workspace.generateHarmony(scheme, {
+        analogousAngle,
+        splitAngle,
+        tetradicAngle,
+      }),
+    );
     sync(workspace.createGradientFromHarmony({ type: "conic" }));
     openGradient();
   };
@@ -1036,14 +1042,14 @@ function Harmony({
             >
               ↶
             </button>
-            <button
-              type="button"
+            <span
               className="pfx-c-harmony-link"
+              role="img"
               aria-label="Harmony geometry linked"
               title="Linked geometry"
             >
               ⛓
-            </button>
+            </span>
             <button
               type="button"
               onClick={() => setHarmonyHue(harmony.baseHue + 15)}
