@@ -127,6 +127,7 @@ export function App() {
           <img src="./logo.svg" alt="" />
           <strong>PFx Colors</strong>
           <span>WORKSPACE</span>
+          <em className="pfx-c-brand__beta">BETA 0.1</em>
         </div>
 
         <nav className="pfx-c-tabs" aria-label="Color tools">
