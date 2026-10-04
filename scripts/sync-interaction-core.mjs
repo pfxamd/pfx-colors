@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,6 +7,7 @@ const repository = "https://github.com/pfxamd/PFx-Interaction-Core.git";
 const revision = "ca3d77bb7e0f702d88a3bb695d97ac7f55ae77ad";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const target = resolve(root, "vendor", "PFx-Interaction-Core");
+const revisionFile = resolve(target, "PINNED_REVISION");
 
 function git(args, cwd = root) {
   return execFileSync("git", args, {
@@ -16,6 +17,11 @@ function git(args, cwd = root) {
   }).trim();
 }
 
+function pinnedRevision() {
+  if (!existsSync(revisionFile)) return null;
+  return readFileSync(revisionFile, "utf8").trim();
+}
+
 function currentRevision() {
   if (!existsSync(resolve(target, ".git"))) return null;
   try {
@@ -23,6 +29,10 @@ function currentRevision() {
   } catch {
     return null;
   }
+}
+
+if (pinnedRevision() === revision) {
+  process.exit(0);
 }
 
 if (currentRevision() !== revision) {
