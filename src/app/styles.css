@@ -108,12 +108,13 @@ select:focus-visible {
 }
 
 .pfx-c-brand__beta {
-  padding: 3px 5px;
-  border: 1px solid #3a3a40;
-  background: #131316;
-  color: #8d8d96;
-  font: 8px/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  padding: 4px 6px;
+  border: 1px solid #55555d;
+  background: #17171b;
+  color: #d8d8df;
+  font: 9px/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-style: normal;
+  font-weight: 600;
   letter-spacing: 0.08em;
   white-space: nowrap;
 }
