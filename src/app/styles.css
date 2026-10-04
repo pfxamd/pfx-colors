@@ -849,8 +849,12 @@ select:focus-visible {
 }
 
 .pfx-c-harmony-nudges > .pfx-c-harmony-link {
-  color: #f0f0ed;
+  display: grid;
+  place-items: center;
+  border: 1px solid #303037;
   background: #19191d;
+  color: #f0f0ed;
+  font-size: 15px;
   cursor: default;
 }
 
