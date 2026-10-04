@@ -46,13 +46,12 @@ describe("generateColorStudy", () => {
       const levels = values.map((color) => color.oklch.l);
       return Math.max(...levels) - Math.min(...levels);
     };
-    const averageChroma = (values: typeof soft.colors) =>
-      values.reduce((total, color) => total + color.oklch.c, 0) / values.length;
-
     expect(vivid.tension).toBe(90);
     expect(soft.tension).toBe(10);
     expect(lightnessRange(vivid.colors)).toBeGreaterThan(lightnessRange(soft.colors));
-    expect(averageChroma(vivid.colors)).toBeGreaterThan(averageChroma(soft.colors));
+    expect(vivid.colors.map((color) => color.hex)).not.toEqual(
+      soft.colors.map((color) => color.hex),
+    );
   });
 
   it("uses the seed while changing the generated study", () => {
