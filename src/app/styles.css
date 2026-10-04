@@ -107,6 +107,17 @@ select:focus-visible {
   margin-left: 4px;
 }
 
+.pfx-c-brand__beta {
+  padding: 3px 5px;
+  border: 1px solid #3a3a40;
+  background: #131316;
+  color: #8d8d96;
+  font: 8px/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
 .pfx-c-engine-label {
   display: flex;
   align-items: center;
