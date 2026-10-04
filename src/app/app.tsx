@@ -267,7 +267,7 @@ function Home({
                 className="pfx-c-study__generate"
                 onClick={regenerate}
               >
-                <span>GENERATE 10</span>
+                <span>GENERATE</span>
                 <small>#{String(generation).padStart(2, "0")}</small>
               </button>
             </header>
