@@ -22,6 +22,7 @@ import {
 } from "../tools";
 import { useNormalizedDragSurface } from "../interaction/use-normalized-drag-surface";
 import { useRadialDrag } from "../interaction/use-radial-drag";
+import { useScalarDial } from "../interaction/use-scalar-dial";
 import { PfxColorsWorkspace, type WorkspaceState } from "../workspace";
 
 type ToolId = "home" | "picker" | "palette" | "harmony" | "gradient";
@@ -689,6 +690,74 @@ function Palette({
   );
 }
 
+const HARMONY_PRESET_OFFSETS: Record<HarmonyScheme, readonly number[]> = {
+  analogous: [-30, 0, 30],
+  complementary: [0, 180],
+  "split-complementary": [0, 150, 210],
+  triadic: [0, 120, 240],
+  tetradic: [0, 60, 180, 240],
+  square: [0, 90, 180, 270],
+};
+
+function HarmonyPresetGlyph({ scheme }: { scheme: HarmonyScheme }) {
+  return (
+    <span className="pfx-c-harmony-preset__glyph" aria-hidden="true">
+      <i />
+      {HARMONY_PRESET_OFFSETS[scheme].map((angle, index) => {
+        const radians = ((angle - 90) * Math.PI) / 180;
+        const x = 50 + Math.cos(radians) * 36;
+        const y = 50 + Math.sin(radians) * 36;
+        return (
+          <b
+            key={scheme + "-" + String(index)}
+            style={{ left: String(x) + "%", top: String(y) + "%" }}
+          />
+        );
+      })}
+    </span>
+  );
+}
+
+function HarmonyRotationDial({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const dialRef = useRef<HTMLDivElement>(null);
+  useScalarDial(dialRef, {
+    value,
+    min: 0,
+    max: 359,
+    step: 1,
+    onChange,
+  });
+
+  return (
+    <div
+      ref={dialRef}
+      className="pfx-c-harmony-dial"
+      style={{ "--pfx-dial-angle": value + "deg" } as CSSProperties}
+      role="slider"
+      tabIndex={0}
+      aria-label="Rotate harmony"
+      aria-valuemin={0}
+      aria-valuemax={359}
+      aria-valuenow={Math.round(value)}
+      title="Rotate harmony"
+    >
+      <span className="pfx-c-harmony-dial__track" />
+      <span className="pfx-c-harmony-dial__needle" />
+      <i className="pfx-c-harmony-dial__handle" />
+      <div className="pfx-c-harmony-dial__readout">
+        <span>↻</span>
+        <strong>{String(Math.round(value)).padStart(3, "0")}°</strong>
+      </div>
+    </div>
+  );
+}
+
 function HarmonyNode({
   wheelRef,
   index,
@@ -756,24 +825,103 @@ function Harmony({
   openGradient: () => void;
 }) {
   const [scheme, setScheme] = useState<HarmonyScheme>("triadic");
+  const [analogousAngle, setAnalogousAngle] = useState(30);
+  const [splitAngle, setSplitAngle] = useState(30);
+  const [tetradicAngle, setTetradicAngle] = useState(60);
   const wheelRef = useRef<HTMLDivElement>(null);
+
   const harmony = useMemo(
-    () => generateHarmony(asInput(state.color.source), scheme),
-    [scheme, state.color.source],
+    () =>
+      generateHarmony(asInput(state.color.source), scheme, {
+        analogousAngle,
+        splitAngle,
+        tetradicAngle,
+      }),
+    [
+      analogousAngle,
+      scheme,
+      splitAngle,
+      state.color.source,
+      tetradicAngle,
+    ],
   );
+
   const oklch = state.color.values.oklch;
   const lightness = Number(oklch?.coordinates[0] ?? 0);
   const chroma = Number(oklch?.coordinates[1] ?? 0);
 
-  const rotateHarmonyFromHandle = (index: number, handleHue: number) => {
-    const hueOffset = harmony.colors[index]?.hueOffset ?? 0;
-    const baseHue = ((handleHue - hueOffset) % 360 + 360) % 360;
-
+  const setHarmonyHue = (nextHue: number) => {
     commitColor({
       space: "oklch",
-      coordinates: [lightness, chroma, baseHue],
+      coordinates: [lightness, chroma, ((nextHue % 360) + 360) % 360],
       alpha: state.color.alpha,
     });
+  };
+
+  const rotateHarmonyFromHandle = (index: number, handleHue: number) => {
+    const hueOffset = harmony.colors[index]?.hueOffset ?? 0;
+    setHarmonyHue(handleHue - hueOffset);
+  };
+
+  const geometry =
+    scheme === "analogous"
+      ? {
+          value: analogousAngle,
+          min: 5,
+          max: 90,
+          step: 5,
+          set: setAnalogousAngle,
+          adjustable: true,
+        }
+      : scheme === "split-complementary"
+        ? {
+            value: splitAngle,
+            min: 5,
+            max: 90,
+            step: 5,
+            set: setSplitAngle,
+            adjustable: true,
+          }
+        : scheme === "tetradic"
+          ? {
+              value: tetradicAngle,
+              min: 15,
+              max: 165,
+              step: 5,
+              set: setTetradicAngle,
+              adjustable: true,
+            }
+          : {
+              value:
+                scheme === "complementary"
+                  ? 180
+                  : scheme === "triadic"
+                    ? 120
+                    : 90,
+              min: 0,
+              max: 0,
+              step: 0,
+              set: (_value: number) => {},
+              adjustable: false,
+            };
+
+  const nudgeGeometry = (direction: -1 | 1) => {
+    if (!geometry.adjustable) return;
+    geometry.set(
+      Math.max(
+        geometry.min,
+        Math.min(
+          geometry.max,
+          geometry.value + direction * geometry.step,
+        ),
+      ),
+    );
+  };
+
+  const resetGeometry = () => {
+    if (scheme === "analogous") setAnalogousAngle(30);
+    if (scheme === "split-complementary") setSplitAngle(30);
+    if (scheme === "tetradic") setTetradicAngle(60);
   };
 
   const sendToGradient = () => {
@@ -819,22 +967,125 @@ function Harmony({
         </div>
       </div>
 
-      <aside className="pfx-c-harmony-list">
-        <small>HUE GEOMETRY</small>
-        <h1>{scheme.replaceAll("-", " ")}</h1>
-        {HARMONY_SCHEMES.map((item) => (
-          <button
-            key={item}
-            type="button"
-            className={item === scheme ? "pfx-is-current" : ""}
-            onClick={() => setScheme(item)}
-          >
-            <span>{item.replaceAll("-", " ")}</span>
-            <i>{item === "complementary" ? "180°" : item === "triadic" ? "120°" : item === "square" ? "90°" : "VAR"}</i>
-          </button>
-        ))}
-        <button type="button" className="pfx-c-action" onClick={sendToGradient}>
-          SEND TO GRADIENT →
+      <aside className="pfx-c-harmony-deck">
+        <header className="pfx-c-harmony-deck__head">
+          <span>HARMONY</span>
+          <i />
+          <strong>{scheme.replaceAll("-", " ").toUpperCase()}</strong>
+        </header>
+
+        <div className="pfx-c-harmony-presets" aria-label="Harmony schemes">
+          {HARMONY_SCHEMES.map((item) => (
+            <button
+              key={item}
+              type="button"
+              className={
+                "pfx-c-harmony-preset" +
+                (item === scheme ? " pfx-is-current" : "")
+              }
+              onClick={() => setScheme(item)}
+              aria-label={item.replaceAll("-", " ")}
+              aria-pressed={item === scheme}
+              title={item.replaceAll("-", " ")}
+            >
+              <HarmonyPresetGlyph scheme={item} />
+            </button>
+          ))}
+        </div>
+
+        <div className="pfx-c-harmony-control-stage">
+          <HarmonyRotationDial
+            value={harmony.baseHue}
+            onChange={setHarmonyHue}
+          />
+
+          <div className="pfx-c-harmony-geometry">
+            <button
+              type="button"
+              onClick={() => nudgeGeometry(-1)}
+              disabled={!geometry.adjustable}
+              aria-label="Decrease harmony spread"
+              title="Decrease spread"
+            >
+              −
+            </button>
+            <div>
+              <span className="pfx-c-harmony-geometry__icon" aria-hidden="true">
+                ◠
+              </span>
+              <output>{Math.round(geometry.value)}°</output>
+              <small>{geometry.adjustable ? "SPREAD" : "LOCKED"}</small>
+            </div>
+            <button
+              type="button"
+              onClick={() => nudgeGeometry(1)}
+              disabled={!geometry.adjustable}
+              aria-label="Increase harmony spread"
+              title="Increase spread"
+            >
+              +
+            </button>
+          </div>
+
+          <div className="pfx-c-harmony-nudges">
+            <button
+              type="button"
+              onClick={() => setHarmonyHue(harmony.baseHue - 15)}
+              aria-label="Rotate harmony counterclockwise"
+              title="Rotate -15°"
+            >
+              ↶
+            </button>
+            <button
+              type="button"
+              className="pfx-c-harmony-link"
+              aria-label="Harmony geometry linked"
+              title="Linked geometry"
+            >
+              ⛓
+            </button>
+            <button
+              type="button"
+              onClick={() => setHarmonyHue(harmony.baseHue + 15)}
+              aria-label="Rotate harmony clockwise"
+              title="Rotate +15°"
+            >
+              ↷
+            </button>
+            <button
+              type="button"
+              onClick={resetGeometry}
+              disabled={!geometry.adjustable}
+              aria-label="Reset harmony geometry"
+              title="Reset geometry"
+            >
+              ↺
+            </button>
+          </div>
+        </div>
+
+        <div className="pfx-c-harmony-swatches" aria-label="Harmony colors">
+          {harmony.colors.map((color) => (
+            <button
+              key={"swatch-" + color.index}
+              type="button"
+              style={{ background: color.hex }}
+              onClick={() => commitColor(asInput(color.value))}
+              aria-label={"Use " + color.hex}
+              title={color.hex.toUpperCase()}
+            />
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="pfx-c-harmony-gradient-action"
+          onClick={sendToGradient}
+          aria-label="Send harmony to gradient"
+          title="Send to gradient"
+        >
+          <span />
+          <i>→</i>
         </button>
       </aside>
     </section>
