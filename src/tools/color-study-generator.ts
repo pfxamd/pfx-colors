@@ -33,12 +33,14 @@ export interface ColorStudyColor {
 export interface ColorStudyResult {
   seedHex: string;
   scheme: HarmonyScheme;
+  tension: number;
   colors: ColorStudyColor[];
 }
 
 export interface ColorStudyOptions {
   random?: () => number;
   targetSpace?: "srgb" | "p3";
+  tension?: number;
 }
 
 const LIGHTNESS_TRACK = [0.62, 0.32, 0.86, 0.48, 0.74, 0.22, 0.92, 0.4, 0.68, 0.56];
@@ -51,6 +53,10 @@ function clamp(value: number, minimum: number, maximum: number) {
 function wrapHue(value: number) {
   const hue = value % 360;
   return hue < 0 ? hue + 360 : hue;
+}
+
+function hueDelta(from: number, to: number) {
+  return ((to - from + 540) % 360) - 180;
 }
 
 function asInput(value: ColorValue): ColorInput {
@@ -76,6 +82,8 @@ export function generateColorStudy(
 ): ColorStudyResult {
   const random = options.random ?? Math.random;
   const targetSpace = options.targetSpace ?? "srgb";
+  const tension = clamp(options.tension ?? 58, 0, 100);
+  const energy = tension / 100;
   const scheme =
     COLOR_STUDY_SCHEMES[
       Math.min(
@@ -91,7 +99,13 @@ export function generateColorStudy(
       ? random() * 360
       : Number(seedOklch.coordinates[2]);
   const seedChroma = Number(seedOklch.coordinates[1] ?? 0);
-  const workingChroma = clamp(seedChroma * 1.1 + 0.055, 0.07, 0.24);
+
+  const chromaEnergy = 0.52 + energy * 1.08;
+  const workingChroma = clamp(
+    (seedChroma * 0.82 + 0.05) * chromaEnergy,
+    0.035,
+    0.29,
+  );
 
   const harmony = generateHarmony(
     {
@@ -107,11 +121,16 @@ export function generateColorStudy(
     { targetSpace: "p3" },
   );
 
+  const hueSpread = 0.22 + energy * 0.9;
   const anchorHues = harmony.colors.map((color) => {
     const converted = colorEngine.color.convert(asInput(color.value), "oklch");
-    return Number(converted.coordinates[2] ?? seedHue);
+    const rawHue = Number(converted.coordinates[2] ?? seedHue);
+    return wrapHue(seedHue + hueDelta(seedHue, rawHue) * hueSpread);
   });
 
+  const lightnessSpread = 0.38 + energy * 0.88;
+  const chromaSpread = 0.42 + energy * 0.92;
+  const minimumDistance = 0.022 + energy * 0.05;
   const colors: ColorStudyColor[] = [];
 
   for (let index = 0; index < COLOR_STUDY_COUNT; index += 1) {
@@ -120,21 +139,34 @@ export function generateColorStudy(
     let mapped = false;
 
     for (let attempt = 0; attempt < 8; attempt += 1) {
-      const hueJitter = (random() - 0.5) * (attempt === 0 ? 18 : 34);
-      const lightnessJitter = (random() - 0.5) * 0.055;
-      const chromaJitter = (random() - 0.5) * 0.035;
+      const hueJitter =
+        (random() - 0.5) *
+        ((10 + energy * 20) + attempt * (4 + energy * 3));
+      const lightnessJitter = (random() - 0.5) * (0.024 + energy * 0.052);
+      const chromaJitter = (random() - 0.5) * (0.014 + energy * 0.034);
 
+      const trackedLightness =
+        0.6 + (LIGHTNESS_TRACK[index] - 0.6) * lightnessSpread;
       const lightness = clamp(
-        LIGHTNESS_TRACK[index] + lightnessJitter + attempt * 0.006,
-        0.12,
-        0.96,
+        trackedLightness + lightnessJitter + attempt * 0.004,
+        0.1,
+        0.97,
       );
+
+      const trackedChroma =
+        1 + (CHROMA_TRACK[index] - 1) * chromaSpread;
       const chroma = clamp(
-        workingChroma * CHROMA_TRACK[index] + chromaJitter,
-        index === 6 ? 0.025 : 0.045,
-        0.31,
+        workingChroma * trackedChroma + chromaJitter,
+        index === 6 ? 0.018 : 0.03,
+        0.34,
       );
-      const hue = wrapHue(anchorHue + hueJitter + attempt * 7);
+
+      const hue = wrapHue(
+        seedHue +
+          hueDelta(seedHue, anchorHue) +
+          hueJitter +
+          attempt * (3 + energy * 6),
+      );
 
       candidate = {
         space: "oklch",
@@ -142,7 +174,10 @@ export function generateColorStudy(
         alpha: seedValue.alpha,
       };
 
-      if (distanceFromExisting(candidate, colors) >= 0.045 || attempt === 7) {
+      if (
+        distanceFromExisting(candidate, colors) >= minimumDistance ||
+        attempt === 7
+      ) {
         break;
       }
     }
@@ -172,6 +207,7 @@ export function generateColorStudy(
   return {
     seedHex: colorEngine.color.formatHex(seed),
     scheme,
+    tension,
     colors,
   };
 }
