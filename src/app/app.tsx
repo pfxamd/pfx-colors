@@ -10,6 +10,7 @@ import {
 import type { ColorInput, ColorValue } from "../engine";
 import {
   createGradient,
+  generateColorStudy,
   generateHarmony,
   generateTonalPalette,
   gradientToCss,
@@ -44,27 +45,6 @@ function round(value: number | null | undefined, digits = 2): string {
   return Number(value.toFixed(digits)).toString();
 }
 
-function readColorList(key: string, fallback: string[] = []): string[] {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((value): value is string => typeof value === "string")
-      : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeColorList(key: string, colors: string[]) {
-  try {
-    localStorage.setItem(key, JSON.stringify(colors));
-  } catch {
-    // ignore
-  }
-}
-
 function useWorkspace() {
   const ref = useRef<PfxColorsWorkspace | null>(null);
   if (!ref.current) {
@@ -90,9 +70,6 @@ function useWorkspace() {
 export function App() {
   const { workspace, state, sync } = useWorkspace();
   const [activeTool, setActiveTool] = useState<ToolId>("home");
-  const [recentColors, setRecentColors] = useState<string[]>(() =>
-    readColorList("pfx-colors.recent", ["#ff0014"]),
-  );
 
   const commitColor = useCallback(
     (input: ColorInput) => {
@@ -102,16 +79,6 @@ export function App() {
       } catch {
         // ignore
       }
-
-      setRecentColors((previous) => {
-        const colors = [
-          next.color.hex,
-          ...previous.filter((color) => color.toLowerCase() !== next.color.hex.toLowerCase()),
-        ].slice(0, 18);
-        writeColorList("pfx-colors.recent", colors);
-        return colors;
-      });
-
       sync(next);
     },
     [sync, workspace],
@@ -170,11 +137,7 @@ export function App() {
 
       <main className="pfx-l-stage">
         {activeTool === "home" && (
-          <Home
-            state={state}
-            recentColors={recentColors}
-            commitColor={commitColor}
-          />
+          <Home state={state} commitColor={commitColor} />
         )}
         {activeTool === "picker" && (
           <Picker state={state} commitColor={commitColor} />
@@ -244,212 +207,99 @@ export function App() {
 
 function Home({
   state,
-  recentColors,
   commitColor,
 }: {
   state: WorkspaceState;
-  recentColors: string[];
   commitColor: (input: ColorInput) => void;
 }) {
-  const [savedColors, setSavedColors] = useState<string[]>(() =>
-    readColorList("pfx-colors.saved"),
+  const [study, setStudy] = useState(() =>
+    generateColorStudy(asInput(state.color.source)),
   );
-  const [boardColors, setBoardColors] = useState<string[]>(() =>
-    readColorList("pfx-colors.board", ["#ff0014", "#ffb000", "#6f5cff"]),
-  );
+  const [generation, setGeneration] = useState(1);
 
-  const current = state.color.hex;
-  const oklch = state.color.values.oklch;
-
-  const saveColor = (color: string) => {
-    setSavedColors((previous) => {
-      const exists = previous.some(
-        (item) => item.toLowerCase() === color.toLowerCase(),
-      );
-      const colors = exists ? previous : [color, ...previous];
-      writeColorList("pfx-colors.saved", colors);
-      return colors;
-    });
-  };
-
-  const removeSaved = (color: string) => {
-    setSavedColors((previous) => {
-      const colors = previous.filter(
-        (item) => item.toLowerCase() !== color.toLowerCase(),
-      );
-      writeColorList("pfx-colors.saved", colors);
-      return colors;
-    });
-  };
-
-  const pinColor = (color: string) => {
-    setBoardColors((previous) => {
-      const colors = [
-        color,
-        ...previous.filter((item) => item.toLowerCase() !== color.toLowerCase()),
-      ].slice(0, 6);
-      writeColorList("pfx-colors.board", colors);
-      return colors;
-    });
-  };
-
-  const removeBoard = (color: string) => {
-    setBoardColors((previous) => {
-      const colors = previous.filter(
-        (item) => item.toLowerCase() !== color.toLowerCase(),
-      );
-      writeColorList("pfx-colors.board", colors);
-      return colors;
-    });
+  const regenerate = () => {
+    setStudy(generateColorStudy(asInput(state.color.source)));
+    setGeneration((value) => value + 1);
   };
 
   return (
     <section className="pfx-c-home">
-      <div className="pfx-c-home__desk">
-        <div className="pfx-c-home__topline">
-          <span>COLOR DESK</span>
-          <span>{String(boardColors.length).padStart(2, "0")} ON BOARD</span>
-        </div>
+      <div className="pfx-c-home__canvas">
+        <article className="pfx-c-study">
+          <header className="pfx-c-study__head">
+            <div className="pfx-c-study__title">
+              <span>COLOR STUDY / 10</span>
+              <strong>Guided random.</strong>
+            </div>
 
-        <div className="pfx-c-home__composition">
-          <button
-            type="button"
-            className="pfx-c-home__current-sheet"
-            style={{ background: current }}
-            onClick={() => saveColor(current)}
-            title="Save current color"
-          >
-            <span>ACTIVE COLOR</span>
-            <strong>{current.toUpperCase()}</strong>
-            <small>
-              OKLCH&nbsp;
-              {round(oklch?.coordinates[0], 3)}&nbsp;
-              {round(oklch?.coordinates[1], 3)}&nbsp;
-              {round(oklch?.coordinates[2], 1)}
-            </small>
-          </button>
+            <div className="pfx-c-study__meta">
+              <span>
+                <small>SEED</small>
+                {study.seedHex.toUpperCase()}
+              </span>
+              <span>
+                <small>STRUCTURE</small>
+                {study.scheme.replaceAll("-", " ").toUpperCase()}
+              </span>
+              <span>
+                <small>SPACE</small>
+                OKLCH → sRGB
+              </span>
+            </div>
 
-          <div className="pfx-c-home__board-colors" aria-label="Working board">
-            {boardColors.length === 0 ? (
-              <div className="pfx-c-home__empty-board">
-                <span>EMPTY BOARD</span>
-                <strong>Pin colors you want to keep in sight.</strong>
-              </div>
-            ) : (
-              boardColors.map((color, index) => (
-                <div
-                  className="pfx-c-home__board-swatch"
-                  key={color}
-                  style={{ background: color }}
-                >
-                  <button
-                    type="button"
-                    className="pfx-c-home__swatch-hit"
-                    onClick={() => commitColor(color)}
-                    aria-label={"Use " + color}
-                  />
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  <strong>{color.toUpperCase()}</strong>
-                  <button
-                    type="button"
-                    className="pfx-c-home__remove"
-                    onClick={() => removeBoard(color)}
-                    aria-label={"Remove " + color + " from board"}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+            <button
+              type="button"
+              className="pfx-c-study__generate"
+              onClick={regenerate}
+            >
+              <span>GENERATE 10</span>
+              <small>#{String(generation).padStart(2, "0")}</small>
+            </button>
+          </header>
 
-        <div className="pfx-c-home__desk-actions">
-          <button type="button" onClick={() => pinColor(current)}>
-            + PIN CURRENT
-          </button>
-          <button type="button" onClick={() => saveColor(current)}>
-            ↓ SAVE TO LIBRARY
-          </button>
-        </div>
-
-        <div className="pfx-c-home__recent">
-          <div className="pfx-c-home__recent-label">
-            <span>RECENT</span>
-            <small>{recentColors.length} COLORS</small>
-          </div>
-          <div className="pfx-c-home__recent-strip">
-            {recentColors.map((color) => (
+          <div className="pfx-c-study__colors" aria-label="Generated color study">
+            {study.colors.map((color) => (
               <button
-                key={color}
+                key={generation + "-" + color.index + "-" + color.hex}
                 type="button"
-                style={{ background: color }}
-                onClick={() => commitColor(color)}
-                onDoubleClick={() => pinColor(color)}
-                title={color.toUpperCase() + " · double click to pin"}
-                aria-label={"Use recent color " + color}
-              />
+                className="pfx-c-study__swatch"
+                style={{
+                  background: color.hex,
+                  flexGrow: 0.8 + color.oklch.c * 3.2,
+                }}
+                onClick={() => commitColor(asInput(color.value))}
+                aria-label={"Use generated color " + color.hex}
+              >
+                <span>{String(color.index + 1).padStart(2, "0")}</span>
+                <div>
+                  <strong>{color.hex.toUpperCase()}</strong>
+                  <small>
+                    L {round(color.oklch.l, 2)} · C {round(color.oklch.c, 2)}
+                  </small>
+                </div>
+              </button>
             ))}
           </div>
+
+          <footer className="pfx-c-study__foot">
+            <span>
+              HARMONY GEOMETRY
+              <i />
+              LIGHTNESS SPREAD
+              <i />
+              CHROMA BALANCE
+              <i />
+              GAMUT SAFE
+            </span>
+            <small>CLICK A COLOR TO MAKE IT CURRENT</small>
+          </footer>
+        </article>
+
+        <div className="pfx-c-home__future-space" aria-hidden="true">
+          <span>PFx / COLOR WORKSPACE</span>
+          <i />
         </div>
       </div>
-
-      <aside className="pfx-c-home__library">
-        <div className="pfx-c-home__library-head">
-          <div>
-            <span>LIBRARY</span>
-            <small>{String(savedColors.length).padStart(2, "0")} SAVED</small>
-          </div>
-          <button
-            type="button"
-            onClick={() => saveColor(current)}
-            aria-label="Save current color"
-          >
-            +
-          </button>
-        </div>
-
-        <div className="pfx-c-home__library-list">
-          {savedColors.length === 0 ? (
-            <div className="pfx-c-home__library-empty">
-              <span>NO SAVED COLORS YET</span>
-              <strong>Keep the colors worth returning to.</strong>
-            </div>
-          ) : (
-            savedColors.map((color, index) => (
-              <div className="pfx-c-home__library-color" key={color}>
-                <button
-                  type="button"
-                  className="pfx-c-home__library-swatch"
-                  style={{ background: color }}
-                  onClick={() => commitColor(color)}
-                  aria-label={"Use saved color " + color}
-                />
-                <div>
-                  <small>{String(index + 1).padStart(2, "0")}</small>
-                  <strong>{color.toUpperCase()}</strong>
-                </div>
-                <button
-                  type="button"
-                  className="pfx-c-home__pin"
-                  onClick={() => pinColor(color)}
-                  aria-label={"Pin " + color + " to board"}
-                >
-                  PIN
-                </button>
-                <button
-                  type="button"
-                  className="pfx-c-home__remove"
-                  onClick={() => removeSaved(color)}
-                  aria-label={"Delete saved color " + color}
-                >
-                  ×
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      </aside>
     </section>
   );
 }
