@@ -226,6 +226,7 @@ function Home({
   const [tension, setTension] = useState(58);
   const [generation, setGeneration] = useState(1);
   const [studySeed, setStudySeed] = useState(state.color.hex);
+  const [activeColorIndex, setActiveColorIndex] = useState<number | null>(null);
   const [randomSeed, setRandomSeed] = useState(() =>
     Math.floor(Math.random() * 0x7fffffff),
   );
@@ -243,6 +244,7 @@ function Home({
     setStudySeed(state.color.hex);
     setRandomSeed(Math.floor(Math.random() * 0x7fffffff));
     setGeneration((value) => value + 1);
+    setActiveColorIndex(null);
   };
 
   const tensionLabel =
@@ -254,25 +256,11 @@ function Home({
         <div className="pfx-c-home__study-zone">
           <article className="pfx-c-study">
             <header className="pfx-c-study__head">
-              <div className="pfx-c-study__title">
-                <span>COLOR STUDY / 10</span>
-                <strong>Guided random.</strong>
-              </div>
-
-              <div className="pfx-c-study__meta">
-                <span>
-                  <small>SEED</small>
-                  {study.seedHex.toUpperCase()}
-                </span>
-                <span>
-                  <small>STRUCTURE</small>
-                  {study.scheme.replaceAll("-", " ").toUpperCase()}
-                </span>
-                <span>
-                  <small>SPACE</small>
-                  OKLCH → sRGB
-                </span>
-              </div>
+              <div
+                className="pfx-c-study__future-area"
+                data-future-slot="generator-toolbar"
+                aria-hidden="true"
+              />
 
               <button
                 type="button"
@@ -284,78 +272,77 @@ function Home({
               </button>
             </header>
 
-            <div className="pfx-c-study__colors" aria-label="Generated color study">
-              {study.colors.map((color) => (
-                <button
-                  key={generation + "-" + color.index + "-" + color.hex}
-                  type="button"
-                  className="pfx-c-study__swatch"
-                  style={{
-                    background: color.hex,
-                    flexGrow: 0.8 + color.oklch.c * 3.2,
-                  }}
-                  onClick={() => commitColor(asInput(color.value))}
-                  aria-label={"Use generated color " + color.hex}
-                >
-                  <span>{String(color.index + 1).padStart(2, "0")}</span>
-                  <div>
+            <div className="pfx-c-study__body">
+              <div
+                className="pfx-c-study__colors"
+                aria-label="Generated color study"
+              >
+                {study.colors.map((color) => (
+                  <button
+                    key={generation + "-" + color.index + "-" + color.hex}
+                    type="button"
+                    className={
+                      "pfx-c-study__swatch" +
+                      (activeColorIndex === color.index ? " pfx-is-active" : "")
+                    }
+                    style={{ background: color.hex }}
+                    onClick={() => {
+                      setActiveColorIndex(color.index);
+                      commitColor(asInput(color.value));
+                    }}
+                    aria-pressed={activeColorIndex === color.index}
+                    aria-label={"Use generated color " + color.hex}
+                  >
+                    <span>{String(color.index + 1).padStart(2, "0")}</span>
                     <strong>{color.hex.toUpperCase()}</strong>
-                    <small>
-                      L {round(color.oklch.l, 2)} · C {round(color.oklch.c, 2)}
-                    </small>
-                  </div>
-                </button>
-              ))}
-            </div>
+                  </button>
+                ))}
+              </div>
 
-            <footer className="pfx-c-study__foot">
-              <span>
-                HARMONY GEOMETRY
-                <i />
-                LIGHTNESS SPREAD
-                <i />
-                CHROMA BALANCE
-                <i />
-                GAMUT SAFE
-              </span>
-              <small>CLICK A COLOR TO MAKE IT CURRENT</small>
-            </footer>
+              <aside className="pfx-c-tension">
+                <div className="pfx-c-tension__head">
+                  <span>TENSION</span>
+                  <strong>{String(tension).padStart(3, "0")}</strong>
+                </div>
+
+                <div className="pfx-c-tension__rail">
+                  <span className="pfx-c-tension__high">VIVID</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={tension}
+                    onChange={(event) => setTension(Number(event.target.value))}
+                    aria-label="Color tension"
+                  />
+                  <span className="pfx-c-tension__low">SOFT</span>
+                  <i
+                    className="pfx-c-tension__meter"
+                    style={{ height: tension + "%" }}
+                  />
+                </div>
+
+                <div className="pfx-c-tension__state">
+                  <span>{tensionLabel}</span>
+                </div>
+              </aside>
+
+              <aside
+                className="pfx-c-study__controls"
+                aria-label="Reserved generator controls"
+              >
+                {[0, 1, 2, 3].map((slot) => (
+                  <div
+                    key={slot}
+                    className="pfx-c-study__control-slot"
+                    data-control-slot={slot + 1}
+                    aria-hidden="true"
+                  />
+                ))}
+              </aside>
+            </div>
           </article>
-
-          <aside className="pfx-c-tension">
-            <div className="pfx-c-tension__head">
-              <span>TENSION</span>
-              <strong>{String(tension).padStart(3, "0")}</strong>
-            </div>
-
-            <div className="pfx-c-tension__rail">
-              <span className="pfx-c-tension__high">VIVID</span>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={tension}
-                onChange={(event) => setTension(Number(event.target.value))}
-                aria-label="Color tension"
-              />
-              <span className="pfx-c-tension__low">SOFT</span>
-              <i
-                className="pfx-c-tension__meter"
-                style={{ height: tension + "%" }}
-              />
-            </div>
-
-            <div className="pfx-c-tension__state">
-              <span>{tensionLabel}</span>
-              <small>HUE / CHROMA / LIGHT</small>
-            </div>
-          </aside>
-        </div>
-
-        <div className="pfx-c-home__future-space" aria-hidden="true">
-          <span>PFx / COLOR WORKSPACE</span>
-          <i />
         </div>
       </div>
     </section>
