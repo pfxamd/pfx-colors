@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type RefObject,
 } from "react";
 import type { ColorInput, ColorValue } from "../engine";
 import {
@@ -20,6 +21,7 @@ import {
   type HarmonyScheme,
 } from "../tools";
 import { useNormalizedDragSurface } from "../interaction/use-normalized-drag-surface";
+import { useRadialDrag } from "../interaction/use-radial-drag";
 import { PfxColorsWorkspace, type WorkspaceState } from "../workspace";
 
 type ToolId = "home" | "picker" | "palette" | "harmony" | "gradient";
@@ -687,6 +689,59 @@ function Palette({
   );
 }
 
+function HarmonyNode({
+  wheelRef,
+  index,
+  hue,
+  hex,
+  onDrag,
+  onSelect,
+}: {
+  wheelRef: RefObject<HTMLDivElement | null>;
+  index: number;
+  hue: number;
+  hex: string;
+  onDrag: (hue: number) => void;
+  onSelect: () => void;
+}) {
+  const nodeRef = useRef<HTMLButtonElement>(null);
+  const didDrag = useRef(false);
+  const radians = ((hue - 90) * Math.PI) / 180;
+  const x = 50 + Math.cos(radians) * 40;
+  const y = 50 + Math.sin(radians) * 40;
+
+  useRadialDrag(nodeRef, wheelRef, (angle) => {
+    didDrag.current = true;
+    onDrag(angle);
+  });
+
+  return (
+    <button
+      ref={nodeRef}
+      type="button"
+      className="pfx-c-node"
+      style={{
+        left: String(x) + "%",
+        top: String(y) + "%",
+        background: hex,
+      }}
+      onPointerDown={() => {
+        didDrag.current = false;
+      }}
+      onClick={() => {
+        if (didDrag.current) {
+          didDrag.current = false;
+          return;
+        }
+        onSelect();
+      }}
+      aria-label={"Drag harmony color " + String(index + 1)}
+    >
+      {index + 1}
+    </button>
+  );
+}
+
 function Harmony({
   state,
   workspace,
@@ -701,10 +756,25 @@ function Harmony({
   openGradient: () => void;
 }) {
   const [scheme, setScheme] = useState<HarmonyScheme>("triadic");
+  const wheelRef = useRef<HTMLDivElement>(null);
   const harmony = useMemo(
     () => generateHarmony(asInput(state.color.source), scheme),
     [scheme, state.color.source],
   );
+  const oklch = state.color.values.oklch;
+  const lightness = Number(oklch?.coordinates[0] ?? 0);
+  const chroma = Number(oklch?.coordinates[1] ?? 0);
+
+  const rotateHarmonyFromHandle = (index: number, handleHue: number) => {
+    const hueOffset = harmony.colors[index]?.hueOffset ?? 0;
+    const baseHue = ((handleHue - hueOffset) % 360 + 360) % 360;
+
+    commitColor({
+      space: "oklch",
+      coordinates: [lightness, chroma, baseHue],
+      alpha: state.color.alpha,
+    });
+  };
 
   const sendToGradient = () => {
     sync(workspace.generateHarmony(scheme));
@@ -715,29 +785,35 @@ function Harmony({
   return (
     <section className="pfx-c-workbench pfx-c-workbench--harmony">
       <div className="pfx-c-wheel-zone">
-        <div className="pfx-c-wheel">
+        <div ref={wheelRef} className="pfx-c-wheel">
+          {harmony.colors.map((color) => {
+            const hue = ((harmony.baseHue + color.hueOffset) % 360 + 360) % 360;
+            return (
+              <span
+                key={"arm-" + color.index}
+                className="pfx-c-harmony-arm"
+                style={{ "--pfx-angle": hue + "deg" } as CSSProperties}
+                aria-hidden="true"
+              />
+            );
+          })}
+
           <div className="pfx-c-wheel__center">
             <img src="./logo.svg" alt="" />
           </div>
+
           {harmony.colors.map((color) => {
-            const hue = harmony.baseHue + color.hueOffset;
-            const radians = ((hue - 90) * Math.PI) / 180;
-            const x = 50 + Math.cos(radians) * 40;
-            const y = 50 + Math.sin(radians) * 40;
+            const hue = ((harmony.baseHue + color.hueOffset) % 360 + 360) % 360;
             return (
-              <button
+              <HarmonyNode
                 key={color.index}
-                type="button"
-                className="pfx-c-node"
-                style={{
-                  left: String(x) + "%",
-                  top: String(y) + "%",
-                  background: color.hex,
-                }}
-                onClick={() => commitColor(asInput(color.value))}
-              >
-                {color.index + 1}
-              </button>
+                wheelRef={wheelRef}
+                index={color.index}
+                hue={hue}
+                hex={color.hex}
+                onDrag={(nextHue) => rotateHarmonyFromHandle(color.index, nextHue)}
+                onSelect={() => commitColor(asInput(color.value))}
+              />
             );
           })}
         </div>
