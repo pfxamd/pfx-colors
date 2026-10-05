@@ -1452,7 +1452,7 @@ function GradientCanvasGeometry({
             type="button"
             className="pfx-c-gradient-geometry__endpoint pfx-is-start"
             onPointerDown={stop}
-            onClick={stop}
+            onClick={(event) => event.stopPropagation()}
             aria-label="Rotate gradient from start"
           />
           <span />
@@ -1461,7 +1461,7 @@ function GradientCanvasGeometry({
             type="button"
             className="pfx-c-gradient-geometry__endpoint pfx-is-end"
             onPointerDown={stop}
-            onClick={stop}
+            onClick={(event) => event.stopPropagation()}
             aria-label="Rotate gradient from end"
           />
         </div>
@@ -1494,7 +1494,7 @@ function GradientCanvasGeometry({
             ref={conicAngleRef}
             type="button"
             onPointerDown={stop}
-            onClick={stop}
+            onClick={(event) => event.stopPropagation()}
             aria-label="Rotate conic gradient"
           />
         </div>
@@ -1509,7 +1509,7 @@ function GradientCanvasGeometry({
           top: String(center.y * 100) + "%",
         }}
         onPointerDown={stop}
-        onClick={stop}
+        onClick={(event) => event.stopPropagation()}
         aria-label="Move gradient center"
       />
     </div>
