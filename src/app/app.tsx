@@ -413,6 +413,50 @@ function Home({
   );
 }
 
+function PickerHueRail({
+  hue,
+  onChange,
+}: {
+  hue: number;
+  onChange: (value: number) => void;
+}) {
+  const railRef = useRef<HTMLDivElement>(null);
+
+  useHorizontalTrackDrag(railRef, railRef, {
+    value: hue / 360,
+    min: 0,
+    max: 1,
+    step: 1 / 360,
+    onChange(value) {
+      onChange(value * 360);
+    },
+  });
+
+  return (
+    <div className="pfx-c-picker-controls">
+      <div
+        ref={railRef}
+        className="pfx-c-picker-hue"
+        role="slider"
+        tabIndex={0}
+        aria-label="Hue"
+        aria-valuemin={0}
+        aria-valuemax={360}
+        aria-valuenow={Math.round(hue)}
+      >
+        <span
+          className="pfx-c-picker-hue__handle"
+          style={{
+            left: String((hue / 360) * 100) + "%",
+            background: "hsl(" + round(hue) + " 100% 50%)",
+          }}
+        />
+        <output>{String(Math.round(hue)).padStart(3, "0")}°</output>
+      </div>
+    </div>
+  );
+}
+
 function Picker({
   state,
   commitColor,
@@ -439,23 +483,39 @@ function Picker({
     );
   });
 
+  const commitHue = (value: number) => {
+    commitColor(
+      "hsl(" +
+        round(value) +
+        " " +
+        round(saturation) +
+        "% " +
+        round(lightness) +
+        "%)",
+    );
+  };
+
   const fieldStyle = { "--pfx-hue": String(hue) } as CSSProperties;
 
   return (
     <section className="pfx-c-workbench pfx-c-workbench--picker">
-      <div
-        ref={fieldRef}
-        className="pfx-c-color-field"
-        style={fieldStyle}
-      >
-        <i
-          style={{
-            left: String(saturation) + "%",
-            top: String(100 - lightness) + "%",
-            background: state.color.hex,
-          }}
-        />
-        <span>COLOR FIELD / DRAG</span>
+      <div className="pfx-c-picker-main">
+        <div
+          ref={fieldRef}
+          className="pfx-c-color-field"
+          style={fieldStyle}
+        >
+          <i
+            style={{
+              left: String(saturation) + "%",
+              top: String(100 - lightness) + "%",
+              background: state.color.hex,
+            }}
+          />
+          <span>COLOR FIELD / DRAG</span>
+        </div>
+
+        <PickerHueRail hue={hue} onChange={commitHue} />
       </div>
 
       <aside className="pfx-c-console">
@@ -463,24 +523,6 @@ function Picker({
           <strong>{state.color.hex.toUpperCase()}</strong>
         </div>
 
-        <Slider
-          label="H"
-          value={hue}
-          min={0}
-          max={360}
-          hue
-          onChange={(value) =>
-            commitColor(
-              "hsl(" +
-                value +
-                " " +
-                round(saturation) +
-                "% " +
-                round(lightness) +
-                "%)",
-            )
-          }
-        />
         <Slider
           label="S"
           value={saturation}
