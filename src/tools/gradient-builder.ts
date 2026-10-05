@@ -24,6 +24,8 @@ export interface GradientStop {
 export interface GradientDefinition {
   type: GradientType;
   angle: number;
+  centerX: number;
+  centerY: number;
   interpolationSpace: ColorSpaceId;
   targetSpace: ColorSpaceId;
   hue?: InterpolationOptions["hue"];
@@ -33,6 +35,8 @@ export interface GradientDefinition {
 export interface GradientOptions {
   type?: GradientType;
   angle?: number;
+  centerX?: number;
+  centerY?: number;
   interpolationSpace?: ColorSpaceId;
   targetSpace?: ColorSpaceId;
   hue?: InterpolationOptions["hue"];
@@ -41,6 +45,13 @@ export interface GradientOptions {
 function checkedPosition(value: number): number {
   if (!Number.isFinite(value) || value < 0 || value > 1) {
     throw new RangeError("Gradient position must be between 0 and 1.");
+  }
+  return value;
+}
+
+function checkedUnit(value: number, label: string): number {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new RangeError(label + " must be between 0 and 1.");
   }
   return value;
 }
@@ -91,6 +102,8 @@ export function createGradient(
   return {
     type: options.type ?? "linear",
     angle,
+    centerX: checkedUnit(options.centerX ?? 0.5, "Gradient centerX"),
+    centerY: checkedUnit(options.centerY ?? 0.5, "Gradient centerY"),
     interpolationSpace: options.interpolationSpace ?? "oklch",
     targetSpace,
     hue: options.hue,
@@ -143,14 +156,30 @@ export function gradientToCss(gradient: GradientDefinition): string {
     )
     .join(", ");
 
+  const center =
+    String(Math.round(gradient.centerX * 10000) / 100) +
+    "% " +
+    String(Math.round(gradient.centerY * 10000) / 100) +
+    "%";
+
   if (gradient.type === "radial") {
-    return "radial-gradient(circle " + interpolation + ", " + stops + ")";
+    return (
+      "radial-gradient(circle at " +
+      center +
+      " " +
+      interpolation +
+      ", " +
+      stops +
+      ")"
+    );
   }
   if (gradient.type === "conic") {
     return (
       "conic-gradient(from " +
       String(gradient.angle) +
-      "deg " +
+      "deg at " +
+      center +
+      " " +
       interpolation +
       ", " +
       stops +
