@@ -95,7 +95,10 @@ export function useColorFieldControl<T extends HTMLElement>(
       );
     },
     onSample(sample) {
-      if (sample.phase !== "down") return;
+      if (sample.phase === "up") {
+        options.onActiveChange?.(false);
+        return;
+      }
 
       let x = 0;
       let y = 0;
