@@ -1147,78 +1147,216 @@ select:focus-visible {
   transform: translateX(3px);
 }
 
-.pfx-c-gradient-zone {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  min-height: 0;
-  place-items: stretch;
-  padding: clamp(24px, 3vw, 46px);
-  border-right: 1px solid var(--pfx-line);
+.pfx-c-workbench--gradient {
+  display: block;
+  overflow: hidden;
+  padding: clamp(24px, 3vh, 34px) clamp(28px, 3vw, 44px);
   background:
-    radial-gradient(circle at 50% 38%, rgba(255,255,255,0.03), transparent 40%),
-    #0b0b0d;
+    radial-gradient(circle at 42% 34%, rgba(255,255,255,0.025), transparent 38%),
+    #09090a;
 }
 
-.pfx-c-gradient-editor {
+.pfx-c-gradient-shell {
   display: grid;
+  width: min(1120px, 100%);
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: 22px;
+  margin: 0 auto;
+}
+
+.pfx-c-gradient-canvas-card,
+.pfx-c-gradient-inspector {
+  border: 1px solid var(--pfx-line);
+  background: #0d0d0f;
+  box-shadow: 0 16px 44px rgba(0,0,0,0.16);
+}
+
+.pfx-c-gradient-canvas-card {
   min-width: 0;
-  min-height: 0;
-  grid-template-rows: minmax(280px, 1fr) 82px;
-  align-self: stretch;
-  gap: 16px;
+  padding: 14px 14px 0;
 }
 
 .pfx-c-gradient-preview {
   position: relative;
   width: 100%;
-  min-height: 280px;
-  padding: 0;
+  height: clamp(300px, 42vh, 390px);
+  min-height: 0;
   overflow: hidden;
   border: 1px solid #34343a;
+  background-clip: padding-box;
   cursor: crosshair;
   box-shadow:
-    0 22px 54px rgba(0,0,0,0.22),
-    inset 0 0 0 1px rgba(255,255,255,0.025);
+    inset 0 0 0 1px rgba(255,255,255,0.025),
+    0 14px 34px rgba(0,0,0,0.18);
 }
 
 .pfx-c-gradient-preview::after {
   position: absolute;
   inset: 12px;
-  border: 1px solid rgba(255,255,255,0.11);
+  border: 1px solid rgba(255,255,255,0.1);
   content: "";
   pointer-events: none;
 }
 
+.pfx-c-gradient-preview__angle {
+  position: absolute;
+  z-index: 8;
+  top: 14px;
+  right: 14px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(8,8,10,0.68);
+  color: #e8e8eb;
+  font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+}
+
+.pfx-c-gradient-geometry {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pfx-c-gradient-geometry__axis {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(62%, 460px);
+  height: 1px;
+  transform:
+    translate(-50%, -50%)
+    rotate(calc(var(--pfx-gradient-angle) - 90deg));
+  transform-origin: 50% 50%;
+  background: rgba(255,255,255,0.72);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.26);
+}
+
+.pfx-c-gradient-geometry__axis > span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  transform: translate(-50%, -50%);
+  border: 1px solid #09090a;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.pfx-c-gradient-geometry__endpoint,
+.pfx-c-gradient-geometry__center,
+.pfx-c-gradient-geometry__conic-arm > button {
+  position: absolute;
+  z-index: 2;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #111114;
+  box-shadow:
+    0 0 0 2px #08080a,
+    0 6px 16px rgba(0,0,0,0.34);
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.pfx-c-gradient-geometry__endpoint:active,
+.pfx-c-gradient-geometry__center:active,
+.pfx-c-gradient-geometry__conic-arm > button:active {
+  cursor: grabbing;
+}
+
+.pfx-c-gradient-geometry__endpoint.pfx-is-start {
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.pfx-c-gradient-geometry__endpoint.pfx-is-end {
+  top: 50%;
+  right: 0;
+  transform: translate(50%, -50%);
+  background: #f3f3ef;
+}
+
+.pfx-c-gradient-geometry__center {
+  transform: translate(-50%, -50%);
+}
+
+.pfx-c-gradient-geometry__center::after {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--pfx-red);
+  content: "";
+}
+
+.pfx-c-gradient-geometry__radial-ring {
+  position: absolute;
+  width: min(42%, 220px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255,255,255,0.52);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+}
+
+.pfx-c-gradient-geometry__conic-arm {
+  position: absolute;
+  width: min(30%, 170px);
+  height: 1px;
+  transform: rotate(calc(var(--pfx-gradient-angle) - 90deg));
+  transform-origin: 0 50%;
+  background: rgba(255,255,255,0.72);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+}
+
+.pfx-c-gradient-geometry__conic-arm > button {
+  top: 50%;
+  right: 0;
+  transform: translate(50%, -50%);
+  background: #f3f3ef;
+}
+
+.pfx-c-gradient-stop-strip {
+  height: 82px;
+  padding: 0 18px;
+}
+
 .pfx-c-gradient-rail {
   position: relative;
-  min-width: 0;
+  width: 100%;
   height: 82px;
-  margin: 0 14px;
   cursor: copy;
   touch-action: none;
 }
 
 .pfx-c-gradient-rail__line {
   position: absolute;
-  top: 28px;
+  top: 30px;
   right: 0;
   left: 0;
-  height: 16px;
+  height: 14px;
   border: 1px solid #3a3a41;
   background: var(--pfx-gradient);
   box-shadow:
     0 0 0 1px #08080a,
-    0 7px 18px rgba(0,0,0,0.22);
+    0 6px 16px rgba(0,0,0,0.2);
   pointer-events: none;
 }
 
 .pfx-c-gradient-stop-handle {
   position: absolute;
   z-index: 3;
-  top: 12px;
-  width: 34px;
-  height: 56px;
+  top: 13px;
+  width: 30px;
+  height: 54px;
   transform: translateX(-50%);
   padding: 0;
   border: 0;
@@ -1236,38 +1374,33 @@ select:focus-visible {
   position: absolute;
   top: 0;
   left: 50%;
-  width: 26px;
-  height: 26px;
+  width: 23px;
+  height: 23px;
   transform: translateX(-50%) rotate(45deg);
   border: 3px solid #f4f4f1;
-  border-radius: 4px 4px 4px 12px;
+  border-radius: 4px 4px 4px 11px;
   background: var(--pfx-stop-color);
   box-shadow:
     0 0 0 2px #09090a,
-    0 7px 18px rgba(0,0,0,0.35);
+    0 6px 16px rgba(0,0,0,0.32);
 }
 
 .pfx-c-gradient-stop-handle.pfx-is-selected > span {
   box-shadow:
     0 0 0 2px var(--pfx-red),
     0 0 0 4px #09090a,
-    0 9px 22px rgba(0,0,0,0.45);
+    0 8px 20px rgba(0,0,0,0.42);
 }
 
-.pfx-c-gradient-deck {
-  display: flex;
+.pfx-c-gradient-inspector {
+  display: grid;
+  grid-template-rows: 62px auto 46px 44px 40px;
   min-width: 0;
-  min-height: 0;
-  flex-direction: column;
-  overflow-y: auto;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.016), transparent 18%),
-    #0d0d0f;
+  overflow: hidden;
 }
 
 .pfx-c-gradient-types {
   display: grid;
-  flex: 0 0 76px;
   grid-template-columns: repeat(3, 1fr);
   gap: 1px;
   padding: 1px;
@@ -1295,8 +1428,8 @@ select:focus-visible {
 
 .pfx-c-gradient-type-glyph {
   position: relative;
-  width: 46px;
-  height: 32px;
+  width: 44px;
+  height: 30px;
   overflow: hidden;
   border: 1px solid #414149;
   background: #0c0c0e;
@@ -1313,23 +1446,22 @@ select:focus-visible {
 }
 
 .pfx-c-gradient-type-glyph.pfx-is-radial::before {
-  inset: 5px 11px;
+  inset: 5px 10px;
   border-radius: 50%;
   background: radial-gradient(circle, #f4f4f1, #6d6d75 48%, #161619 72%);
 }
 
 .pfx-c-gradient-type-glyph.pfx-is-conic::before {
-  inset: 5px 11px;
+  inset: 5px 10px;
   border-radius: 50%;
   background: conic-gradient(#f4f4f1, #56565e, #17171a, #f4f4f1);
 }
 
 .pfx-c-gradient-color-editor {
   display: grid;
-  flex: 0 0 auto;
-  grid-template-rows: 230px 18px 42px 16px;
-  gap: 10px;
-  padding: 14px;
+  grid-template-rows: 148px 14px 36px 14px;
+  gap: 9px;
+  padding: 12px;
   border-bottom: 1px solid var(--pfx-line);
   background: #0b0b0d;
 }
@@ -1348,12 +1480,12 @@ select:focus-visible {
 
 .pfx-c-gradient-color-editor__field > i {
   position: absolute;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   transform: translate(-50%, -50%);
   border: 3px solid #fff;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px #000, 0 4px 16px rgba(0,0,0,0.4);
+  box-shadow: 0 0 0 2px #000, 0 4px 14px rgba(0,0,0,0.38);
   pointer-events: none;
 }
 
@@ -1388,7 +1520,7 @@ select:focus-visible {
 .pfx-c-gradient-color-editor__alpha > button {
   position: absolute;
   top: 50%;
-  width: 14px;
+  width: 12px;
   height: calc(100% + 8px);
   transform: translate(-50%, -50%);
   padding: 0;
@@ -1402,8 +1534,8 @@ select:focus-visible {
 
 .pfx-c-gradient-color-editor__meta {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 58px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 54px;
+  gap: 7px;
 }
 
 .pfx-c-gradient-color-editor__hex,
@@ -1412,11 +1544,11 @@ select:focus-visible {
   border: 1px solid #34343a;
   background: #111114;
   color: #ededf0;
-  font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .pfx-c-gradient-color-editor__hex {
-  padding: 0 10px;
+  padding: 0 9px;
   outline: 0;
 }
 
@@ -1430,161 +1562,74 @@ select:focus-visible {
   color: #a8a8b0;
 }
 
-.pfx-c-gradient-stop-tools {
+.pfx-c-gradient-position {
   display: grid;
-  flex: 0 0 54px;
-  grid-template-columns: minmax(0, 1fr) 54px;
+  grid-template-columns: 44px 1fr 44px;
   border-bottom: 1px solid var(--pfx-line);
   background: #101012;
 }
 
-.pfx-c-gradient-stop-tools__position {
-  display: grid;
-  grid-template-columns: 48px 1fr 48px;
-  border-right: 1px solid var(--pfx-line);
-}
-
-.pfx-c-gradient-stop-tools button,
-.pfx-c-gradient-actions button {
+.pfx-c-gradient-position > button,
+.pfx-c-gradient-actions > button,
+.pfx-c-gradient-space-grid > button {
   padding: 0;
   border: 0;
-  background: transparent;
-  color: #c4c4ca;
+  background: #101012;
+  color: #bfbfc6;
   cursor: pointer;
 }
 
-.pfx-c-gradient-stop-tools button:hover:not(:disabled),
-.pfx-c-gradient-actions button:hover {
+.pfx-c-gradient-position > button:hover,
+.pfx-c-gradient-actions > button:hover:not(:disabled),
+.pfx-c-gradient-space-grid > button:hover {
   background: #f0f0ed;
   color: #09090a;
 }
 
-.pfx-c-gradient-stop-tools button:disabled {
-  color: #3b3b42;
-  cursor: default;
-}
-
-.pfx-c-gradient-stop-tools__position output {
+.pfx-c-gradient-position > output {
   display: grid;
   place-items: center;
+  border-right: 1px solid var(--pfx-line);
+  border-left: 1px solid var(--pfx-line);
   color: #f0f0ed;
-  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-.pfx-c-gradient-stop-tools__remove {
-  font-size: 20px;
+  font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .pfx-c-gradient-actions {
   display: grid;
-  flex: 0 0 48px;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 1px;
   padding: 1px;
   border-bottom: 1px solid var(--pfx-line);
   background: #24242a;
 }
 
-.pfx-c-gradient-actions button {
-  background: #101012;
-  font-size: 18px;
+.pfx-c-gradient-actions > button {
+  font-size: 17px;
 }
 
-.pfx-c-gradient-angle-compact {
-  display: grid;
-  flex: 0 0 104px;
-  place-items: center;
-  border-bottom: 1px solid var(--pfx-line);
-  background: #0b0b0d;
-}
-
-.pfx-c-gradient-angle-dial {
-  position: relative;
-  width: 78px;
-  aspect-ratio: 1;
-  border: 1px solid #34343b;
-  border-radius: 50%;
-  background:
-    repeating-conic-gradient(from 0deg, #36363d 0 1deg, transparent 1deg 30deg),
-    #111114;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-
-.pfx-c-gradient-angle-dial:active {
-  cursor: grabbing;
-}
-
-.pfx-c-gradient-angle-dial > span {
-  position: absolute;
-  inset: 8px;
-  transform: rotate(var(--pfx-dial-angle));
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.pfx-c-gradient-angle-dial > span::before {
-  position: absolute;
-  top: -1px;
-  left: 50%;
-  width: 10px;
-  height: 10px;
-  transform: translate(-50%, -50%);
-  border: 2px solid #09090a;
-  border-radius: 50%;
-  background: #f4f4f1;
-  box-shadow: 0 0 0 1px #8d8d95;
-  content: "";
-}
-
-.pfx-c-gradient-angle-dial > span::after {
-  position: absolute;
-  top: 5px;
-  bottom: 50%;
-  left: 50%;
-  width: 1px;
-  background: #66666e;
-  content: "";
-}
-
-.pfx-c-gradient-angle-dial > strong {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #ededf0;
-  font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-weight: 600;
-  pointer-events: none;
+.pfx-c-gradient-actions > button:disabled {
+  color: #3a3a41;
+  cursor: default;
 }
 
 .pfx-c-gradient-space-grid {
   display: grid;
-  flex: 0 0 52px;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1px;
   padding: 1px;
   background: #24242a;
 }
 
 .pfx-c-gradient-space-grid > button {
-  padding: 0;
-  border: 0;
-  background: #101012;
   color: #73737b;
   font: 7px ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.04em;
-  cursor: pointer;
 }
 
-.pfx-c-gradient-space-grid > button:hover,
 .pfx-c-gradient-space-grid > button.pfx-is-current {
   background: #17171b;
   color: #f0f0ed;
-}
-
-.pfx-c-gradient-space-grid > button.pfx-is-current {
   box-shadow: inset 0 -2px 0 var(--pfx-red);
 }
 
@@ -1747,15 +1792,22 @@ select:focus-visible {
     width: min(70vw, 520px);
   }
 
-  .pfx-c-gradient-zone {
-    min-height: 66vh;
-    border-right: 0;
-    border-bottom: 1px solid var(--pfx-line);
+  .pfx-c-workbench--gradient {
+    overflow: visible;
+    padding: 22px 18px 34px;
   }
 
-  .pfx-c-gradient-deck {
-    min-height: 660px;
-    overflow: visible;
+  .pfx-c-gradient-shell {
+    width: min(760px, 100%);
+    grid-template-columns: 1fr;
+  }
+
+  .pfx-c-gradient-preview {
+    height: min(50vh, 360px);
+  }
+
+  .pfx-c-gradient-inspector {
+    width: min(420px, 100%);
   }
 
   .pfx-c-dock {
@@ -1843,39 +1895,33 @@ select:focus-visible {
     width: 138px;
   }
 
-  .pfx-c-gradient-zone {
-    min-height: 58vh;
-    padding: 18px 12px;
+  .pfx-c-workbench--gradient {
+    padding: 14px 10px 28px;
   }
 
-  .pfx-c-gradient-editor {
-    grid-template-rows: minmax(220px, 1fr) 74px;
-    gap: 12px;
+  .pfx-c-gradient-canvas-card {
+    padding: 10px 10px 0;
   }
 
   .pfx-c-gradient-preview {
-    min-height: 220px;
+    height: 300px;
+  }
+
+  .pfx-c-gradient-stop-strip {
+    height: 72px;
+    padding: 0 12px;
   }
 
   .pfx-c-gradient-rail {
-    height: 74px;
-    margin: 0 10px;
+    height: 72px;
   }
 
-  .pfx-c-gradient-stop-handle {
-    top: 10px;
-    width: 30px;
-    height: 52px;
-  }
-
-  .pfx-c-gradient-stop-handle > span {
-    width: 23px;
-    height: 23px;
+  .pfx-c-gradient-inspector {
+    width: 100%;
   }
 
   .pfx-c-gradient-color-editor {
-    grid-template-rows: 200px 18px 42px 16px;
-    padding: 12px;
+    grid-template-rows: 170px 14px 36px 14px;
   }
 
   .pfx-c-current {
