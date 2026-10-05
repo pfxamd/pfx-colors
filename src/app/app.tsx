@@ -23,6 +23,7 @@ import {
 } from "../tools";
 import { useNormalizedDragSurface } from "../interaction/use-normalized-drag-surface";
 import { useHorizontalTrackDrag } from "../interaction/use-horizontal-track-drag";
+import { useColorFieldControl } from "../interaction/use-color-field-control";
 import { useRadialDrag } from "../interaction/use-radial-drag";
 import { useScalarDial } from "../interaction/use-scalar-dial";
 import { PfxColorsWorkspace, type WorkspaceState } from "../workspace";
@@ -470,17 +471,25 @@ function Picker({
   const saturation = Number(hsl?.coordinates[1] ?? 0);
   const lightness = Number(hsl?.coordinates[2] ?? 0);
   const fieldRef = useRef<HTMLDivElement>(null);
+  const [fieldActive, setFieldActive] = useState(false);
 
-  useNormalizedDragSurface(fieldRef, ({ x, y }) => {
-    commitColor(
-      "hsl(" +
-        round(hue) +
-        " " +
-        round(x * 100) +
-        "% " +
-        round((1 - y) * 100) +
-        "%)",
-    );
+  useColorFieldControl(fieldRef, {
+    value: {
+      x: saturation / 100,
+      y: 1 - lightness / 100,
+    },
+    onChange({ x, y }) {
+      commitColor(
+        "hsl(" +
+          round(hue) +
+          " " +
+          round(x * 100) +
+          "% " +
+          round((1 - y) * 100) +
+          "%)",
+      );
+    },
+    onActiveChange: setFieldActive,
   });
 
   const commitHue = (value: number) => {
@@ -502,17 +511,37 @@ function Picker({
       <div className="pfx-c-picker-main">
         <div
           ref={fieldRef}
-          className="pfx-c-color-field"
+          className={
+            "pfx-c-color-field" + (fieldActive ? " pfx-is-active" : "")
+          }
           style={fieldStyle}
+          tabIndex={0}
+          aria-label="Color field. Use pointer or arrow keys. Hold Shift for precision."
         >
-          <i
+          <div
+            className={
+              "pfx-c-color-cursor" +
+              (saturation > 82 ? " pfx-is-right-edge" : "") +
+              (saturation < 18 ? " pfx-is-left-edge" : "") +
+              (lightness > 82 ? " pfx-is-top-edge" : "")
+            }
             style={{
               left: String(saturation) + "%",
               top: String(100 - lightness) + "%",
-              background: state.color.hex,
-            }}
-          />
-          <span>COLOR FIELD / DRAG</span>
+              "--pfx-picked-color": state.color.hex,
+            } as CSSProperties}
+          >
+            <span className="pfx-c-color-cursor__swatch" />
+            <span className="pfx-c-color-cursor__crosshair" />
+            <output className="pfx-c-color-cursor__readout">
+              <strong>{state.color.hex.toUpperCase()}</strong>
+              <small>
+                S {String(Math.round(saturation)).padStart(3, "0")} · L{" "}
+                {String(Math.round(lightness)).padStart(3, "0")}
+              </small>
+            </output>
+          </div>
+          <span>COLOR FIELD / DRAG · SHIFT PRECISION · ARROWS</span>
         </div>
 
         <PickerHueRail hue={hue} onChange={commitHue} />
