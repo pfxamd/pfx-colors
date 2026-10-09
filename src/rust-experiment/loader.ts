@@ -12,7 +12,7 @@ import type { PfxColorsWorkspace } from "@pfx/color-core";
 export type WorkspaceFactory = (initial: string) => PfxColorsWorkspace;
 
 export async function loadExperimentalWorkspace(): Promise<WorkspaceFactory> {
-  const assetRoot = import.meta.env.BASE_URL + "rust/";
+  const assetRoot = new URL("rust/", document.baseURI).pathname;
   const [apiModule, workspaceModule, response] = await Promise.all([
     import(/* @vite-ignore */ assetRoot + "pfx-color-core.mjs"),
     import(/* @vite-ignore */ assetRoot + "pfx-color-workspace.mjs"),
