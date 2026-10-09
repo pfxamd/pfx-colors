@@ -131,7 +131,7 @@ export function generateColorStudy(seed: ColorInput, options: ColorStudyOptions 
 export function sampleGradient(gradient: GradientDefinition, at: number): ColorValue {
   const original = legacySample(gradient, at);
   return useRust("gradientSample", original, () => {
-    if (!rust || gradient.hue === "raw") return null;
+    if (!rust) return null;
     const stops = gradient.stops.map(e => {
       const color = toRust(toInput(e.source));
       if (!color) throw new Error("Unsupported stop");
