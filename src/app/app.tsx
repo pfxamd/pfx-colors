@@ -8,15 +8,13 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
-import { colorEngine, type ColorInput, type ColorValue } from "@pfx/color-core";
+import type { ColorInput, ColorValue } from "@pfx/color-core";
 import {
-  createGradient,
-  generateColorStudy,
-  generateHarmony,
-  generateTonalPalette,
-  gradientToCss,
+  colorEngine, createGradient, generateColorStudy, generateHarmony,
+  generateTonalPalette, gradientToCss, sampleGradient,
+} from "../rust-experiment/operations";
+import {
   HARMONY_SCHEMES,
-  sampleGradient,
   type GradientStopInput,
   type GradientType,
   type HarmonyScheme,
