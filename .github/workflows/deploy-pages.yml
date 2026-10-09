@@ -30,6 +30,29 @@ jobs:
         with:
           node-version: 22
 
+      - name: Checkout pinned Rust core for the production engine
+        uses: actions/checkout@v4
+        with:
+          repository: pfxamd/pfx-color-core
+          ref: 28aff99941787ee30f52742c36110bc4e03a8b7c
+          path: rust-production-source
+          persist-credentials: false
+
+      - name: Set up production Rust WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Compile the first-party Rust engine for GitHub Pages
+        run: |
+          cargo build --manifest-path rust-production-source/Cargo.toml -p pfx-color-ffi --target wasm32-unknown-unknown --release
+          mkdir -p public/rust
+          cp rust-production-source/target/wasm32-unknown-unknown/release/pfx_color_ffi.wasm public/rust/
+          cp rust-production-source/bindings/javascript/pfx-color-core.mjs public/rust/
+          cp rust-production-source/bindings/javascript/pfx-color-tools.mjs public/rust/
+          cp rust-production-source/bindings/javascript/pfx-color-workspace.mjs public/rust/
+          test -s public/rust/pfx_color_ffi.wasm
+
       - name: Install
         run: npm install --no-audit --no-fund
 
@@ -95,11 +118,15 @@ jobs:
           test -s dist/preview/rust/pfx_color_ffi.wasm
           test -s dist/preview/rust/pfx-color-core.mjs
           test -s dist/preview/preview-info/build.json
+          grep -Fq '/pfx-colors/assets/' dist/index.html
+          test -s dist/rust/pfx_color_ffi.wasm
           grep -Fq '/pfx-colors/preview/assets/' dist/preview/index.html
           grep -Fq '__PFX_RUST_STAGING__ = true' dist/preview/index.html
           grep -Fq 'noindex' dist/preview/index.html
           grep -Fq '"hostingBase": "/pfx-colors/preview/"' dist/preview/preview-info/build.json
-          test ! -e dist/rust/pfx_color_ffi.wasm
+          test -s dist/rust/pfx_color_ffi.wasm
+          test -s dist/rust/pfx-color-core.mjs
+          test -s dist/rust/pfx-color-workspace.mjs
 
       - name: Test combined GitHub Pages site in Chromium and Firefox
         run: |
@@ -134,6 +161,22 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Confirm real production Rust core was published
+        run: |
+          BASE="https://pfxamd.github.io/pfx-colors/"
+          for i in $(seq 1 36); do
+            if curl --fail --silent --location "${BASE}" -o /tmp/pfx-live-root.html 2>/dev/null \
+              && curl --fail --silent --location "${BASE}rust/pfx_color_ffi.wasm" -o /tmp/pfx-live-prod.wasm 2>/dev/null \
+              && test "$(wc -c < /tmp/pfx-live-prod.wasm)" -gt 10000 \
+              && grep -Fq '/pfx-colors/assets/' /tmp/pfx-live-root.html; then
+              echo "Production Rust assets available: ${BASE}"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Production Rust engine assets not verified"
+          exit 1
 
       - name: Verify the public preview path after Pages deployment
         run: |

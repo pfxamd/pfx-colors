@@ -8,15 +8,14 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
-import { colorEngine, type ColorInput, type ColorValue } from "@pfx/color-core";
+import type { ColorInput, ColorValue } from "@pfx/color-core";
 import {
-  createGradient,
-  generateColorStudy,
-  generateHarmony,
-  generateTonalPalette,
-  gradientToCss,
+  colorEngine, createGradient, generateColorStudy, generateHarmony,
+  generateTonalPalette, gradientToCss, sampleGradient,
+  isRustExperiment, recordRustGradientRaster,
+} from "../rust-experiment/operations";
+import {
   HARMONY_SCHEMES,
-  sampleGradient,
   type GradientStopInput,
   type GradientType,
   type HarmonyScheme,
@@ -28,6 +27,7 @@ import { useColorFieldControl } from "../interaction/use-color-field-control";
 import { useRadialDrag } from "../interaction/use-radial-drag";
 import { useScalarDial } from "../interaction/use-scalar-dial";
 import { PfxColorsWorkspace, type WorkspaceState } from "@pfx/color-core";
+import type { WorkspaceFactory } from "../rust-experiment/loader";
 
 type ToolId = "home" | "picker" | "palette" | "harmony" | "gradient";
 
@@ -63,7 +63,7 @@ function createStudyRandom(seed: number) {
   };
 }
 
-function useWorkspace() {
+function useWorkspace(workspaceFactory?: WorkspaceFactory) {
   const ref = useRef<PfxColorsWorkspace | null>(null);
   if (!ref.current) {
     let initial = "#ff0014";
@@ -72,7 +72,7 @@ function useWorkspace() {
     } catch {
       // ignore
     }
-    ref.current = new PfxColorsWorkspace(initial);
+    ref.current = workspaceFactory ? workspaceFactory(initial) : new PfxColorsWorkspace(initial);
   }
 
   const workspace = ref.current;
@@ -85,8 +85,14 @@ function useWorkspace() {
   return { workspace, state, sync };
 }
 
-export function App() {
-  const { workspace, state, sync } = useWorkspace();
+export function App({
+  workspaceFactory,
+  engine = "legacy",
+}: {
+  workspaceFactory?: WorkspaceFactory;
+  engine?: "legacy" | "rust";
+} = {}) {
+  const { workspace, state, sync } = useWorkspace(workspaceFactory);
   const [activeTool, setActiveTool] = useState<ToolId>("home");
 
   const commitColor = useCallback(
@@ -151,7 +157,9 @@ export function App() {
           ))}
         </nav>
 
-        <div className="pfx-c-engine-label">OKLCH / P3</div>
+        <div className="pfx-c-engine-label" data-engine={engine}>
+          {engine === "rust" ? "RUST / CORE" : "OKLCH / P3"}
+        </div>
       </header>
 
       <main className="pfx-l-stage">
@@ -1537,6 +1545,19 @@ function Gradient({
   }));
   const railRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const rustCanvasRef = useRef<HTMLCanvasElement>(null);
+  const rustWorkerRef = useRef<Worker | null>(null);
+  const [rustPreviewFailed, setRustPreviewFailed] = useState(false);
+  const renderRevision = useRef(0);
+  const inFlight = useRef(false);
+  const latestRender = useRef<{
+    kind: "render";
+    revision: number;
+    gradient: typeof gradient;
+    width: number;
+    height: number;
+  } | null>(null);
+  const flushRender = useRef<() => void>(() => {});
 
   const fallback = useMemo(() => {
     const harmony = generateHarmony(asInput(state.color.source), "complementary");
@@ -1581,6 +1602,130 @@ function Gradient({
       Math.max(0, Math.min(current, gradient.stops.length - 1)),
     );
   }, [gradient.stops.length]);
+
+  // Branch-only preview: no WebAssembly pixel loops run on the UI thread.
+  // Keep one worker for this mounted preview and deliver only the newest
+  // render during continuous pointer input; outdated frames never paint.
+  useEffect(() => {
+    if (!isRustExperiment()) return;
+    const worker = new Worker(new URL("../rust-experiment/gradient-worker.ts", import.meta.url), {
+      type: "module",
+    });
+    rustWorkerRef.current = worker;
+    const stats = {
+      submitted: 0, completed: 0, painted: 0, discarded: 0,
+      latestRevision: 0, paintRevision: 0, maxRustMs: 0, worker: true,
+    };
+    Object.defineProperty(window, "__PFX_RUST_RENDER__", {
+      value: stats, configurable: true,
+    });
+    flushRender.current = () => {
+      if (inFlight.current || !latestRender.current) return;
+      const task = latestRender.current;
+      latestRender.current = null;
+      inFlight.current = true;
+      stats.submitted += 1;
+      worker.postMessage(task);
+    };
+    worker.onmessage = (event: MessageEvent<{
+      kind: "frame" | "error"; message?: string;
+      revision: number; width: number; height: number;
+      durationMs: number; pixels: ArrayBuffer;
+    }>) => {
+      if (event.data.kind === "error") {
+        console.error("PFx Rust gradient worker error:", event.data.message);
+        if (rustCanvasRef.current) rustCanvasRef.current.dataset.rustGradientPreview = "error";
+        worker.terminate();
+        rustWorkerRef.current = null;
+        latestRender.current = null;
+        inFlight.current = false;
+        flushRender.current = () => {};
+        setRustPreviewFailed(true);
+        return;
+      }
+      inFlight.current = false;
+      stats.completed += 1;
+      stats.maxRustMs = Math.max(stats.maxRustMs, event.data.durationMs);
+      const canvas = rustCanvasRef.current;
+      // Show each newly completed frame while a drag is in progress.
+      // Waiting for an exact revision match makes Firefox appear frozen
+      // under continuous input because every result arrives one step behind.
+      // Never paint backwards, and only declare "ready" for the final frame.
+      if (canvas && canvas.isConnected && event.data.revision > stats.paintRevision) {
+        canvas.width = event.data.width;
+        canvas.height = event.data.height;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Rust canvas context unavailable");
+        context.putImageData(new ImageData(
+          new Uint8ClampedArray(event.data.pixels), event.data.width, event.data.height,
+        ), 0, 0);
+        canvas.dataset.rustGradientPreview =
+          event.data.revision === renderRevision.current ? "ready" : "pending";
+        stats.painted += 1;
+        stats.paintRevision = event.data.revision;
+        recordRustGradientRaster();
+      } else {
+        stats.discarded += 1;
+      }
+      flushRender.current();
+    };
+    worker.onerror = (event) => {
+      event.preventDefault();
+      console.error("PFx Rust gradient worker failed:", event.message);
+      if (rustCanvasRef.current) rustCanvasRef.current.dataset.rustGradientPreview = "error";
+      worker.terminate();
+      rustWorkerRef.current = null;
+      latestRender.current = null;
+      inFlight.current = false;
+      flushRender.current = () => {};
+      setRustPreviewFailed(true);
+    };
+    worker.postMessage({
+      kind: "init",
+      assetRoot: new URL("rust/", document.baseURI).href,
+    });
+    return () => {
+      worker.terminate();
+      rustWorkerRef.current = null;
+      inFlight.current = false;
+      latestRender.current = null;
+      flushRender.current = () => {};
+      delete (window as Window & { __PFX_RUST_RENDER__?: unknown }).__PFX_RUST_RENDER__;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isRustExperiment() || !rustWorkerRef.current
+      || !rustCanvasRef.current || !previewRef.current) return;
+    const canvas = rustCanvasRef.current;
+    const surface = previewRef.current;
+    let scheduled = 0;
+    const schedule = () => {
+      cancelAnimationFrame(scheduled);
+      scheduled = requestAnimationFrame(() => {
+        if (!canvas.isConnected) return;
+        const box = surface.getBoundingClientRect();
+        if (box.width <= 0 || box.height <= 0) return;
+        const width = 160;
+        const height = Math.max(1, Math.min(180, Math.round(width * box.height / box.width)));
+        const revision = ++renderRevision.current;
+        canvas.dataset.rustGradientPreview = "pending";
+        latestRender.current = { kind: "render", revision, gradient, width, height };
+        const stats = (window as Window & {
+          __PFX_RUST_RENDER__?: { latestRevision: number };
+        }).__PFX_RUST_RENDER__;
+        if (stats) stats.latestRevision = revision;
+        flushRender.current();
+      });
+    };
+    const observer = new ResizeObserver(schedule);
+    observer.observe(surface);
+    schedule();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(scheduled);
+    };
+  }, [gradient]);
 
   const css = gradientToCss(gradient);
   const activeStop = gradient.stops[selectedStop] ?? gradient.stops[0];
@@ -1703,7 +1848,7 @@ function Gradient({
           <div
             ref={previewRef}
             className="pfx-c-gradient-preview"
-            style={{ background: css }}
+            style={{ background: isRustExperiment() && !rustPreviewFailed ? "transparent" : css }}
             onClick={(event) => {
               if (event.target !== event.currentTarget) return;
               const rect = event.currentTarget.getBoundingClientRect();
@@ -1714,6 +1859,18 @@ function Gradient({
               commitColor(asInput(sampleGradient(gradient, at)));
             }}
           >
+            {isRustExperiment() && !rustPreviewFailed && (
+              <canvas
+                ref={rustCanvasRef}
+                aria-hidden="true"
+                data-rust-gradient-preview="pending"
+                style={{
+                  position: "absolute", inset: 0,
+                  width: "100%", height: "100%", pointerEvents: "none",
+                  borderRadius: "inherit",
+                }}
+              />
+            )}
             <GradientCanvasGeometry
               surfaceRef={previewRef}
               type={type}

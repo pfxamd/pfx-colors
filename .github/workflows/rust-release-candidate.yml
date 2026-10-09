@@ -1,0 +1,96 @@
+name: Rust engine production release candidate (no deployment)
+
+on:
+  push:
+    branches: [release/rust-engine]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout proposed production source
+        uses: actions/checkout@v4
+      - name: Checkout pinned and tested first-party Rust core
+        uses: actions/checkout@v4
+        with:
+          repository: pfxamd/pfx-color-core
+          ref: 28aff99941787ee30f52742c36110bc4e03a8b7c
+          path: rust-core-src
+          persist-credentials: false
+      - name: Set up Rust WebAssembly
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build actual Rust engine and copy browser bindings
+        run: |
+          cargo build --manifest-path rust-core-src/Cargo.toml -p pfx-color-ffi --target wasm32-unknown-unknown --release
+          mkdir -p public/rust
+          cp rust-core-src/target/wasm32-unknown-unknown/release/pfx_color_ffi.wasm public/rust/
+          cp rust-core-src/bindings/javascript/pfx-color-core.mjs public/rust/
+          cp rust-core-src/bindings/javascript/pfx-color-workspace.mjs public/rust/
+          cp rust-core-src/bindings/javascript/pfx-color-tools.mjs public/rust/
+          test -s public/rust/pfx_color_ffi.wasm
+      - name: Install app packages
+        run: npm install --no-audit --no-fund
+      - name: Verify original regression suite and build final Pages URL
+        env:
+          PFX_BASE_PATH: /pfx-colors/
+        run: npm run check
+      - name: Assert real WASM and metadata in final Pages assets
+        run: |
+          test -s dist/rust/pfx_color_ffi.wasm
+          test -s dist/rust/pfx-color-core.mjs
+          test -s dist/rust/pfx-color-workspace.mjs
+          grep -Fq '/pfx-colors/assets/' dist/index.html
+          test -s dist/index.html
+      - name: Install browser tools
+        run: |
+          npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.56.0
+          npx playwright install --with-deps chromium firefox
+      - name: Start actual built site at GitHub Pages project path
+        env:
+          PFX_BASE_PATH: /pfx-colors/
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/rust-release-acceptance.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/pfx-colors/ > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:4173/pfx-colors/rust/pfx_color_ffi.wasm -o /tmp/pfx-core-check.wasm
+          test "$(wc -c < /tmp/pfx-core-check.wasm)" -gt 10000
+      - name: Verify release default Rust and safe fallback in both browsers
+        env:
+          PFX_COLORS_URL: http://127.0.0.1:4173/pfx-colors/
+        run: node scripts/rust-production.browser.mjs
+      - name: Compare legacy and Rust color behavior in both browsers
+        env:
+          PFX_COLORS_URL: http://127.0.0.1:4173/pfx-colors/
+        run: node scripts/rust-integration.browser.mjs
+      - name: Benchmark sustained gradient dragging with actual Rust Worker
+        env:
+          PFX_COLORS_URL: http://127.0.0.1:4173/pfx-colors/
+        run: node scripts/rust-drag-perf.browser.mjs
+      - name: Archive verified release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: pfx-rust-release-candidate-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Archive visual regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pfx-rust-release-evidence
+          path: |
+            browser-evidence/rust-production/
+            browser-evidence/rust-experiment/
+          if-no-files-found: ignore
