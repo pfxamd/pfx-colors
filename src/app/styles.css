@@ -2263,6 +2263,10 @@ select:focus-visible {
 }
 
 .pfx-c-tensor__rail input {
+  /* Reserve vertical touch gestures for the native slider, not page panning. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   position: relative;
   z-index: 3;
   width: 28px;
