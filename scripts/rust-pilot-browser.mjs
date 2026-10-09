@@ -48,8 +48,20 @@ for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]
           await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Palette" }).click();
           await page.locator(".pfx-c-workbench--palette").waitFor();
           assert.ok(await page.locator(".pfx-c-palette-ribbon button").count() >= 3);
+          if (requested === "rust-workspace") {
+            await page.locator(".pfx-c-panel .pfx-c-action").click();
+            await page.locator(".pfx-c-workbench--gradient").waitFor();
+            assert.ok(await page.locator(".pfx-c-gradient-stop-handle").count() >= 3,
+              "Rust workspace converts palette to gradient");
+          }
           await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Harmony" }).click();
           await page.locator(".pfx-c-workbench--harmony").waitFor();
+          if (requested === "rust-workspace") {
+            await page.locator('button[aria-label="Send harmony to gradient"]').click();
+            await page.locator(".pfx-c-workbench--gradient").waitFor();
+            assert.ok(await page.locator(".pfx-c-gradient-stop-handle").count() >= 3,
+              "Rust workspace converts harmony to gradient");
+          }
           await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Gradient" }).click();
           await page.locator(".pfx-c-workbench--gradient").waitFor();
           await page.locator('button[aria-label="Add gradient stop"]').click();
