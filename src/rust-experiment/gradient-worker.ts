@@ -2,7 +2,7 @@
 import type { GradientDefinition } from "@pfx/color-core";
 
 type CoreColor = { space: string; channels: number[]; alpha: number };
-type PixelHandle = { samplePixel(x: number, y: number): CoreColor; dispose(): void };
+type PixelHandle = { rasterRGBA8(width: number, height: number): Uint8ClampedArray; dispose(): void };
 type WasmCore = {
   createCssGradient(stops: Array<{ position: number; color: CoreColor }>,
     options: Record<string, unknown>): PixelHandle;
@@ -19,7 +19,6 @@ let corePromise: Promise<WasmCore> | null = null;
 let latest: Job | null = null;
 let busy = false;
 const colorSpace = (value: string) => value === "p3" ? "display-p3" : value;
-const channelByte = (value: number) => Math.round(Math.max(0, Math.min(1, value)) * 255);
 
 function initialize(assetRoot: string): Promise<WasmCore> {
   return Promise.all([
@@ -58,22 +57,15 @@ function render(core: WasmCore, job: Job): Uint8ClampedArray {
     hue: gradient.hue ?? "shorter",
     gamut: "css",
   });
-  const pixels = new Uint8ClampedArray(width * height * 4);
   try {
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const color = handle.samplePixel(x + 0.5, y + 0.5);
-        const index = (y * width + x) * 4;
-        pixels[index] = channelByte(color.channels[0]);
-        pixels[index + 1] = channelByte(color.channels[1]);
-        pixels[index + 2] = channelByte(color.channels[2]);
-        pixels[index + 3] = channelByte(color.alpha);
-      }
+    const pixels = handle.rasterRGBA8(width, height);
+    if (pixels.length !== width * height * 4) {
+      throw new Error("Rust raster returned an invalid pixel count");
     }
+    return pixels;
   } finally {
     handle.dispose();
   }
-  return pixels;
 }
 
 async function drain(): Promise<void> {
