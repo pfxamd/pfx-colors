@@ -38,7 +38,7 @@ for (const [name, type] of [["chromium", chromium], ["firefox", firefox]]) {
         assert.equal(manifest.engineDefault, "rust");
         assert.equal(manifest.productionModified, false);
         const robots = await (await context.request.get(new URL("robots.txt", origin).href)).text();
-        assert.match(robots, /Disallow: \/$/m);
+        assert.ok(robots.includes("Disallow: " + manifest.hostingBase));
         await page.screenshot({
           path: folder + "/" + name + "-" + viewport.width + "-rust.png",
           animations: "disabled",
