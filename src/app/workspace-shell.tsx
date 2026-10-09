@@ -58,6 +58,7 @@ export function WorkspaceShell(props: Props) {
         <div className="pfx-c-brand">
           <img src="./logo.svg" alt="" />
           <strong>PFx Colors</strong>
+          <em className="pfx-v2__alpha-badge" aria-label="Alpha version 0.2">Alpha 0.2</em>
           <span>COLOR WORKSPACE</span>
         </div>
         <nav className="pfx-c-tabs" ref={tabsRef} aria-label="Color tools">
