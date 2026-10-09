@@ -39,3 +39,30 @@ Promotion requirements: expand the route parity gate for missing CSS
 channels, wide-gamut boundaries, alpha handling, custom palette results
 and all visual modes. Do not merge this experiment directly into main
 until those are verified.
+
+## Feature coverage and remaining migration work
+
+The experimental app now accepts three modes:
+
+- Default: unchanged TypeScript engine and workspace.
+- `?engine=rust`: Rust color math, gradients, palettes, harmonies, seeded
+  study, and parity-checked HEX formatting. The legacy engine remains
+  responsible for output metadata and exceptional inputs.
+- `?engine=rust&workspace=rust`: also uses the first-party Rust-backed
+  JavaScript workspace (color selection and state operations). This has
+  a separate initial-state check and an automatic initialization fallback.
+
+Implemented in the compiled Rust engine: CSS parsing/serialization for its
+supported color spaces, HEX, CIE76/2000/OK, WCAG ratio, alpha-aware mixing
+including direct raw hue, hue schemes, image RGBA8 analysis, and palettes.
+
+**Still relying on the legacy runtime:** APCA, ITP/Jz/HCT color-difference
+methods, OKHSL/OKHSV, missing CSS channel semantics, complete legacy-compatible
+CSS gradient geometry/output, and metadata fallback for uncommon inputs.
+RGBA8 image extraction is in the Rust API but the current app has no
+image-extraction tab. Browser state and UI layout remain JavaScript.
+
+A passing route counter proves a real Rust WASM function was invoked. It does
+not mean the legacy calculation was removed: this version still computes
+both for comparison, then selects Rust only within a documented tolerance.
+Do not publish this experiment as a completed independent replacement.
