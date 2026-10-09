@@ -20,7 +20,7 @@ async function scenario(browser, browserName, viewport, engine) {
   try {
     const started = performance.now();
     const url = new URL(origin);
-    if (engine === "rust") url.searchParams.set("engine", "rust");
+    url.searchParams.set("engine", engine);
     const response = await page.goto(url.toString(), { waitUntil: "networkidle", timeout: 60000 });
     assert.equal(response?.status(), 200);
     await page.locator(".pfx-c-study__swatch").first().waitFor();
