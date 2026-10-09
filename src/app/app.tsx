@@ -1607,7 +1607,9 @@ function Gradient({
       canvas.height = height;
       const context = canvas.getContext("2d");
       if (!context) throw new Error("Rust gradient canvas is unavailable");
-      context.putImageData(new ImageData(pixels, width, height), 0, 0);
+      const imagePixels = new Uint8ClampedArray(new ArrayBuffer(pixels.byteLength));
+      imagePixels.set(pixels);
+      context.putImageData(new ImageData(imagePixels, width, height), 0, 0);
       canvas.dataset.rustGradientPreview = "ready";
     });
     return () => cancelAnimationFrame(frame);
