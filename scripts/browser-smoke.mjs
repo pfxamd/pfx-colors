@@ -35,7 +35,7 @@ try {
 
     for (const [tab, selector] of [
       ["Picker", ".pfx-c-workbench--picker"],
-      ["Palette", ".pfx-c-workbench--palette"],
+      ["Tones", ".pfx-c-workbench--palette"],
       ["Harmony", ".pfx-c-workbench--harmony"],
       ["Gradient", ".pfx-c-workbench--gradient"],
     ]) {

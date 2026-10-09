@@ -45,7 +45,7 @@ async function scenario(browser, browserName, viewport, engine) {
       picker);
     const afterPicker = await current.inputValue();
     await page.screenshot({ path: evidence + "/" + browserName + "-" + viewport.width + "-" + engine + "-picker.png", animations: "disabled" });
-    await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Palette" }).click();
+    await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Tones" }).click();
     await page.locator(".pfx-c-workbench--palette").waitFor();
     assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 9);
     const paletteHexes = await page.locator(".pfx-c-palette-ribbon button span").allTextContents();

@@ -35,7 +35,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator(".pfx-c-engine-label").textContent(), "RUST / CORE");
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true,
           "No horizontal overflow in production preview");
-        for (const name of ["Picker", "Palette", "Harmony", "Gradient"]) {
+        for (const name of ["Picker", "Tones", "Harmony", "Gradient"]) {
           await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: name }).click();
           if (name === "Gradient") {
             await page.locator('canvas[data-rust-gradient-preview="ready"]').waitFor({ timeout: 30000 });

@@ -28,16 +28,11 @@ import { useRadialDrag } from "../interaction/use-radial-drag";
 import { useScalarDial } from "../interaction/use-scalar-dial";
 import { PfxColorsWorkspace, type WorkspaceState } from "@pfx/color-core";
 import type { WorkspaceFactory } from "../rust/loader";
-
-type ToolId = "home" | "picker" | "palette" | "harmony" | "gradient";
-
-const tools: Array<{ id: ToolId; label: string; key: string }> = [
-  { id: "home", label: "Home", key: "0" },
-  { id: "picker", label: "Picker", key: "1" },
-  { id: "palette", label: "Palette", key: "2" },
-  { id: "harmony", label: "Harmony", key: "3" },
-  { id: "gradient", label: "Gradient", key: "4" },
-];
+import { WorkspaceShell, TOOLS, type ToolId } from "./workspace-shell";
+import { useTheme } from "./use-theme";
+import { useColorLibrary } from "./use-color-library";
+import { Explore } from "./explore";
+import { Collections } from "./collections";
 
 function asInput(value: ColorValue): ColorInput {
   return {
@@ -94,141 +89,88 @@ export function App({
 } = {}) {
   const { workspace, state, sync } = useWorkspace(workspaceFactory);
   const [activeTool, setActiveTool] = useState<ToolId>("home");
+  const { theme, preference, setPreference } = useTheme();
+  const library = useColorLibrary();
 
   const commitColor = useCallback(
     (input: ColorInput) => {
       const next = workspace.setColor(input);
-      try {
-        localStorage.setItem("pfx-colors.current", next.color.hex);
-      } catch {
-        // ignore
-      }
+      try { localStorage.setItem("pfx-colors.current", next.color.hex); }
+      catch { /* storage unavailable */ }
+      library.addRecent(next.color.hex);
       sync(next);
     },
-    [sync, workspace],
+    [sync, workspace, library.addRecent],
   );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      const isTyping =
-        target?.tagName === "INPUT" ||
-        target?.tagName === "SELECT" ||
-        target?.tagName === "TEXTAREA" ||
-        target?.isContentEditable;
-
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      const isTyping = target?.tagName === "INPUT" || target?.tagName === "SELECT" ||
+        target?.tagName === "TEXTAREA" || target?.isContentEditable;
+      if (!isTyping && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         sync(event.shiftKey ? workspace.redo() : workspace.undo());
         return;
       }
-
       if (!isTyping && !event.ctrlKey && !event.metaKey && !event.altKey) {
-        const match = tools.find((item) => item.key === event.key);
+        const match = TOOLS.find(item => item.key === event.key);
         if (match) setActiveTool(match.id);
       }
     };
-
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [sync, workspace]);
 
+  const openTones = (hex: string) => {
+    commitColor(hex);
+    setActiveTool("tones");
+  };
+
   return (
-    <div className="pfx-l-app">
-      <header className="pfx-c-header">
-        <div className="pfx-c-brand">
-          <img src="./logo.svg" alt="" />
-          <strong>PFx Colors</strong>
-          <span>WORKSPACE</span>
-          <em className="pfx-c-brand__beta">BETA 0.1</em>
-        </div>
-
-        <nav className="pfx-c-tabs" aria-label="Color tools">
-          {tools.map((tool) => (
-            <button
-              key={tool.id}
-              type="button"
-              className={activeTool === tool.id ? "pfx-is-current" : ""}
-              onClick={() => setActiveTool(tool.id)}
-            >
-              <span>{tool.label}</span>
-              <kbd>{tool.key}</kbd>
-            </button>
-          ))}
-        </nav>
-
-        <div className="pfx-c-engine-label" data-engine={engine}>
-          {engine === "rust" ? "RUST / CORE" : "OKLCH / P3"}
-        </div>
-      </header>
-
-      <main className="pfx-l-stage">
-        {activeTool === "home" && (
-          <Home state={state} commitColor={commitColor} />
-        )}
-        {activeTool === "picker" && (
-          <Picker state={state} commitColor={commitColor} />
-        )}
-        {activeTool === "palette" && (
-          <Palette
-            state={state}
-            workspace={workspace}
-            sync={sync}
-            commitColor={commitColor}
-            openGradient={() => setActiveTool("gradient")}
-          />
-        )}
-        {activeTool === "harmony" && (
-          <Harmony
-            state={state}
-            workspace={workspace}
-            sync={sync}
-            commitColor={commitColor}
-            openGradient={() => setActiveTool("gradient")}
-          />
-        )}
-        {activeTool === "gradient" && (
-          <Gradient
-            state={state}
-            workspace={workspace}
-            sync={sync}
-            commitColor={commitColor}
-          />
-        )}
-      </main>
-
-      <footer className="pfx-c-dock">
-        <div className="pfx-c-current">
-          <span style={{ background: state.color.hex }} />
-          <div>
-            <small>CURRENT</small>
-            <CurrentColorInput value={state.color.hex} commitColor={commitColor} />
-          </div>
-        </div>
-
-        <div className="pfx-c-gamut">
-          <span>sRGB {state.color.gamut.srgb ? "●" : "○"}</span>
-          <span>P3 {state.color.gamut.p3 ? "●" : "○"}</span>
-        </div>
-
-        <div className="pfx-c-history">
-          <button
-            type="button"
-            disabled={!workspace.canUndo()}
-            onClick={() => sync(workspace.undo())}
-          >
-            ↶ UNDO
-          </button>
-          <button
-            type="button"
-            disabled={!workspace.canRedo()}
-            onClick={() => sync(workspace.redo())}
-          >
-            ↷ REDO
-          </button>
-        </div>
-      </footer>
-    </div>
+    <WorkspaceShell
+      engine={engine}
+      activeTool={activeTool}
+      navigate={setActiveTool}
+      theme={theme}
+      preference={preference}
+      setPreference={setPreference}
+      currentHex={state.color.hex}
+      currentInput={<CurrentColorInput value={state.color.hex} commitColor={commitColor} />}
+      gamut={state.color.gamut}
+      canUndo={workspace.canUndo()}
+      canRedo={workspace.canRedo()}
+      undo={() => sync(workspace.undo())}
+      redo={() => sync(workspace.redo())}
+    >
+      {activeTool === "home" && <Home state={state} commitColor={commitColor} />}
+      {activeTool === "explore" && (
+        <Explore
+          activeHex={state.color.hex}
+          select={commitColor}
+          openTones={openTones}
+          favorites={library.favorites}
+          toggleFavorite={library.toggleFavorite}
+        />
+      )}
+      {activeTool === "picker" && <Picker state={state} commitColor={commitColor} />}
+      {activeTool === "tones" && (
+        <Tones state={state} workspace={workspace} sync={sync}
+          commitColor={commitColor} openGradient={() => setActiveTool("gradient")} />
+      )}
+      {activeTool === "harmony" && (
+        <Harmony state={state} workspace={workspace} sync={sync}
+          commitColor={commitColor} openGradient={() => setActiveTool("gradient")} />
+      )}
+      {activeTool === "gradient" && (
+        <Gradient state={state} workspace={workspace} sync={sync} commitColor={commitColor} />
+      )}
+      {activeTool === "collections" && (
+        <Collections currentHex={state.color.hex} favorites={library.favorites}
+          recent={library.recent} select={commitColor} openTones={openTones}
+          toggleFavorite={library.toggleFavorite} clearRecent={library.clearRecent} />
+      )}
+    </WorkspaceShell>
   );
 }
 
@@ -681,7 +623,7 @@ function Readout({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Palette({
+function Tones({
   state,
   workspace,
   sync,
@@ -742,7 +684,7 @@ function Palette({
         <div className="pfx-c-panel__heading">
           <div>
             <small>TONAL ENGINE</small>
-            <h1>Shape the palette.</h1>
+            <h1>Shape the tones.</h1>
           </div>
           <button type="button" className="pfx-c-action" onClick={sendToGradient}>
             SEND TO GRADIENT →
