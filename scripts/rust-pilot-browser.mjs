@@ -43,8 +43,16 @@ for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]
             console.log("Workspace after edit:", await snapshot());
             await page.locator(".pfx-c-history button").first().click();
             console.log("Workspace after undo:", await snapshot());
+            await page.waitForFunction((expected) =>
+              document.querySelector('input[aria-label="Current color"]')?.value === expected,
+              initialColor,
+            );
             assert.equal(await current.inputValue(), initialColor, "Rust workspace undo restores color");
             await page.locator(".pfx-c-history button").last().click();
+            await page.waitForFunction((expected) =>
+              document.querySelector('input[aria-label="Current color"]')?.value === expected,
+              "#336699",
+            );
             assert.equal(await current.inputValue(), "#336699", "Rust workspace redo restores color");
           }
           await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Picker" }).click();
