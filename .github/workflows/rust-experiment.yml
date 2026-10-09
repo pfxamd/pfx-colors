@@ -59,6 +59,14 @@ jobs:
             sleep 1
           done
           PFX_COLORS_URL=http://127.0.0.1:4173/ node scripts/rust-integration.browser.mjs
+      - name: Verify main-thread responsiveness during sustained gradient drag
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4174 > /tmp/pfx-rust-perf.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4174/ > /dev/null; then break; fi
+            sleep 1
+          done
+          PFX_COLORS_URL=http://127.0.0.1:4174/ node scripts/rust-drag-perf.browser.mjs
       - name: Store experiment screenshots
         if: always()
         uses: actions/upload-artifact@v4
