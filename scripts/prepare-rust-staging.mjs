@@ -6,7 +6,7 @@
  * This script deliberately has NO deployment side effects.
  */
 import assert from "node:assert/strict";
-import { cp, mkdir, readFile, writeFile, stat } from "node:fs/promises";
+import { cp, mkdir, readFile, writeFile, stat, rm } from "node:fs/promises";
 import { resolve, join } from "node:path";
 
 const source = resolve("dist");
@@ -15,6 +15,7 @@ await stat(join(source, "index.html"));
 await stat(join(source, "rust", "pfx_color_ffi.wasm"));
 await stat(join(source, "rust", "pfx-color-core.mjs"));
 await stat(join(source, "rust", "pfx-color-workspace.mjs"));
+await rm(output, { recursive: true, force: true });
 await cp(source, output, { recursive: true, force: true });
 
 const pagePath = join(output, "index.html");
