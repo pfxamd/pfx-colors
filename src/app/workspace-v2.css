@@ -198,11 +198,7 @@
 .pfx-v2__empty { margin: 24px 0; padding: 40px 18px; text-align: center; border: 1px dashed var(--pfx-line-strong); border-radius: 12px; color: var(--pfx-muted); font-size: 13px; line-height: 1.6; }
 .pfx-v2__status { font-size: 12px; color: var(--pfx-muted); }
 
-/* Existing instruments remain in their proven dark work surfaces during the shell rollout. */
-.pfx-v2[data-theme="light"] .pfx-l-stage > .pfx-c-home,
-.pfx-v2[data-theme="light"] .pfx-l-stage > .pfx-c-workbench:not(.pfx-c-workbench--explore) {
-  color: #f6f6f7;
-}
+/* Each redesigned tool now inherits its readable foreground from the active theme. */
 @media (max-width: 1370px) {
   .pfx-v2 .pfx-c-brand > span, .pfx-v2 .pfx-c-engine-label { display: none; }
   .pfx-v2 .pfx-c-tabs button { padding-inline: 10px; }
