@@ -34,10 +34,10 @@ for (const [name, type] of [["chromium", chromium], ["firefox", firefox]]) {
         assert.ok(stats?.worker && stats.painted > 0);
         const meta = await page.locator('meta[name="robots"]').getAttribute("content");
         assert.match(meta, /noindex/);
-        const manifest = await (await context.request.get(new URL("preview-info/build.json", origin))).json();
+        const manifest = await (await context.request.get(new URL("preview-info/build.json", origin).href)).json();
         assert.equal(manifest.engineDefault, "rust");
         assert.equal(manifest.productionModified, false);
-        const robots = await (await context.request.get(new URL("robots.txt", origin))).text();
+        const robots = await (await context.request.get(new URL("robots.txt", origin).href)).text();
         assert.match(robots, /Disallow: \/$/m);
         await page.screenshot({
           path: folder + "/" + name + "-" + viewport.width + "-rust.png",
