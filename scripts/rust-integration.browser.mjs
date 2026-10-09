@@ -63,7 +63,7 @@ async function scenario(browser, browserName, viewport, engine) {
     assert.ok(harmonyCount >= 2);
     await page.locator(".pfx-c-harmony-presets button[aria-label='complementary']").click();
     assert.equal(await page.locator('[aria-label^="Drag harmony color "]').count(), 2);
-    await page.getByRole("button", { name: /SEND TO GRADIENT/ }).click();
+    await page.getByRole("button", { name: /Send harmony to gradient/i }).click();
     await page.locator(".pfx-c-workbench--gradient").waitFor();
     assert.ok((await page.locator(".pfx-c-gradient-stop-handle").count()) >= 2);
     await page.locator(".pfx-c-gradient-actions button[aria-label='Add gradient stop']").click();
