@@ -47,6 +47,9 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         const red = page.getByRole("spinbutton", { name: "Red channel" });
         await red.fill("120");
         await red.press("Enter");
+        await page.waitForFunction(() =>
+          document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase().slice(1,3) === "78",
+          null, { timeout: 5000 });
         const pickedAfterRgb = await currentInput.inputValue();
         assert.equal(pickedAfterRgb.toLowerCase().slice(1,3), "78", "Numeric RGB editing works");
         const hueRail = page.getByRole("slider", { name: "Hue", exact: true });
