@@ -24,7 +24,8 @@ import { useAngleHandleDrag, useNormalizedHandleDrag } from "../interaction/use-
 import { useColorFieldControl } from "../interaction/use-color-field-control";
 import { useRadialDrag } from "../interaction/use-radial-drag";
 import { useScalarDial } from "../interaction/use-scalar-dial";
-import { PfxColorsWorkspace, type WorkspaceState } from "@pfx/color-core";
+import { type WorkspaceState } from "@pfx/color-core";
+import { createPilotWorkspace, type PilotWorkspace } from "../rust/workspace-pilot";
 
 type ToolId = "home" | "picker" | "palette" | "harmony" | "gradient";
 
@@ -61,7 +62,7 @@ function createStudyRandom(seed: number) {
 }
 
 function useWorkspace() {
-  const ref = useRef<PfxColorsWorkspace | null>(null);
+  const ref = useRef<PilotWorkspace | null>(null);
   if (!ref.current) {
     let initial = "#ff0014";
     try {
@@ -69,7 +70,7 @@ function useWorkspace() {
     } catch {
       // ignore
     }
-    ref.current = new PfxColorsWorkspace(initial);
+    ref.current = createPilotWorkspace(initial);
   }
 
   const workspace = ref.current;
@@ -678,7 +679,7 @@ function Palette({
   openGradient,
 }: {
   state: WorkspaceState;
-  workspace: PfxColorsWorkspace;
+  workspace: PilotWorkspace;
   sync: (next?: WorkspaceState) => void;
   commitColor: (input: ColorInput) => void;
   openGradient: () => void;
@@ -890,7 +891,7 @@ function Harmony({
   openGradient,
 }: {
   state: WorkspaceState;
-  workspace: PfxColorsWorkspace;
+  workspace: PilotWorkspace;
   sync: (next?: WorkspaceState) => void;
   commitColor: (input: ColorInput) => void;
   openGradient: () => void;
@@ -1520,7 +1521,7 @@ function Gradient({
   commitColor,
 }: {
   state: WorkspaceState;
-  workspace: PfxColorsWorkspace;
+  workspace: PilotWorkspace;
   sync: (next?: WorkspaceState) => void;
   commitColor: (input: ColorInput) => void;
 }) {
