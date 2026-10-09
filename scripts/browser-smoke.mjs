@@ -22,20 +22,20 @@ try {
     const response = await page.goto(base, { waitUntil: "networkidle", timeout: 60000 });
     assert.equal(response?.status(), 200, "Page must return HTTP 200");
 
-    await page.locator(".pfx-c-home").waitFor();
-    assert.equal(await page.locator(".pfx-c-study__swatch").count(), 10, "Home must generate 10 swatches");
+    await page.locator(".pfx-home").waitFor();
+    assert.equal(await page.locator(".pfx-home__study-swatches button").count(), 10, "Home must generate 10 swatches");
     assert.equal(await page.locator(".pfx-c-brand strong").innerText(), "PFx Colors");
     await page.screenshot({ path: "browser-evidence/" + viewport.name + "-home.png", animations: "disabled" });
 
     const initial = await page.locator('input[aria-label="Current color"]').inputValue();
-    await page.locator(".pfx-c-study__swatch").first().click();
+    await page.locator(".pfx-home__study-swatches button").first().click();
     const selected = await page.locator('input[aria-label="Current color"]').inputValue();
     assert.match(selected, /^#[0-9a-f]{6}$/i);
     assert.ok(initial !== selected || selected.length === 7);
 
     for (const [tab, selector] of [
       ["Picker", ".pfx-c-workbench--picker"],
-      ["Palette", ".pfx-c-workbench--palette"],
+      ["Tones", ".pfx-c-workbench--palette"],
       ["Harmony", ".pfx-c-workbench--harmony"],
       ["Gradient", ".pfx-c-workbench--gradient"],
     ]) {

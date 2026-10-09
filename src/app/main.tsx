@@ -2,6 +2,14 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app";
 import "./styles.css";
+import "./workspace-v2.css";
+import "./tones.css";
+import "./picker.css";
+import "./harmony.css";
+import "./collections.css";
+import "./gradient.css";
+import "./home.css";
+import "./explore.css";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("PFx Colors root element missing");

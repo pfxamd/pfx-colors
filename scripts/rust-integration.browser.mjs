@@ -23,9 +23,9 @@ async function scenario(browser, browserName, viewport, engine) {
     url.searchParams.set("engine", engine);
     const response = await page.goto(url.toString(), { waitUntil: "networkidle", timeout: 60000 });
     assert.equal(response?.status(), 200);
-    await page.locator(".pfx-c-study__swatch").first().waitFor();
+    await page.locator(".pfx-home__study-swatches button").first().waitFor();
     const bootMs = performance.now() - started;
-    assert.equal(await page.locator(".pfx-c-study__swatch").count(), 10);
+    assert.equal(await page.locator(".pfx-home__study-swatches button").count(), 10);
     assert.equal(await page.locator(".pfx-c-engine-label").getAttribute("data-engine"), engine);
     const current = page.locator('input[aria-label="Current color"]');
     await current.fill("#336699");
@@ -45,7 +45,7 @@ async function scenario(browser, browserName, viewport, engine) {
       picker);
     const afterPicker = await current.inputValue();
     await page.screenshot({ path: evidence + "/" + browserName + "-" + viewport.width + "-" + engine + "-picker.png", animations: "disabled" });
-    await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Palette" }).click();
+    await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Tones" }).click();
     await page.locator(".pfx-c-workbench--palette").waitFor();
     assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 9);
     const paletteHexes = await page.locator(".pfx-c-palette-ribbon button span").allTextContents();

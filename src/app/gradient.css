@@ -1,0 +1,133 @@
+/* Gradient v2 – independent light/dark workstation, retaining verified drag geometry. */
+.pfx-v2 .pfx-gradient.pfx-c-workbench--gradient {
+  display:block; height:100%; min-height:0; overflow-x:hidden; overflow-y:auto;
+  padding:clamp(18px,3vw,42px); background:var(--pfx-bg); color:var(--pfx-text);
+}
+.pfx-gradient__top-actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+.pfx-v2 .pfx-gradient__top-actions button,
+.pfx-v2 .pfx-gradient__exports button,
+.pfx-v2 .pfx-gradient__selected-actions button {
+  padding:11px 13px; border:1px solid var(--pfx-line-strong);
+  border-radius:9px; background:var(--pfx-panel); color:var(--pfx-text);
+  font-size:12px; font-weight:600; cursor:pointer;
+}
+.pfx-v2 .pfx-gradient__top-actions .pfx-gradient__primary {
+  background:var(--pfx-accent); border-color:var(--pfx-accent); color:var(--pfx-bg);
+}
+.pfx-gradient__exports { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; margin:-7px 0 17px; }
+.pfx-v2 .pfx-c-gradient-shell { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);
+  align-items:start; width:100%; max-width:none; gap:16px; margin:0; }
+.pfx-v2 .pfx-c-gradient-canvas-card,
+.pfx-v2 .pfx-c-gradient-inspector {
+  min-width:0; padding:0; border:1px solid var(--pfx-line); border-radius:16px;
+  background:var(--pfx-panel); box-shadow:var(--pfx-v2-shadow); overflow:hidden;
+}
+.pfx-gradient__panel-heading {
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;
+  gap:9px; padding:17px 19px; border-bottom:1px solid var(--pfx-line);
+}
+.pfx-gradient__panel-heading strong,.pfx-gradient__stops-header strong,.pfx-gradient__editor-heading strong {
+  color:var(--pfx-text); font:700 10px ui-monospace,monospace; letter-spacing:.08em;
+}
+.pfx-gradient__panel-heading span,.pfx-gradient__stops-header span,.pfx-gradient__editor-heading span {
+  font-size:11px; color:var(--pfx-muted);
+}
+.pfx-v2 .pfx-c-gradient-preview {
+  width:calc(100% - 30px); height:clamp(300px,43vh,490px);
+  margin:15px; border:1px solid var(--pfx-line-strong); border-radius:11px;
+  box-shadow:none; overflow:hidden; isolation:isolate;
+}
+.pfx-v2 .pfx-c-gradient-preview::after { pointer-events:none; border-color:#fff6; }
+.pfx-gradient__stops-header { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 18px 0; }
+.pfx-v2 .pfx-c-gradient-stop-strip { height:96px; padding:0 32px; }
+.pfx-v2 .pfx-c-gradient-rail { height:85px; }
+.pfx-v2 .pfx-c-gradient-rail__line { border-color:var(--pfx-line-strong); box-shadow:none; border-radius:5px; height:17px; }
+.pfx-v2 .pfx-c-gradient-stop-handle.pfx-is-selected > span {
+  box-shadow:0 0 0 2px var(--pfx-accent),0 0 0 5px var(--pfx-panel),0 6px 12px #2223;
+}
+.pfx-v2 .pfx-c-gradient-inspector {
+  display:grid; grid-template-rows:none; grid-auto-rows:auto; gap:0;
+  overflow:visible;
+}
+.pfx-gradient__group-label { padding:14px 18px 9px; font-size:11px; font-weight:650; color:var(--pfx-muted); }
+.pfx-v2 .pfx-c-gradient-types {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:7px; background:none;
+  border:0; padding:0 17px 16px;
+}
+.pfx-v2 .pfx-c-gradient-types button {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; min-height:75px; border:1px solid var(--pfx-line); border-radius:10px;
+  background:var(--pfx-v2-field); color:var(--pfx-muted); font-size:11px;
+  text-transform:capitalize;
+}
+.pfx-v2 .pfx-c-gradient-types button.pfx-is-current {
+  background:var(--pfx-accent-soft); color:var(--pfx-accent);
+  border-color:var(--pfx-accent); box-shadow:none;
+}
+.pfx-v2 .pfx-c-gradient-types button:hover { border-color:var(--pfx-accent); background:var(--pfx-v2-field); }
+.pfx-v2 .pfx-c-gradient-type-glyph { border-color:var(--pfx-line-strong); background:var(--pfx-v2-elevated); }
+.pfx-gradient__angle-panel { display:grid; gap:12px; padding:17px; border-top:1px solid var(--pfx-line); }
+.pfx-gradient__angle-panel > div { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.pfx-gradient__angle-panel label { color:var(--pfx-muted); font-size:12px; }
+.pfx-gradient__angle-panel output { font:700 12px ui-monospace,monospace; }
+.pfx-v2 .pfx-gradient__angle-panel input[type=range] {
+  height:24px; min-width:0; width:100%; padding:0; margin:0; border:0;
+  accent-color:var(--pfx-accent); touch-action:pan-y; background:none;
+}
+.pfx-gradient__editor-heading { display:flex; justify-content:space-between; align-items:center;
+  padding:18px 17px 10px; gap:8px; border-top:1px solid var(--pfx-line); }
+.pfx-v2 .pfx-c-gradient-color-editor {
+  display:grid; grid-template-rows:160px 16px 40px 16px;
+  min-width:0; padding:0 17px 16px; background:var(--pfx-panel); border:0; gap:12px;
+}
+.pfx-v2 .pfx-c-gradient-color-editor__field { border-color:var(--pfx-line-strong); border-radius:9px; }
+.pfx-v2 .pfx-c-gradient-color-editor__hue,
+.pfx-v2 .pfx-c-gradient-color-editor__alpha { border-color:var(--pfx-line-strong); border-radius:3px; }
+.pfx-v2 .pfx-c-gradient-color-editor__hex,
+.pfx-v2 .pfx-c-gradient-color-editor__meta > output {
+  background:var(--pfx-v2-field); color:var(--pfx-text); border-color:var(--pfx-line-strong);
+  border-radius:7px; font:600 12px ui-monospace,monospace;
+}
+.pfx-gradient__selected-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 17px 14px; }
+.pfx-v2 .pfx-gradient__selected-actions button { font-size:11px; padding:9px 7px; }
+.pfx-v2 .pfx-c-gradient-position { margin:0 17px 12px; min-height:47px;
+  border:1px solid var(--pfx-line); border-radius:9px; overflow:hidden;
+  background:var(--pfx-v2-field); }
+.pfx-v2 .pfx-c-gradient-actions { margin:0 17px 12px; min-height:46px;
+  background:none; border:0; gap:7px; padding:0; }
+.pfx-v2 .pfx-c-gradient-position button,
+.pfx-v2 .pfx-c-gradient-actions button,
+.pfx-v2 .pfx-c-gradient-space-grid button {
+  background:var(--pfx-v2-field); color:var(--pfx-text); border:1px solid var(--pfx-line);
+  border-radius:8px; min-height:42px;
+}
+.pfx-v2 .pfx-c-gradient-position > output { color:var(--pfx-text); border-color:var(--pfx-line); }
+.pfx-v2 .pfx-c-gradient-actions button:hover:not(:disabled),
+.pfx-v2 .pfx-c-gradient-position button:hover { background:var(--pfx-accent-soft); color:var(--pfx-accent); }
+.pfx-v2 .pfx-c-gradient-space-grid { display:grid; gap:7px; background:none; border:0; padding:0 17px 18px; }
+.pfx-v2 .pfx-c-gradient-space-grid button { color:var(--pfx-muted); font:700 11px ui-monospace,monospace; letter-spacing:0; }
+.pfx-v2 .pfx-c-gradient-space-grid button.pfx-is-current {
+  color:var(--pfx-accent); border-color:var(--pfx-accent);
+  background:var(--pfx-accent-soft); box-shadow:none;
+}
+.pfx-gradient__footer { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px;
+  align-items:center; padding:15px 18px; border:1px solid var(--pfx-line);
+  border-radius:13px; background:var(--pfx-panel); margin-top:16px; }
+.pfx-gradient__css { display:flex; align-items:center; gap:14px; min-width:0; }
+.pfx-gradient__css span { font:700 9px ui-monospace,monospace; white-space:nowrap; color:var(--pfx-muted); }
+.pfx-gradient__css code { font:11px ui-monospace,monospace; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--pfx-text); }
+.pfx-gradient__footer p { min-width:0; margin:0; color:var(--pfx-muted); font-size:11px; }
+@media (max-width:1000px) {
+  .pfx-v2 .pfx-c-gradient-shell { grid-template-columns:1fr; }
+}
+@media (max-width:580px) {
+  .pfx-v2 .pfx-gradient.pfx-c-workbench--gradient { padding:16px 12px; }
+  .pfx-gradient__top-actions { justify-content:flex-start; }
+  .pfx-v2 .pfx-gradient__top-actions button { padding:9px 10px; font-size:11px; }
+  .pfx-v2 .pfx-c-gradient-preview { height:300px; }
+  .pfx-v2 .pfx-c-gradient-stop-strip { padding:0 24px; }
+  .pfx-gradient__panel-heading { padding:14px; }
+  .pfx-gradient__panel-heading span { font-size:10px; }
+  .pfx-gradient__footer { grid-template-columns:1fr; }
+  .pfx-gradient__css { flex-direction:column; align-items:flex-start; gap:7px; }
+}
