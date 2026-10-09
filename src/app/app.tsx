@@ -12,7 +12,7 @@ import type { ColorInput, ColorValue } from "@pfx/color-core";
 import {
   colorEngine, createGradient, generateColorStudy, generateHarmony,
   generateTonalPalette, gradientToCss, sampleGradient,
-  isRustExperiment, rasterizeGradient,
+  isRustExperiment, recordRustGradientRaster,
 } from "../rust-experiment/operations";
 import {
   HARMONY_SCHEMES,
@@ -1546,6 +1546,17 @@ function Gradient({
   const railRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const rustCanvasRef = useRef<HTMLCanvasElement>(null);
+  const rustWorkerRef = useRef<Worker | null>(null);
+  const renderRevision = useRef(0);
+  const inFlight = useRef(false);
+  const latestRender = useRef<{
+    kind: "render";
+    revision: number;
+    gradient: typeof gradient;
+    width: number;
+    height: number;
+  } | null>(null);
+  const flushRender = useRef<() => void>(() => {});
 
   const fallback = useMemo(() => {
     const harmony = generateHarmony(asInput(state.color.source), "complementary");
@@ -1591,36 +1602,101 @@ function Gradient({
     );
   }, [gradient.stops.length]);
 
-  // Experimental branch only: preview raster pixels are sampled by Rust
-  // WASM (the browser merely composites the finished RGBA canvas).
-  // The standard published UI remains on its original CSS preview path.
+  // Branch-only preview: no WebAssembly pixel loops run on the UI thread.
+  // Keep one worker for this mounted preview and deliver only the newest
+  // render during continuous pointer input; outdated frames never paint.
   useEffect(() => {
-    if (!isRustExperiment() || !rustCanvasRef.current || !previewRef.current) return;
+    if (!isRustExperiment()) return;
+    const worker = new Worker(new URL("../rust-experiment/gradient-worker.ts", import.meta.url), {
+      type: "module",
+    });
+    rustWorkerRef.current = worker;
+    const stats = {
+      submitted: 0, completed: 0, painted: 0, discarded: 0,
+      latestRevision: 0, paintRevision: 0, maxRustMs: 0, worker: true,
+    };
+    Object.defineProperty(window, "__PFX_RUST_RENDER__", {
+      value: stats, configurable: true,
+    });
+    flushRender.current = () => {
+      if (inFlight.current || !latestRender.current) return;
+      const task = latestRender.current;
+      latestRender.current = null;
+      inFlight.current = true;
+      stats.submitted += 1;
+      worker.postMessage(task);
+    };
+    worker.onmessage = (event: MessageEvent<{
+      kind: "frame" | "error"; message?: string;
+      revision: number; width: number; height: number;
+      durationMs: number; pixels: ArrayBuffer;
+    }>) => {
+      if (event.data.kind === "error") {
+        if (rustCanvasRef.current) rustCanvasRef.current.dataset.rustGradientPreview = "error";
+        throw new Error("Rust gradient worker: " + event.data.message);
+      }
+      inFlight.current = false;
+      stats.completed += 1;
+      stats.maxRustMs = Math.max(stats.maxRustMs, event.data.durationMs);
+      const canvas = rustCanvasRef.current;
+      if (canvas && canvas.isConnected && event.data.revision === renderRevision.current) {
+        canvas.width = event.data.width;
+        canvas.height = event.data.height;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Rust canvas context unavailable");
+        context.putImageData(new ImageData(
+          new Uint8ClampedArray(event.data.pixels), event.data.width, event.data.height,
+        ), 0, 0);
+        canvas.dataset.rustGradientPreview = "ready";
+        stats.painted += 1;
+        stats.paintRevision = event.data.revision;
+        recordRustGradientRaster();
+      } else {
+        stats.discarded += 1;
+      }
+      flushRender.current();
+    };
+    worker.onerror = (event) => {
+      if (rustCanvasRef.current) rustCanvasRef.current.dataset.rustGradientPreview = "error";
+      throw new Error("Rust gradient worker failed: " + event.message);
+    };
+    worker.postMessage({
+      kind: "init",
+      assetRoot: new URL("rust/", document.baseURI).href,
+    });
+    return () => {
+      worker.terminate();
+      rustWorkerRef.current = null;
+      inFlight.current = false;
+      latestRender.current = null;
+      flushRender.current = () => {};
+      delete (window as Window & { __PFX_RUST_RENDER__?: unknown }).__PFX_RUST_RENDER__;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isRustExperiment() || !rustWorkerRef.current
+      || !rustCanvasRef.current || !previewRef.current) return;
     const canvas = rustCanvasRef.current;
     const surface = previewRef.current;
     let scheduled = 0;
-    const paint = () => {
-      if (!canvas.isConnected) return;
-      const box = surface.getBoundingClientRect();
-      if (box.width <= 0 || box.height <= 0) return;
-      // Preserve the actual preview box aspect ratio; cap the work per frame
-      // while keeping image smoothing browser-native and pointer events free.
-      const width = 160;
-      const height = Math.max(1, Math.min(180, Math.round(width * box.height / box.width)));
-      const pixels = rasterizeGradient(gradient, width, height);
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("Rust gradient canvas is unavailable");
-      const imagePixels = new Uint8ClampedArray(new ArrayBuffer(pixels.byteLength));
-      imagePixels.set(pixels);
-      context.putImageData(new ImageData(imagePixels, width, height), 0, 0);
-      canvas.dataset.rustGradientPreview = "ready";
-    };
     const schedule = () => {
       cancelAnimationFrame(scheduled);
-      canvas.dataset.rustGradientPreview = "pending";
-      scheduled = requestAnimationFrame(paint);
+      scheduled = requestAnimationFrame(() => {
+        if (!canvas.isConnected) return;
+        const box = surface.getBoundingClientRect();
+        if (box.width <= 0 || box.height <= 0) return;
+        const width = 160;
+        const height = Math.max(1, Math.min(180, Math.round(width * box.height / box.width)));
+        const revision = ++renderRevision.current;
+        canvas.dataset.rustGradientPreview = "pending";
+        latestRender.current = { kind: "render", revision, gradient, width, height };
+        const stats = (window as Window & {
+          __PFX_RUST_RENDER__?: { latestRevision: number };
+        }).__PFX_RUST_RENDER__;
+        if (stats) stats.latestRevision = revision;
+        flushRender.current();
+      });
     };
     const observer = new ResizeObserver(schedule);
     observer.observe(surface);
