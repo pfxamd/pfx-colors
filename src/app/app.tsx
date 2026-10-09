@@ -6,6 +6,7 @@ import { WorkspaceShell, TOOLS, type ToolId } from "./workspace-shell";
 import { useTheme } from "./use-theme";
 import { useColorLibrary } from "./use-color-library";
 import { useStoredState } from "./workspace-state";
+import { readGradientDraft } from "./gradient-session";
 import { Home } from "./home";
 import { Explore } from "./explore";
 import { Collections } from "./collections";
@@ -24,6 +25,17 @@ function useWorkspace(workspaceFactory?: WorkspaceFactory) {
     try { initial = localStorage.getItem("pfx-colors.current") ?? initial; }
     catch { /* Private browsing */ }
     ref.current = workspaceFactory ? workspaceFactory(initial) : new PfxColorsWorkspace(initial);
+    const saved = readGradientDraft(typeof window === "undefined" ? null : window.localStorage);
+    if (saved) {
+      try {
+        ref.current.createGradient(saved.stops, {
+          type: saved.type, angle: saved.angle,
+          centerX: saved.centerX, centerY: saved.centerY,
+          interpolationSpace: saved.interpolationSpace,
+          hue: "shorter",
+        });
+      } catch { /* Ignore stale engine-incompatible drafts. */ }
+    }
   }
   const workspace = ref.current;
   const [state, setState] = useState<WorkspaceState>(() => workspace.getState());
@@ -39,6 +51,7 @@ export function App({ workspaceFactory, engine = "legacy" }: {
   const [activeTool, setActiveTool] = useStoredState<ToolId>(
     "pfx-colors.active-tool.v2", "home", validTool);
   const [tonesRequest, setTonesRequest] = useState<string | null>(null);
+  const [gradientRequest, setGradientRequest] = useState(0);
   const { theme, preference, setPreference } = useTheme();
   const library = useColorLibrary();
 
@@ -69,6 +82,12 @@ export function App({ workspaceFactory, engine = "legacy" }: {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [sync, workspace, setActiveTool]);
 
+  const clearTonesRequest = useCallback(() => setTonesRequest(null), []);
+  const clearGradientRequest = useCallback(() => setGradientRequest(0), []);
+  const openGradientFromTool = () => {
+    setGradientRequest(value => value + 1);
+    setActiveTool("gradient");
+  };
   const openTones = (hex: string) => {
     commitColor(hex);
     setTonesRequest(hex);
@@ -109,18 +128,20 @@ export function App({ workspaceFactory, engine = "legacy" }: {
       )}
       {activeTool === "tones" && (
         <Tones state={state} workspace={workspace} sync={sync}
-          requestedSeed={tonesRequest} commitColor={commitColor}
-          openGradient={() => setActiveTool("gradient")} />
+          requestedSeed={tonesRequest} onRequestApplied={clearTonesRequest}
+          commitColor={commitColor}
+          openGradient={openGradientFromTool} />
       )}
       {activeTool === "harmony" && (
         <Harmony state={state} workspace={workspace} sync={sync}
-          commitColor={commitColor} openGradient={() => setActiveTool("gradient")}
+          commitColor={commitColor} openGradient={openGradientFromTool}
           saveSet={library.saveSet} favorites={library.favorites}
           toggleFavorite={library.toggleFavorite} />
       )}
       {activeTool === "gradient" && (
         <Gradient state={state} workspace={workspace} sync={sync}
-          commitColor={commitColor} saveSet={library.saveSet} />
+          commitColor={commitColor} saveSet={library.saveSet}
+          requestVersion={gradientRequest} onRequestApplied={clearGradientRequest} />
       )}
       {activeTool === "collections" && (
         <Collections currentHex={state.color.hex} favorites={library.favorites}

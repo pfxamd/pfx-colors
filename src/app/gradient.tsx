@@ -8,8 +8,15 @@ import { useHorizontalTrackDrag } from "../interaction/use-horizontal-track-drag
 import { useAngleHandleDrag, useNormalizedHandleDrag } from "../interaction/use-gradient-geometry";
 import { colorEngine, createGradient, generateHarmony, gradientToCss, sampleGradient, isRustEngine, recordRustGradientRaster } from "../rust/operations";
 import { copyColorText } from "./clipboard";
+import { useStoredState, numberBetween, oneOf } from "./workspace-state";
+import { saveGradientDraft } from "./gradient-session";
 import { gradientExport, gradientCssExport } from "./gradient-export";
 
+function validCenter(value: unknown): value is { x: number; y: number } {
+  if (!value || typeof value !== "object") return false;
+  const center = value as { x?: unknown; y?: unknown };
+  return numberBetween(0, 1)(center.x) && numberBetween(0, 1)(center.y);
+}
 function asInput(value: ColorValue): ColorInput {
   return { space: value.space, coordinates: value.coordinates.map(value => value ?? 0), alpha: value.alpha };
 }
@@ -372,23 +379,33 @@ export function Gradient({
   sync,
   commitColor,
   saveSet,
+  requestVersion,
+  onRequestApplied,
 }: {
   state: WorkspaceState;
   workspace: PfxColorsWorkspace;
   sync: (next?: WorkspaceState) => void;
   commitColor: (input: ColorInput) => void;
   saveSet: (name: string, colors: readonly string[]) => void;
+  requestVersion: number;
+  onRequestApplied: () => void;
 }) {
-  const [type, setType] = useState<GradientType>(() => state.gradient?.type ?? "linear");
-  const [angle, setAngle] = useState(() => state.gradient?.angle ?? 90);
-  const [space, setSpace] = useState(() => state.gradient?.interpolationSpace ?? "oklch");
-  const [selectedStop, setSelectedStop] = useState(0);
+  const [type, setType] = useStoredState<GradientType>(
+    "pfx-colors.gradient.type.v2", state.gradient?.type ?? "linear",
+    oneOf(["linear", "radial", "conic"] as const));
+  const [angle, setAngle] = useStoredState(
+    "pfx-colors.gradient.angle.v2", state.gradient?.angle ?? 90,
+    numberBetween(0, 360));
+  const [space, setSpace] = useStoredState<string>(
+    "pfx-colors.gradient.space.v2", state.gradient?.interpolationSpace ?? "oklch",
+    oneOf(["oklch", "oklab", "srgb"] as const));
+  const [selectedStop, setSelectedStop] = useStoredState(
+    "pfx-colors.gradient.selected-stop.v2", 0, numberBetween(0, 15));
   const [status, setStatus] = useState("");
   const [showExport, setShowExport] = useState(false);
-  const [center, setCenter] = useState(() => ({
-    x: state.gradient?.centerX ?? 0.5,
-    y: state.gradient?.centerY ?? 0.5,
-  }));
+  const [center, setCenter] = useStoredState(
+    "pfx-colors.gradient.center.v2",
+    { x: state.gradient?.centerX ?? 0.5, y: state.gradient?.centerY ?? 0.5 }, validCenter);
   const railRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const rustCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -442,6 +459,18 @@ export function Gradient({
       ),
     [angle, center.x, center.y, source, space, type],
   );
+
+  useEffect(() => {
+    if (requestVersion === 0 || !state.gradient) return;
+    setType(state.gradient.type);
+    setAngle(state.gradient.angle);
+    setSpace(state.gradient.interpolationSpace);
+    setCenter({ x: state.gradient.centerX, y: state.gradient.centerY });
+    setSelectedStop(0);
+    onRequestApplied();
+  }, [requestVersion, onRequestApplied]);
+
+  useEffect(() => saveGradientDraft(gradient), [gradient]);
 
   useEffect(() => {
     setSelectedStop((current) =>

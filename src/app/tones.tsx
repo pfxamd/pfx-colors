@@ -2,14 +2,29 @@ import { useEffect, useMemo, useState } from "react";
 import type { ColorInput, WorkspaceState, PfxColorsWorkspace } from "@pfx/color-core";
 import { normalizeHex } from "./color-library";
 import { copyColorText } from "./clipboard";
+import { useStoredState, isHex, numberBetween } from "./workspace-state";
 import {
   baseToneLightness, buildTones, DEFAULT_TONES, loadToneConfig, textContrast,
   tonesCss, tonesJson, TONES_SETTINGS_KEY,
   type ToneConfig, type ToneOverrides, type ToneDistribution,
 } from "./tones-model";
 
+function isOverrides(value: unknown): value is ToneOverrides {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return Object.entries(value).every(([index, item]) => {
+    if (!/^[0-9]{1,2}$/.test(index) || Number(index) > 15 ||
+        !item || typeof item !== "object") return false;
+    const data = item as { lightness?: unknown; chroma?: unknown };
+    return typeof data.lightness === "number" && Number.isFinite(data.lightness) &&
+      data.lightness >= 0 && data.lightness <= 100 &&
+      typeof data.chroma === "number" && Number.isFinite(data.chroma) &&
+      data.chroma >= 0 && data.chroma <= 180;
+  });
+}
 type Props = {
   state: WorkspaceState;
+  requestedSeed: string | null;
+  onRequestApplied: () => void;
   workspace: PfxColorsWorkspace;
   sync: (next?: WorkspaceState) => void;
   commitColor: (value: ColorInput) => void;
@@ -25,18 +40,32 @@ function saveFile(name: string, content: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
-export function Tones({ state, workspace, sync, commitColor, openGradient }: Props) {
+export function Tones({ state, workspace, sync, commitColor, openGradient,
+  requestedSeed, onRequestApplied }: Props) {
   // Keep the seed independent of selected swatches: selecting a tone must
   // not unexpectedly regenerate the entire tonal family.
-  const [seed, setSeed] = useState(() => state.color.hex);
+  const [seed, setSeed] = useStoredState("pfx-colors.tones.seed.v2", state.color.hex, isHex);
   const [draft, setDraft] = useState(seed.toUpperCase());
   const [settings, setSettings] = useState<ToneConfig>(() =>
     loadToneConfig(typeof window === "undefined" ? null : window.localStorage));
-  const [overrides, setOverrides] = useState<ToneOverrides>({});
-  const [selected, setSelected] = useState(0);
+  const [overrides, setOverrides] = useStoredState<ToneOverrides>(
+    "pfx-colors.tones.overrides.v2", {}, isOverrides);
+  const [selected, setSelected] = useStoredState("pfx-colors.tones.selected.v2", 0,
+    value => Number.isInteger(value) && numberBetween(0, 15)(value));
   const [status, setStatus] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
 
+  useEffect(() => {
+    if (!requestedSeed) return;
+    const normalized = normalizeHex(requestedSeed);
+    if (normalized) {
+      setSeed(normalized);
+      setDraft(normalized.toUpperCase());
+      setOverrides({});
+      setSelected(0);
+    }
+    onRequestApplied();
+  }, [requestedSeed, onRequestApplied, setSeed, setOverrides, setSelected]);
   const seedLightness = useMemo(() => baseToneLightness(seed), [seed]);
   const tones = useMemo(() => buildTones(seed, settings, overrides), [seed, settings, overrides]);
   const selectedTone = tones[Math.min(selected, tones.length - 1)] ?? tones[0];

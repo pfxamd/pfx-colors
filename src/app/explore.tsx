@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { copyColorText } from "./clipboard";
+import { useStoredState, oneOf } from "./workspace-state";
 import { NAMED_COLORS, normalizeHex, RGB_PAGE_SIZE, RGB_TOTAL } from "./color-library";
 import {
   colorAt, colorIndex, DEFAULT_FILTERS, FAMILY_ANCHORS, hasExploreFilters, hexStats,
@@ -13,6 +14,16 @@ const FAMILIES: Family[] = [
 const intFormat = new Intl.NumberFormat("en-US");
 const clamp = (value: number) => Math.max(0, Math.min(255, value));
 
+function validFilters(value: unknown): value is ExploreFilters {
+  if (!value || typeof value !== "object") return false;
+  const f = value as Partial<ExploreFilters>;
+  return FAMILIES.includes(f.family as Family) &&
+    ["any", "warm", "cool", "neutral"].includes(f.temperature ?? "") &&
+    [f.minLightness, f.maxLightness, f.minSaturation, f.maxSaturation].every(
+      n => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 100) &&
+    (f.minLightness as number) <= (f.maxLightness as number) &&
+    (f.minSaturation as number) <= (f.maxSaturation as number);
+}
 type Props = {
   activeHex: string;
   select: (hex: string) => void;
@@ -34,11 +45,17 @@ function similarColors(hex: string): string[] {
 }
 
 export function Explore({ activeHex, select, openPicker, openTones, favorites, toggleFavorite }: Props) {
-  const [mode, setMode] = useState<"named" | "rgb">("named");
+  const [mode, setMode] = useStoredState<"named" | "rgb">(
+    "pfx-colors.explore.mode.v2", "named", oneOf(["named", "rgb"] as const));
   const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState<ExploreFilters>({ ...DEFAULT_FILTERS });
-  const [namedOrder, setNamedOrder] = useState<"name" | "hue" | "lightness" | "saturation">("name");
-  const [rgbOrder, setRgbOrder] = useState<RgbOrder>("spectrum");
+  const [filters, setFilters] = useStoredState<ExploreFilters>(
+    "pfx-colors.explore.filters.v2", { ...DEFAULT_FILTERS }, validFilters);
+  const [namedOrder, setNamedOrder] = useStoredState<"name" | "hue" | "lightness" | "saturation">(
+    "pfx-colors.explore.named-order.v2", "name",
+    oneOf(["name", "hue", "lightness", "saturation"] as const));
+  const [rgbOrder, setRgbOrder] = useStoredState<RgbOrder>(
+    "pfx-colors.explore.rgb-order.v2", "spectrum",
+    oneOf(["spectrum", "hex", "reverse"] as const));
   const [page, setPage] = useState(0);
   const [anchor, setAnchor] = useState(() => colorIndex("#8b89aa", "spectrum"));
   const [cursors, setCursors] = useState<number[]>([0]);

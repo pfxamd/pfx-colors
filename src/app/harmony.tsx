@@ -5,6 +5,7 @@ import { generateHarmony, colorEngine } from "../rust/operations";
 import { useRadialDrag } from "../interaction/use-radial-drag";
 import { useScalarDial } from "../interaction/use-scalar-dial";
 import { copyColorText } from "./clipboard";
+import { useStoredState, isHex, numberBetween } from "./workspace-state";
 import { textContrast } from "./tones-model";
 
 const SCHEME_OFFSETS: Record<HarmonyScheme, readonly number[]> = {
@@ -17,6 +18,18 @@ const LABELS: Record<HarmonyScheme, string> = {
   "split-complementary": "Split complement", triadic: "Triadic",
   tetradic: "Tetradic", square: "Square",
 };
+function isHarmonySeed(value: unknown): value is ColorInput {
+  if (isHex(value)) return true;
+  if (!value || typeof value !== "object") return false;
+  const item = value as { space?: unknown; coordinates?: unknown; alpha?: unknown };
+  return item.space === "oklch" && Array.isArray(item.coordinates) &&
+    item.coordinates.length === 3 && item.coordinates.every(
+      v => typeof v === "number" && Number.isFinite(v)) &&
+    typeof item.alpha === "number" && item.alpha >= 0 && item.alpha <= 1;
+}
+function isScheme(value: unknown): value is HarmonyScheme {
+  return typeof value === "string" && HARMONY_SCHEMES.includes(value as HarmonyScheme);
+}
 const wrapHue = (hue: number) => ((hue % 360) + 360) % 360;
 const input = (value: ColorValue): ColorInput => ({
   space: value.space, coordinates: value.coordinates.map(v => v ?? 0), alpha: value.alpha,
@@ -111,12 +124,18 @@ export function Harmony({ state, workspace, sync, commitColor, openGradient,
   saveSet, favorites, toggleFavorite }: Props) {
   // Local seed isolates the generated set from selecting one of its results.
   // Rotation deliberately updates both the seed and shared workspace color.
-  const [seed, setSeed] = useState<ColorInput>(() => state.color.hex);
-  const [scheme, setScheme] = useState<HarmonyScheme>("triadic");
-  const [analogousAngle, setAnalogousAngle] = useState(30);
-  const [splitAngle, setSplitAngle] = useState(30);
-  const [tetradicAngle, setTetradicAngle] = useState(60);
-  const [selected, setSelected] = useState(0);
+  const [seed, setSeed] = useStoredState<ColorInput>(
+    "pfx-colors.harmony.seed.v2", state.color.hex, isHarmonySeed);
+  const [scheme, setScheme] = useStoredState<HarmonyScheme>(
+    "pfx-colors.harmony.scheme.v2", "triadic", isScheme);
+  const [analogousAngle, setAnalogousAngle] = useStoredState(
+    "pfx-colors.harmony.analogousAngle.v2", 30, numberBetween(5, 90));
+  const [splitAngle, setSplitAngle] = useStoredState(
+    "pfx-colors.harmony.splitAngle.v2", 30, numberBetween(5, 90));
+  const [tetradicAngle, setTetradicAngle] = useStoredState(
+    "pfx-colors.harmony.tetradicAngle.v2", 60, numberBetween(15, 165));
+  const [selected, setSelected] = useStoredState(
+    "pfx-colors.harmony.selected.v2", 0, numberBetween(0, 3));
   const [status, setStatus] = useState("");
   const [expandedExport, setExpandedExport] = useState(false);
   const wheelRef = useRef<HTMLDivElement>(null);

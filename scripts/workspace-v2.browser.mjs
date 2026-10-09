@@ -32,6 +32,21 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.reload({ waitUntil: "networkidle" });
         assert.equal(await page.locator(".pfx-v2").getAttribute("data-theme"), "dark", "Appearance persisted");
 
+        await page.locator(".pfx-home").waitFor();
+        assert.ok(await page.locator(".pfx-home__study-swatches button").count() >= 6,
+          "Home has a functioning color-study generator");
+        const homeLightness = page.getByRole("slider", { name: "Study Lightness" });
+        await homeLightness.focus();
+        await homeLightness.press("ArrowRight");
+        assert.equal(await homeLightness.inputValue(), "59");
+        await page.getByRole("button", { name: "Generate new" }).click();
+        assert.match(await page.locator(".pfx-home__study-bar").innerText(), /STUDY 02/);
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
+        assert.equal(await page.getByRole("slider", { name: "Study Lightness" }).inputValue(), "59",
+          "Home generator settings survive tool navigation");
+        await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-home.png`, animations: "disabled" });
+
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Picker" }).click();
         await page.locator(".pfx-picker__field").waitFor();
         const currentInput = page.locator('input[aria-label="Current color"]');
@@ -135,6 +150,12 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("button", { name: "Copy CSS" }).click();
         assert.match(await page.evaluate(() => window.__PFX_COPIED__ ?? ""),
           /--tone-01:/, "CSS variables copied to clipboard");
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Tones" }).click();
+        assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 10,
+          "Tone count survives navigation");
+        assert.equal(await page.locator('[aria-label="Manually edited"]').count(), 1,
+          "Independent tone edits survive navigation");
         await page.getByRole("button", { name: "Send to Gradient" }).click();
         await page.locator(".pfx-c-workbench--gradient").waitFor();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 10,
@@ -221,6 +242,31 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator(".pfx-c-collections__set").count(), 0,
           "Gradient set can be removed independently");
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-collections.png`, animations: "disabled" });
+
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
+        await page.getByRole("button", { name: "Named colors" }).click();
+        await page.getByRole("group", { name: "Filter by color family" }).getByRole("button", { name: "Blue" }).click();
+        assert.equal(await page.getByRole("group", { name: "Filter by color family" })
+          .getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"), "true");
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
+        assert.equal(await page.getByRole("group", { name: "Filter by color family" })
+          .getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"), "true",
+          "Explore filters survive tool navigation");
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Harmony" }).click();
+        assert.equal(await page.locator('.pfx-c-harmony-presets button[aria-label="complementary"]')
+          .getAttribute("aria-pressed"), "true", "Harmony scheme survives tool navigation");
+        await page.reload({ waitUntil: "networkidle" });
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
+        assert.equal(await page.getByRole("slider", { name: "Study Lightness" }).inputValue(), "59",
+          "Home preferences survive reload");
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
+        assert.equal(await page.getByRole("group", { name: "Filter by color family" })
+          .getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"), "true",
+          "Explore preferences survive reload");
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Gradient" }).click();
+        assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 2,
+          "Gradient stop geometry survives reload");
 
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "No horizontal page overflow");
         assert.deepEqual(errors, [], browserName + " runtime errors");
