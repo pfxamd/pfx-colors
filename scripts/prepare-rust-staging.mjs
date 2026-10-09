@@ -47,7 +47,7 @@ await writeFile(pagePath, page);
 const basePath = process.env.PFX_BASE_PATH ?? "/";
 assert.match(basePath, /^\/[a-zA-Z0-9/_-]*\/$/);
 await writeFile(join(output, "robots.txt"),
-  "User-agent: *\\nDisallow: " + basePath + "\\n");
+  "User-agent: *\nDisallow: " + basePath + "\n");
 await mkdir(join(output, "preview-info"), { recursive: true });
 const manifest = {
   kind: "pfx-colors-rust-staging",
