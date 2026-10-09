@@ -82,7 +82,10 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           null, { timeout: 15000 });
         assert.equal(await page.getByRole("button", { name: "Blue", exact: true }).getAttribute("aria-pressed"), "true");
         await page.getByRole("button", { name: "Next", exact: true }).click();
-        await page.waitForFunction(() => document.querySelectorAll(".pfx-c-explore .pfx-v2__swatch").length === 48,
+        await page.waitForFunction(() =>
+          document.querySelector(".pfx-explore__summary")?.textContent?.includes("Page 2") &&
+          document.querySelector(".pfx-explore__summary")?.textContent?.includes("Filtered across all RGB colors") &&
+          document.querySelectorAll(".pfx-c-explore .pfx-v2__swatch").length === 48,
           null, { timeout: 15000 });
         await page.getByRole("button", { name: "Previous", exact: true }).click();
         await page.waitForFunction(() => document.querySelectorAll(".pfx-c-explore .pfx-v2__swatch").length === 48,
@@ -97,6 +100,9 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           "Comparison calculates contrast for selected colors");
         await search.fill("#ff8800");
         await page.getByRole("button", { name: "Find", exact: true }).click();
+        await page.waitForFunction(() =>
+          document.querySelector('input[aria-label="Current color"]')?.value?.toLowerCase() === "#ff8800",
+          null, { timeout: 5000 });
         assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(), "#ff8800");
         assert.ok(await page.locator(".pfx-v2__swatch").count() >= 1);
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-explore.png`, animations: "disabled" });
