@@ -22,10 +22,22 @@ jobs:
           node-version: 22
       - name: Install browser runner
         run: npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.56.0
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Chromium and Firefox
+        run: npx playwright install --with-deps chromium firefox
       - name: Verify deployed app on desktop and mobile
         run: node scripts/browser-smoke.mjs
+        env:
+          PFX_COLORS_URL: https://pfxamd.github.io/pfx-colors/
+      - name: Verify Rust default, legacy rollback and simulated WASM outage
+        run: node scripts/rust-production.browser.mjs
+        env:
+          PFX_COLORS_URL: https://pfxamd.github.io/pfx-colors/
+      - name: Verify Rust / TypeScript color parity
+        run: node scripts/rust-integration.browser.mjs
+        env:
+          PFX_COLORS_URL: https://pfxamd.github.io/pfx-colors/
+      - name: Verify Rust gradient dragging stays responsive
+        run: node scripts/rust-drag-perf.browser.mjs
         env:
           PFX_COLORS_URL: https://pfxamd.github.io/pfx-colors/
       - name: Save browser evidence
