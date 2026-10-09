@@ -6,8 +6,8 @@
   --pfx-line: #e2e5eb;
   --pfx-line-strong: #c6cbd5;
   --pfx-text: #222733;
-  --pfx-muted: #747d8b;
-  --pfx-accent: #5865e8;
+  --pfx-muted: #626b79;
+  --pfx-accent: #4c56cd;
   --pfx-accent-soft: #edf0ff;
   --pfx-v2-elevated: #ffffff;
   --pfx-v2-field: #f8f9fb;
@@ -28,7 +28,7 @@
   --pfx-line-strong: #505662;
   --pfx-text: #f0f1f4;
   --pfx-muted: #a3aab5;
-  --pfx-accent: #929bff;
+  --pfx-accent: #98a3ff;
   --pfx-accent-soft: #343959;
   --pfx-v2-elevated: #292d35;
   --pfx-v2-field: #292c33;
@@ -111,7 +111,14 @@
   padding: 9px 12px; border: 1px solid var(--pfx-line-strong); border-radius: 8px; background: transparent; color: var(--pfx-text); font-size: 11px; font-weight: 600;
 }
 .pfx-v2__copy:hover, .pfx-v2 .pfx-c-history button:hover:not(:disabled) { background: var(--pfx-v2-field); }
-.pfx-v2__copy-feedback { font-size: 11px; color: var(--pfx-muted); }
+/* The old .pfx-c-current > span selector must not draw a phantom swatch. */
+.pfx-v2 .pfx-c-current > .pfx-v2__copy-feedback {
+  width: auto;
+  height: auto;
+  border: 0;
+  font-size: 11px;
+  color: var(--pfx-muted);
+}
 .pfx-v2 .pfx-c-gamut { display: flex; align-items: center; gap: 10px; font: 11px ui-monospace,monospace; color: var(--pfx-muted); }
 .pfx-v2 .pfx-c-history { display: flex; align-items: center; gap: 6px; }
 
