@@ -23,9 +23,9 @@ async function scenario(browser, browserName, viewport, engine) {
     url.searchParams.set("engine", engine);
     const response = await page.goto(url.toString(), { waitUntil: "networkidle", timeout: 60000 });
     assert.equal(response?.status(), 200);
-    await page.locator(".pfx-c-study__swatch").first().waitFor();
+    await page.locator(".pfx-home__study-swatches button").first().waitFor();
     const bootMs = performance.now() - started;
-    assert.equal(await page.locator(".pfx-c-study__swatch").count(), 10);
+    assert.equal(await page.locator(".pfx-home__study-swatches button").count(), 10);
     assert.equal(await page.locator(".pfx-c-engine-label").getAttribute("data-engine"), engine);
     const current = page.locator('input[aria-label="Current color"]');
     await current.fill("#336699");
