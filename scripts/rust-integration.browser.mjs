@@ -50,14 +50,22 @@ async function scenario(browser, browserName, viewport, engine) {
     assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 9);
     const paletteHexes = await page.locator(".pfx-c-palette-ribbon button span").allTextContents();
     await page.locator(".pfx-c-palette-ribbon button").nth(2).click();
+    const selectedSwatch = paletteHexes[2].trim().toLowerCase();
+    await page.waitForFunction(expected =>
+      document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === expected,
+      selectedSwatch);
     const fromPalette = await current.inputValue();
     assert.match(fromPalette, /^#[0-9a-f]{6}$/i);
     await page.getByRole("button", { name: /UNDO/ }).click();
+    await page.waitForFunction(expected =>
+      document.querySelector('input[aria-label="Current color"]')?.value === expected,
+      afterPicker);
     const undone = await current.inputValue();
-    console.log("UNDO TRACE", browserName, viewport.width, engine,
-      JSON.stringify({ picker, afterPicker, paletteHexes, fromPalette, undone }));
     assert.equal(undone, afterPicker, "undo must restore the prior picked color");
     await page.getByRole("button", { name: /REDO/ }).click();
+    await page.waitForFunction(expected =>
+      document.querySelector('input[aria-label="Current color"]')?.value === expected,
+      fromPalette);
     assert.equal(await current.inputValue(), fromPalette, "redo must recover palette selection");
     await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Harmony" }).click();
     await page.locator(".pfx-c-workbench--harmony").waitFor();
