@@ -81,6 +81,10 @@ jobs:
         run: node scripts/rust-drag-perf.browser.mjs
         env:
           PFX_COLORS_URL: http://127.0.0.1:4173/pfx-colors/
+      - name: Verify redesigned workspace, themes, Explore, Tones and Collections
+        run: node scripts/workspace-v2.browser.mjs
+        env:
+          PFX_COLORS_URL: http://127.0.0.1:4173/pfx-colors/
       - name: Preserve browser screenshots
         if: always()
         uses: actions/upload-artifact@v4
