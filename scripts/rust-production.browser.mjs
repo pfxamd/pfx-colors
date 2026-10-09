@@ -1,5 +1,5 @@
 /**
- * Live-equivalent acceptance test of the Rust-by-default release candidate.
+ * Continuous browser regression for the production Rust engine and rollback.
  * Runs against actual Vite dist at the final GitHub Pages project subpath.
  */
 import assert from "node:assert/strict";
@@ -91,4 +91,4 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
     }
   } finally { await browser.close(); }
 }
-console.log("Rust-by-default production release candidate acceptance: PASS");
+console.log("Rust production browser regression: PASS");

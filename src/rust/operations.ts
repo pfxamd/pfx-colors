@@ -1,7 +1,7 @@
 /**
- * Branch-only experiment facade.
- * In legacy mode use the unchanged TypeScript implementation; in opt-in mode
- * every COLOR calculation below routes to the pinned Rust WASM engine.
+ * Application color engine routing.
+ * Rust is the default; explicit legacy mode preserves the TypeScript engine
+ * for rollback. Rust color calculations use the pinned WebAssembly engine.
  * CSS serialization is string formatting, not a color computation.
  */
 import {
@@ -231,11 +231,11 @@ export function enableRustOperations(core: CoreApi): void {
     },
 
   };
-  // Explicit diagnostic probe used only in branch-based browser verification.
+  // Read-only operation counts for browser regression tests.
   Object.defineProperty(window, "__PFX_RUST_OPS__", { value: counters, configurable: true });
 }
 
-export function isRustExperiment(): boolean { return active !== legacy; }
+export function isRustEngine(): boolean { return active !== legacy; }
 /** Incremented only after a real Rust worker raster reaches the canvas. */
 export function recordRustGradientRaster(): void {
   if (active === legacy) throw new Error("Rust gradient raster is disabled");

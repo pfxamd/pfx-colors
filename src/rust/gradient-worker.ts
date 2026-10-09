@@ -1,4 +1,4 @@
-/** Branch-only Rust pixel rendering on a dedicated worker. No DOM or CSS color math. */
+/** Off-main-thread Rust gradient rasterization. No DOM or CSS color calculations. */
 import type { GradientDefinition } from "@pfx/color-core";
 
 type CoreColor = { space: string; channels: number[]; alpha: number };

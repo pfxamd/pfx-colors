@@ -20,8 +20,8 @@ async function start() {
     return;
   }
   try {
-    const { loadExperimentalWorkspace } = await import("../rust-experiment/loader");
-    const workspaceFactory = await loadExperimentalWorkspace();
+    const { loadRustWorkspace } = await import("../rust/loader");
+    const workspaceFactory = await loadRustWorkspace();
     root.render(
       <StrictMode><App engine="rust" workspaceFactory={workspaceFactory} /></StrictMode>,
     );
