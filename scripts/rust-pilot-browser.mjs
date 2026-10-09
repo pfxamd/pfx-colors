@@ -35,14 +35,10 @@ for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]
           assert.match(await current.inputValue(), /^#[0-9a-f]{6}$/i);
           if (requested === "rust-workspace") {
             const initialColor = await current.inputValue();
-            const snapshot = () => page.evaluate(() => globalThis.__pfxRustWorkspaceDebug?.() ?? null);
-            console.log("Workspace before edit:", await snapshot());
             await current.fill("#336699");
             await page.locator(".pfx-c-brand strong").click();
             assert.equal(await current.inputValue(), "#336699");
-            console.log("Workspace after edit:", await snapshot());
             await page.locator(".pfx-c-history button").first().click();
-            console.log("Workspace after undo:", await snapshot());
             await page.waitForFunction((expected) =>
               document.querySelector('input[aria-label="Current color"]')?.value === expected,
               initialColor,
