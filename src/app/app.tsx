@@ -12,6 +12,7 @@ import type { ColorInput, ColorValue } from "@pfx/color-core";
 import {
   colorEngine, createGradient, generateColorStudy, generateHarmony,
   generateTonalPalette, gradientToCss, sampleGradient,
+  isRustExperiment, rasterizeGradient,
 } from "../rust-experiment/operations";
 import {
   HARMONY_SCHEMES,
@@ -1544,6 +1545,7 @@ function Gradient({
   }));
   const railRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const rustCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const fallback = useMemo(() => {
     const harmony = generateHarmony(asInput(state.color.source), "complementary");
@@ -1588,6 +1590,28 @@ function Gradient({
       Math.max(0, Math.min(current, gradient.stops.length - 1)),
     );
   }, [gradient.stops.length]);
+
+  // Experimental branch only: preview raster pixels are sampled by Rust
+  // WASM (the browser merely composites the finished RGBA canvas).
+  // The standard published UI remains on its original CSS preview path.
+  useEffect(() => {
+    if (!isRustExperiment() || !rustCanvasRef.current) return;
+    const canvas = rustCanvasRef.current;
+    canvas.dataset.rustGradientPreview = "pending";
+    const frame = requestAnimationFrame(() => {
+      if (!canvas.isConnected) return;
+      const width = 144;
+      const height = 80;
+      const pixels = rasterizeGradient(gradient, width, height);
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Rust gradient canvas is unavailable");
+      context.putImageData(new ImageData(pixels, width, height), 0, 0);
+      canvas.dataset.rustGradientPreview = "ready";
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [gradient]);
 
   const css = gradientToCss(gradient);
   const activeStop = gradient.stops[selectedStop] ?? gradient.stops[0];
@@ -1721,6 +1745,18 @@ function Gradient({
               commitColor(asInput(sampleGradient(gradient, at)));
             }}
           >
+            {isRustExperiment() && (
+              <canvas
+                ref={rustCanvasRef}
+                aria-hidden="true"
+                data-rust-gradient-preview="pending"
+                style={{
+                  position: "absolute", inset: 0,
+                  width: "100%", height: "100%", pointerEvents: "none",
+                  borderRadius: "inherit",
+                }}
+              />
+            )}
             <GradientCanvasGeometry
               surfaceRef={previewRef}
               type={type}
