@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repository = "https://github.com/pfxamd/pfx-color-core.git";
-const revision = "5daded1ee510f32ae4b974b97b782b27d6957e32";
+const revision = "d07951fd1a9cf80c39ee17de8d9313cdda4e1cbe";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const target = join(root, "vendor", "PFx-Color-Core");
 const marker = join(target, "PINNED_REVISION");
