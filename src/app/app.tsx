@@ -103,12 +103,22 @@ export function App({ workspaceFactory, engine = "legacy" }: {
       preference={preference}
       setPreference={setPreference}
       currentHex={state.color.hex}
-      currentInput={<CurrentColorInput value={state.color.hex} commitColor={commitColor} />}
+      setColor={commitColor}
       gamut={state.color.gamut}
       canUndo={workspace.canUndo()}
       canRedo={workspace.canRedo()}
-      undo={() => sync(workspace.undo())}
-      redo={() => sync(workspace.redo())}
+      undo={() => {
+        const next = workspace.undo();
+        try { localStorage.setItem("pfx-colors.current", next.color.hex); }
+        catch { /* Storage unavailable */ }
+        sync(next);
+      }}
+      redo={() => {
+        const next = workspace.redo();
+        try { localStorage.setItem("pfx-colors.current", next.color.hex); }
+        catch { /* Storage unavailable */ }
+        sync(next);
+      }}
     >
       {activeTool === "home" && (
         <Home state={state} commitColor={commitColor} navigate={setActiveTool}
@@ -153,19 +163,3 @@ export function App({ workspaceFactory, engine = "legacy" }: {
   );
 }
 
-function CurrentColorInput({ value, commitColor }: {
-  value: string; commitColor: (input: ColorInput) => void;
-}) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
-  const apply = () => {
-    try { commitColor(draft); }
-    catch { setDraft(value); }
-  };
-  return <input className="pfx-c-current__input" value={draft}
-    spellCheck={false} aria-label="Current color"
-    onChange={event => setDraft(event.target.value)} onBlur={apply}
-    onKeyDown={event => {
-      if (event.key === "Enter") { apply(); event.currentTarget.blur(); }
-    }} />;
-}

@@ -13,7 +13,7 @@
   --pfx-v2-field: #f8f9fb;
   --pfx-v2-shadow: 0 8px 28px rgba(28, 35, 51, 0.055);
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) 74px;
+  grid-template-rows: auto minmax(0, 1fr);
   width: 100%;
   height: 100dvh;
   min-height: 500px;
@@ -241,7 +241,7 @@
   .pfx-v2__quick-ranges { justify-content: flex-start; }
 }
 @media (max-width: 580px) {
-  .pfx-v2 { grid-template-rows: auto minmax(0,1fr) 69px; }
+  .pfx-v2 { grid-template-rows: auto minmax(0,1fr); }
   .pfx-v2 .pfx-c-brand strong { font-size: 14px; }
   .pfx-v2 .pfx-c-brand img { width: 25px; height: 25px; }
   .pfx-v2 .pfx-c-brand { gap: 6px; }
@@ -274,4 +274,132 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .pfx-v2 *, .pfx-v2 *::before, .pfx-v2 *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+
+/* Shared navbar controls. The footer dock was removed to return workspace height. */
+.pfx-v2 .pfx-c-header {
+  grid-template-columns: auto minmax(0,1fr) auto;
+  gap: clamp(9px,1.1vw,16px);
+  padding-inline: clamp(12px,1.5vw,23px);
+}
+.pfx-v2 .pfx-c-brand { gap: 7px; }
+.pfx-v2 .pfx-c-tabs button { padding-inline: clamp(7px,.7vw,11px); font-size: 11px; }
+.pfx-v2__header-actions { gap: 9px; min-width: 0; }
+.pfx-v2 .pfx-c-engine-label { display: none; }
+.pfx-v2__color-control {
+  position: relative;
+  display: flex; align-items: center;
+  flex: 0 0 auto; gap: 5px;
+  min-height: 42px; padding: 5px 6px;
+  border: 1px solid var(--pfx-line-strong);
+  border-radius: 11px;
+  background: var(--pfx-v2-field);
+}
+.pfx-v2__color-chip {
+  display: block;
+  width: 30px; height: 30px;
+  flex: 0 0 30px; border-radius: 7px;
+  border: 1px solid rgba(0,0,0,.18);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.13);
+}
+.pfx-v2__hex-wrap { position: relative; min-width: 0; }
+.pfx-v2 .pfx-v2__hex-value {
+  display: block;
+  width: 83px; height: 30px;
+  margin: 0; padding: 0 2px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent; color: var(--pfx-text);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: -.015em; cursor: text;
+  outline-offset: 2px;
+}
+.pfx-v2 .pfx-v2__hex-value[readonly] { cursor: pointer; }
+.pfx-v2 .pfx-v2__color-control.pfx-is-editing .pfx-v2__hex-value {
+  border-color: var(--pfx-accent);
+  background: var(--pfx-panel);
+  padding-inline: 5px;
+}
+.pfx-v2 .pfx-v2__hex-value[aria-invalid="true"] {
+  border-color: #d65e52;
+  color: #c04f43;
+}
+.pfx-v2 .pfx-v2__icon-btn {
+  display: inline-grid; place-items: center;
+  flex: 0 0 30px;
+  width: 30px; height: 30px; padding: 0;
+  color: var(--pfx-muted);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+}
+.pfx-v2 .pfx-v2__icon-btn:hover:not(:disabled) {
+  color: var(--pfx-text);
+  border-color: var(--pfx-line-strong);
+  background: var(--pfx-panel);
+}
+.pfx-v2 .pfx-v2__icon-btn:disabled { opacity: .3; }
+.pfx-v2__color-status {
+  position: absolute; z-index: 12;
+  top: calc(100% + 11px); left: 0;
+  max-width: 210px; white-space: nowrap;
+  padding: 7px 10px;
+  border: 1px solid var(--pfx-line-strong);
+  border-radius: 7px;
+  background: var(--pfx-panel);
+  color: var(--pfx-text);
+  box-shadow: var(--pfx-v2-shadow);
+  font: 600 11px/1.3 ui-sans-serif, system-ui, sans-serif;
+}
+.pfx-v2__color-status:empty { display: none; }
+.pfx-v2__history {
+  display: flex; gap: 1px;
+  padding: 3px;
+  border: 1px solid var(--pfx-line);
+  border-radius: 10px;
+  background: var(--pfx-v2-field);
+}
+.pfx-v2 .pfx-v2__history .pfx-v2__icon-btn { width: 34px; height: 34px; flex-basis: 34px; }
+.pfx-v2 .pfx-v2__theme { flex-shrink: 0; }
+@media (max-width: 1250px) {
+  .pfx-v2 .pfx-c-header {
+    grid-template-columns: auto minmax(0,1fr);
+    grid-template-rows: auto auto;
+    row-gap: 3px;
+    padding-bottom: 4px;
+  }
+  .pfx-v2__header-actions { grid-column: 2; grid-row: 1; justify-content: flex-end; }
+  .pfx-v2 .pfx-c-tabs {
+    grid-column: 1/-1; grid-row: 2;
+    justify-content: flex-start;
+    padding-block: 3px;
+  }
+}
+@media (max-width: 770px) {
+  .pfx-v2 .pfx-c-header {
+    grid-template-columns: minmax(0,1fr) auto;
+    grid-template-rows: auto auto auto;
+    align-items: center;
+    row-gap: 7px; column-gap: 8px;
+    padding: 9px 12px 5px;
+  }
+  .pfx-v2 .pfx-c-brand { grid-column: 1; grid-row: 1; }
+  .pfx-v2__header-actions { display: contents; }
+  .pfx-v2__theme { grid-column: 2; grid-row: 1; justify-self: end; }
+  .pfx-v2__color-control { grid-column: 1; grid-row: 2; justify-self: start; }
+  .pfx-v2__history { grid-column: 2; grid-row: 2; justify-self: end; }
+  .pfx-v2 .pfx-c-tabs {
+    grid-column: 1/-1; grid-row: 3;
+    padding: 1px 0 4px;
+  }
+}
+@media (max-width: 390px) {
+  .pfx-v2 .pfx-c-brand { gap: 5px; }
+  .pfx-v2 .pfx-c-brand strong { font-size: 13px; }
+  .pfx-v2 .pfx-c-brand .pfx-v2__alpha-badge {
+    min-height: 23px; padding: 5px 6px; font-size: 9px;
+  }
+  .pfx-v2 .pfx-v2__theme button { min-width: 30px; padding-inline: 5px; }
+  .pfx-v2__color-chip { width: 27px; height: 27px; flex-basis: 27px; }
 }

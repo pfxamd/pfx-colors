@@ -32,6 +32,43 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.reload({ waitUntil: "networkidle" });
         assert.equal(await page.locator(".pfx-v2").getAttribute("data-theme"), "dark", "Appearance persisted");
 
+        assert.equal(await page.locator(".pfx-c-dock").count(), 0,
+          "Legacy fixed bottom dock was removed");
+        const navColor = page.locator('input[aria-label="Current color"]');
+        const colorBefore = await navColor.inputValue();
+        assert.equal(await navColor.getAttribute("readonly"), "",
+          "HEX appears as a non-editing label by default");
+        await page.getByRole("button", { name: "Edit current HEX" }).click();
+        await navColor.fill("#336699");
+        await navColor.press("Enter");
+        await page.waitForFunction(() =>
+          document.querySelector('input[aria-label="Current color"]')?.value === "#336699");
+        assert.equal(await page.locator(".pfx-v2__color-chip").evaluate(el =>
+          getComputedStyle(el).backgroundColor), "rgb(51, 102, 153)",
+          "Navbar color chip reflects manually entered HEX");
+        await page.getByRole("button", { name: "Copy current color" }).click();
+        assert.equal(await page.evaluate(() => window.__PFX_COPIED__), "#336699");
+        await page.getByRole("button", { name: "Edit current HEX" }).click();
+        await navColor.fill("#xxxxxx");
+        await navColor.press("Enter");
+        assert.equal(await navColor.getAttribute("aria-invalid"), "true",
+          "Invalid HEX is rejected with a validation state");
+        assert.equal(await page.locator(".pfx-v2__color-chip").evaluate(el =>
+          getComputedStyle(el).backgroundColor), "rgb(51, 102, 153)",
+          "Invalid HEX does not affect the active color");
+        await navColor.press("Escape");
+        assert.equal(await navColor.inputValue(), "#336699");
+        await page.getByRole("button", { name: "UNDO" }).click();
+        await page.waitForFunction(before =>
+          document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === before,
+          colorBefore.toLowerCase());
+        await page.getByRole("button", { name: "REDO" }).click();
+        await page.waitForFunction(() =>
+          document.querySelector('input[aria-label="Current color"]')?.value === "#336699");
+        assert.ok(await page.locator(".pfx-c-header").isVisible(),
+          "Color and history controls remain in the header");
+        await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-navbar.png`, animations: "disabled" });
+
         await page.locator(".pfx-home").waitFor();
         assert.ok(await page.locator(".pfx-home__study-swatches button").count() >= 6,
           "Home has a functioning color-study generator");
