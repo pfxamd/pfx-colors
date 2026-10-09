@@ -1,6 +1,7 @@
 import { colorEngine } from "@pfx/color-core";
 import { PilotRustColorEngine, pilotMetrics, type RustColorApi } from "./opt-in-engine";
 import { setPilotToolCore } from "./pilot-tools";
+import { configureRustWorkspace } from "./workspace-pilot";
 
 /**
  * Only ?engine=rust enables this experiment. Default navigation is unchanged.
@@ -30,6 +31,17 @@ export async function initializeRustPilot(): Promise<void> {
       color: new PilotRustColorEngine(legacy, rust, pilotMetrics),
     });
     setPilotToolCore(rust);
+    // Load the self-contained Rust workspace only when this deeper pilot
+    // is requested; the normal experiment and production stay unchanged.
+    if (new URLSearchParams(window.location.search).get("workspace") === "rust") {
+      const workspaceModuleUrl = new URL("pfx-rust/pfx-color-workspace.mjs", root).href;
+      const workspaceModule = await import(/* @vite-ignore */ workspaceModuleUrl) as {
+        createPfxColorsWorkspace: (
+          core: RustColorApi, initial: string,
+        ) => ReturnType<typeof import("./workspace-pilot")["createPilotWorkspace"]>;
+      };
+      configureRustWorkspace(rust, workspaceModule.createPfxColorsWorkspace);
+    }
     pilotMetrics.status = "rust";
   } catch (error) {
     pilotMetrics.reason = error instanceof Error ? error.message : String(error);
