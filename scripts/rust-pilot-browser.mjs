@@ -70,11 +70,21 @@ for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]
               contrast: rust.contrast(
                 { space: "srgb", channels: [0, 0, 0], alpha: 1 },
                 { space: "srgb", channels: [1, 1, 1], alpha: 1 }),
+              rawHue: rust.interpolate(
+                { space: "hsl", channels: [350, 100, 50], alpha: 1 },
+                { space: "hsl", channels: [10, 100, 50], alpha: 1 },
+                0.5, { space: "hsl", hue: "raw" }).channels[0],
+              shorterHue: rust.interpolate(
+                { space: "hsl", channels: [350, 100, 50], alpha: 1 },
+                { space: "hsl", channels: [10, 100, 50], alpha: 1 },
+                0.5, { space: "hsl", hue: "shorter" }).channels[0],
             };
           });
           if (requested !== "legacy") {
             assert.ok(Math.abs(consoleResult.contrast - 21) < 1e-12);
             assert.ok(Math.abs(consoleResult.difference - 1) < 1e-7);
+            assert.ok(Math.abs(consoleResult.rawHue - 180) < 1e-9);
+            assert.ok(Math.abs(consoleResult.shorterHue - 0) < 1e-9);
           }
           assert.deepEqual(errors, [], name + " " + viewport.width + " " + requested);
           console.log(name, viewport.width + "x" + viewport.height, requested, "PASS");
