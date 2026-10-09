@@ -595,15 +595,26 @@ function CurrentColorInput({
   commitColor: (input: ColorInput) => void;
 }) {
   const [draft, setDraft] = useState(value);
+  const lastSubmitted = useRef(value);
 
   useEffect(() => {
     setDraft(value);
+    lastSubmitted.current = value;
   }, [value]);
 
   const apply = () => {
+    const next = draft.trim();
+    // Enter is followed by blur; never create two history entries for
+    // one user edit or a second entry for the already committed color.
+    if (!next || next.toLowerCase() === value.toLowerCase() ||
+      next.toLowerCase() === lastSubmitted.current.toLowerCase()) {
+      return;
+    }
+    lastSubmitted.current = next;
     try {
-      commitColor(draft);
+      commitColor(next);
     } catch {
+      lastSubmitted.current = value;
       setDraft(value);
     }
   };
