@@ -12,3 +12,6 @@ playwright-report/
 .DS_Store
 Thumbs.db
 *.zip
+
+# Generated only by the experimental Rust pilot build
+public/pfx-rust/
