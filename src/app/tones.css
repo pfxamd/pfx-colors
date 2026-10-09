@@ -1,4 +1,12 @@
 /* Dedicated Tones workstation: fully independent from the legacy palette layout. */
+/* The legacy Palette grid must never lay out the redesigned Tones document. */
+.pfx-v2 .pfx-c-tones.pfx-c-workbench--palette {
+  display: block;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .pfx-v2 .pfx-c-tones {
   --tone-border: var(--pfx-line);
   --tone-card: var(--pfx-panel);
