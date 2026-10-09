@@ -12,8 +12,8 @@ import type { ColorInput, ColorValue } from "@pfx/color-core";
 import {
   colorEngine, createGradient, generateColorStudy, generateHarmony,
   generateTonalPalette, gradientToCss, sampleGradient,
-  isRustExperiment, recordRustGradientRaster,
-} from "../rust-experiment/operations";
+  isRustEngine, recordRustGradientRaster,
+} from "../rust/operations";
 import {
   HARMONY_SCHEMES,
   type GradientStopInput,
@@ -27,7 +27,7 @@ import { useColorFieldControl } from "../interaction/use-color-field-control";
 import { useRadialDrag } from "../interaction/use-radial-drag";
 import { useScalarDial } from "../interaction/use-scalar-dial";
 import { PfxColorsWorkspace, type WorkspaceState } from "@pfx/color-core";
-import type { WorkspaceFactory } from "../rust-experiment/loader";
+import type { WorkspaceFactory } from "../rust/loader";
 
 type ToolId = "home" | "picker" | "palette" | "harmony" | "gradient";
 
@@ -1603,12 +1603,12 @@ function Gradient({
     );
   }, [gradient.stops.length]);
 
-  // Branch-only preview: no WebAssembly pixel loops run on the UI thread.
+  // Rust preview stays off the UI thread; CSS remains the safe worker fallback.
   // Keep one worker for this mounted preview and deliver only the newest
   // render during continuous pointer input; outdated frames never paint.
   useEffect(() => {
-    if (!isRustExperiment()) return;
-    const worker = new Worker(new URL("../rust-experiment/gradient-worker.ts", import.meta.url), {
+    if (!isRustEngine()) return;
+    const worker = new Worker(new URL("../rust/gradient-worker.ts", import.meta.url), {
       type: "module",
     });
     rustWorkerRef.current = worker;
@@ -1695,7 +1695,7 @@ function Gradient({
   }, []);
 
   useEffect(() => {
-    if (!isRustExperiment() || !rustWorkerRef.current
+    if (!isRustEngine() || !rustWorkerRef.current
       || !rustCanvasRef.current || !previewRef.current) return;
     const canvas = rustCanvasRef.current;
     const surface = previewRef.current;
@@ -1848,7 +1848,7 @@ function Gradient({
           <div
             ref={previewRef}
             className="pfx-c-gradient-preview"
-            style={{ background: isRustExperiment() && !rustPreviewFailed ? "transparent" : css }}
+            style={{ background: isRustEngine() && !rustPreviewFailed ? "transparent" : css }}
             onClick={(event) => {
               if (event.target !== event.currentTarget) return;
               const rect = event.currentTarget.getBoundingClientRect();
@@ -1859,7 +1859,7 @@ function Gradient({
               commitColor(asInput(sampleGradient(gradient, at)));
             }}
           >
-            {isRustExperiment() && !rustPreviewFailed && (
+            {isRustEngine() && !rustPreviewFailed && (
               <canvas
                 ref={rustCanvasRef}
                 aria-hidden="true"
