@@ -135,3 +135,37 @@ must not be confused with exact raster semantics.
 comparison with the existing website, then a separate production
 migration decision. Do not directly merge to production merely because
 the branch CI is green.
+
+## Independent staging artifact — safe to deploy separately
+
+The experimental GitHub Actions workflow builds an additional **standalone
+static site** after all code, color parity and pointer-drag tests pass:
+
+- Artifact: `pfx-colors-rust-staging-<commit>` (available on the
+  successful experiment workflow run under **Artifacts**).
+- Contents: built `index.html`, version-pinned Rust WASM, first-party
+  browser bindings, JavaScript/CSS assets, `robots.txt` and
+  `preview-info/build.json`. Serve the extracted **contents** of the
+  artifact, not the containing parent directory.
+- Staging URL `/`: Rust mode **by default**.
+  `/?engine=legacy`: existing TypeScript engine.
+  `/?engine=rust`: explicit Rust mode.
+- Staging has a small visible comparison banner, a `noindex,nofollow`
+  robots meta tag and `robots.txt` to avoid public-search indexing.
+- **No automatic deployment**. Neither this branch nor this workflow
+  can update the existing `pfxamd.github.io/pfx-colors` Pages site.
+  It uses only `contents: read` and uploads a ZIP artifact.
+- The bundled build is rooted at `/` and can be deployed in a
+  separate Pages project or equivalent independent static host. For
+  Cloudflare Pages, create a **new** project using Direct Upload and
+  upload the extracted folder contents. Never replace an existing site
+  and never reuse the production domain.
+- The workflow additionally runs browser tests **on the staged bytes**
+  in both Chromium and Firefox at 1440×900 and 390×844, checks the
+  engine switch, WASM preview canvas, lack of Rust downloads in legacy
+  mode, and noindex safeguards. Screenshot evidence is attached to the
+  same run.
+
+**Release status:** independent staged files tested and ready for hosting;
+the public preview URL does not exist until a separate host receives
+the artifact. Staging acceptance must precede any production change.
