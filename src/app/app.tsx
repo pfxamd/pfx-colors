@@ -28,6 +28,7 @@ import { useColorFieldControl } from "../interaction/use-color-field-control";
 import { useRadialDrag } from "../interaction/use-radial-drag";
 import { useScalarDial } from "../interaction/use-scalar-dial";
 import { PfxColorsWorkspace, type WorkspaceState } from "@pfx/color-core";
+import type { WorkspaceFactory } from "../rust-experiment/loader";
 
 type ToolId = "home" | "picker" | "palette" | "harmony" | "gradient";
 
@@ -63,7 +64,7 @@ function createStudyRandom(seed: number) {
   };
 }
 
-function useWorkspace() {
+function useWorkspace(workspaceFactory?: WorkspaceFactory) {
   const ref = useRef<PfxColorsWorkspace | null>(null);
   if (!ref.current) {
     let initial = "#ff0014";
@@ -72,7 +73,7 @@ function useWorkspace() {
     } catch {
       // ignore
     }
-    ref.current = new PfxColorsWorkspace(initial);
+    ref.current = workspaceFactory ? workspaceFactory(initial) : new PfxColorsWorkspace(initial);
   }
 
   const workspace = ref.current;
@@ -85,8 +86,14 @@ function useWorkspace() {
   return { workspace, state, sync };
 }
 
-export function App() {
-  const { workspace, state, sync } = useWorkspace();
+export function App({
+  workspaceFactory,
+  engine = "legacy",
+}: {
+  workspaceFactory?: WorkspaceFactory;
+  engine?: "legacy" | "rust";
+} = {}) {
+  const { workspace, state, sync } = useWorkspace(workspaceFactory);
   const [activeTool, setActiveTool] = useState<ToolId>("home");
 
   const commitColor = useCallback(
@@ -151,7 +158,9 @@ export function App() {
           ))}
         </nav>
 
-        <div className="pfx-c-engine-label">OKLCH / P3</div>
+        <div className="pfx-c-engine-label" data-engine={engine}>
+          {engine === "rust" ? "RUST / EXPERIMENT" : "OKLCH / P3"}
+        </div>
       </header>
 
       <main className="pfx-l-stage">
