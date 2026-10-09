@@ -46,7 +46,8 @@ assert.match(page, /__PFX_RUST_STAGING__ = true/);
 assert.match(page, /noindex, nofollow/);
 await writeFile(pagePath, page);
 const basePath = process.env.PFX_BASE_PATH ?? "/";
-assert.match(basePath, /^\/[a-zA-Z0-9/_-]*\/$/);
+assert.ok(basePath === "/" || /^\/[a-zA-Z0-9/_-]+\/$/.test(basePath),
+  "Invalid static preview base path: " + basePath);
 await writeFile(join(output, "robots.txt"),
   "User-agent: *\nDisallow: " + basePath + "\n");
 await mkdir(join(output, "preview-info"), { recursive: true });
