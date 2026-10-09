@@ -56,6 +56,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         legacy.on("pageerror", error => legacyErrors.push(error.message));
         await legacy.goto(toUrl("legacy"), { waitUntil: "networkidle", timeout: 60000 });
         await legacy.locator(".pfx-c-engine-label[data-engine='legacy']").waitFor({ state: "attached" });
+        await legacy.locator('nav[aria-label="Color tools"] button')
+          .filter({ hasText: "Home" }).click();
         await legacy.locator(".pfx-home__study-swatches button").first().waitFor();
         await legacy.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Gradient" }).click();
         assert.equal(await legacy.locator(".pfx-c-gradient-preview").count(), 1);
@@ -81,6 +83,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           state: "attached", timeout: 30000,
         });
         assert.ok(blocked.length >= 1, "Test must actually intercept and reject WASM");
+        await failed.locator('nav[aria-label="Color tools"] button')
+          .filter({ hasText: "Home" }).click();
         assert.equal(await failed.locator(".pfx-home__study-swatches button").count(), 10);
         assert.equal(await failed.evaluate(() => document.documentElement.dataset.pfxEngineFallback), "legacy");
         await failed.close();
