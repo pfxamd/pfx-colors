@@ -8,7 +8,7 @@ migration and does not deploy to GitHub Pages.
 
 - Website repository: `pfxamd/pfx-colors`; production branch `main` untouched.
 - Rust source: `pfxamd/pfx-color-core`, pinned **exactly** to commit
-  `901a2e53b9fba8aac1c762183172d0642b2e84e5`.
+  `acf1ad39f69d13ee7057f9483f8a329e750f20b1`.
 - The branch CI builds this Rust source for
   `wasm32-unknown-unknown` and stages the actual compiled
   `pfx_color_ffi.wasm` plus the independent first-party
@@ -49,7 +49,7 @@ CSS syntax serialization and React input/state orchestration remain JavaScript.
 
 The default mode continues using the original TypeScript functions and
 CSS-based gradient preview, with no Rust WASM download. This is a
-feature-gated experiment, not a production release. The experimental worker computes up to 160px-wide pixel buffers
+feature-gated experiment, not a production release. The experimental worker uses one Rust bulk RGBA8 raster call per frame (not one WASM call per pixel) to compute up to 160px-wide pixel buffers
 off the main UI thread. The separate `rust-drag-perf.browser.mjs`
 test uses trusted pointer drags and checks frame intervals, final-frame
 freshness and worker diagnostics in Chromium and Firefox across desktop/mobile
