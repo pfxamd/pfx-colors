@@ -1,0 +1,68 @@
+name: Rust workspace experiment (no deployment)
+
+on:
+  push:
+    branches: [experiment/rust-color-core]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout experimental app branch
+        uses: actions/checkout@v4
+      - name: Checkout exact validated Rust Color Core revision
+        uses: actions/checkout@v4
+        with:
+          repository: pfxamd/pfx-color-core
+          ref: 901a2e53b9fba8aac1c762183172d0642b2e84e5
+          path: .rust-color-core
+      - name: Set up Rust for WebAssembly
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build real Rust WASM and stage first-party browser bindings
+        run: |
+          cargo build --manifest-path .rust-color-core/Cargo.toml -p pfx-color-ffi \
+            --target wasm32-unknown-unknown --release
+          mkdir -p public/rust
+          cp .rust-color-core/target/wasm32-unknown-unknown/release/pfx_color_ffi.wasm public/rust/
+          cp .rust-color-core/bindings/javascript/pfx-color-core.mjs public/rust/
+          cp .rust-color-core/bindings/javascript/pfx-color-tools.mjs public/rust/
+          cp .rust-color-core/bindings/javascript/pfx-color-workspace.mjs public/rust/
+          test -s public/rust/pfx_color_ffi.wasm
+      - name: Install app packages
+        run: npm install --no-audit --no-fund
+      - name: Test and compile both modes
+        run: npm run check
+      - name: Verify WebAssembly and binding files are included in the app build
+        run: |
+          test -s dist/rust/pfx_color_ffi.wasm
+          test -s dist/rust/pfx-color-core.mjs
+          test -s dist/rust/pfx-color-workspace.mjs
+      - name: Install browser test tools
+        run: npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.56.0
+      - name: Install Chromium and Firefox
+        run: npx playwright install --with-deps chromium firefox
+      - name: Compare live React app using legacy and Rust workspaces
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/pfx-rust-preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/ > /dev/null; then break; fi
+            sleep 1
+          done
+          PFX_COLORS_URL=http://127.0.0.1:4173/ node scripts/rust-integration.browser.mjs
+      - name: Store experiment screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-colors-experiment-evidence
+          path: browser-evidence/rust-experiment/
+          if-no-files-found: ignore
