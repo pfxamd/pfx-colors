@@ -47,7 +47,7 @@ for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]
           if (requested === "rust") {
             const routes = await page.evaluate(() => globalThis.__pfxRustPilot?.routes ?? {});
             for (const feature of [
-              "convert", "gamut", "mapGamut", "colorStudy",
+              "convert", "formatHex", "gamut", "mapGamut", "colorStudy",
               "tonalPalette", "harmony", "interpolate", "gradientSample",
             ]) {
               assert.ok(routes[feature] > 0, feature + " must genuinely execute in Rust WASM");
