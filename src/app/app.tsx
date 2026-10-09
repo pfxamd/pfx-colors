@@ -1828,7 +1828,7 @@ function Gradient({
           <div
             ref={previewRef}
             className="pfx-c-gradient-preview"
-            style={{ background: css }}
+            style={{ background: isRustExperiment() ? "transparent" : css }}
             onClick={(event) => {
               if (event.target !== event.currentTarget) return;
               const rect = event.currentTarget.getBoundingClientRect();
