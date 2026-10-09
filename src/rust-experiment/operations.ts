@@ -101,7 +101,8 @@ export function enableRustOperations(core: CoreApi): void {
     css: core.formatCss(input),
     hex: core.formatHex(input, "css"),
   });
-  const hex = (input: CoreColor) => core.formatHex(input, "css");
+  const hex = (input: CoreColor) =>
+    counted("formatHex", () => core.formatHex(input, "css"));
   const paletteColor = (entry: CoreEntry, index: number) => ({
     index,
     position: entry.position,
