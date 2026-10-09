@@ -158,7 +158,7 @@ export function App({
         </nav>
 
         <div className="pfx-c-engine-label" data-engine={engine}>
-          {engine === "rust" ? "RUST / EXPERIMENT" : "OKLCH / P3"}
+          {engine === "rust" ? "RUST / CORE" : "OKLCH / P3"}
         </div>
       </header>
 
