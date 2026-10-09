@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: pfxamd/pfx-colors
-          ref: 48b5fc5d29c07db1b1ddb5de75d16e9c414ea01a
+          ref: 26f1081f5f863f37c9855be7839664ca3cdfb354
           path: preview-source
           persist-credentials: false
 
@@ -143,7 +143,10 @@ jobs:
               && grep -Fq '__PFX_RUST_STAGING__ = true' /tmp/pfx-preview-live.html \
               && curl --fail --silent --show-error --location "${URL}rust/pfx_color_ffi.wasm" -o /tmp/pfx-preview-live.wasm 2>/dev/null \
               && test "$(wc -c < /tmp/pfx-preview-live.wasm)" -gt 10000; then
-              echo "LIVE GitHub Pages Rust preview confirmed: $URL"
+              echo "LIVE GitHub Pages Rust preview assets confirmed: $URL"
+              cd preview-source
+              PFX_STAGING_URL="$URL" node scripts/rust-staging.browser.mjs
+              echo "LIVE GitHub Pages Rust preview browser review confirmed: $URL"
               exit 0
             fi
             sleep 5
