@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./app";
 import "./styles.css";
 import "./workspace-v2.css";
+import "./tones.css";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("PFx Colors root element missing");

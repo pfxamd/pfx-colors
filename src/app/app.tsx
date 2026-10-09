@@ -33,6 +33,7 @@ import { useTheme } from "./use-theme";
 import { useColorLibrary } from "./use-color-library";
 import { Explore } from "./explore";
 import { Collections } from "./collections";
+import { Tones } from "./tones";
 
 function asInput(value: ColorValue): ColorInput {
   return {
@@ -620,97 +621,6 @@ function Readout({ label, value }: { label: string; value: string }) {
       <small>{label}</small>
       <strong>{value}</strong>
     </div>
-  );
-}
-
-function Tones({
-  state,
-  workspace,
-  sync,
-  commitColor,
-  openGradient,
-}: {
-  state: WorkspaceState;
-  workspace: PfxColorsWorkspace;
-  sync: (next?: WorkspaceState) => void;
-  commitColor: (input: ColorInput) => void;
-  openGradient: () => void;
-}) {
-  const [count, setCount] = useState(9);
-  const [low, setLow] = useState(10);
-  const [high, setHigh] = useState(94);
-  const [chroma, setChroma] = useState(100);
-
-  const palette = useMemo(
-    () =>
-      generateTonalPalette(asInput(state.color.source), {
-        count,
-        minLightness: low / 100,
-        maxLightness: high / 100,
-        chromaScale: chroma / 100,
-      }),
-    [chroma, count, high, low, state.color.source],
-  );
-
-  const sendToGradient = () => {
-    sync(
-      workspace.createGradient(
-        palette.colors.map((color) => ({
-          color: asInput(color.value),
-          position: color.position,
-        })),
-      ),
-    );
-    openGradient();
-  };
-
-  return (
-    <section className="pfx-c-workbench pfx-c-workbench--palette">
-      <div className="pfx-c-palette-ribbon">
-        {palette.colors.map((color) => (
-          <button
-            key={color.index}
-            type="button"
-            style={{ background: color.hex }}
-            onClick={() => commitColor(asInput(color.value))}
-          >
-            <span>{color.hex.toUpperCase()}</span>
-            <small>{String(color.index + 1).padStart(2, "0")}</small>
-          </button>
-        ))}
-      </div>
-
-      <div className="pfx-c-panel">
-        <div className="pfx-c-panel__heading">
-          <div>
-            <small>TONAL ENGINE</small>
-            <h1>Shape the tones.</h1>
-          </div>
-          <button type="button" className="pfx-c-action" onClick={sendToGradient}>
-            SEND TO GRADIENT →
-          </button>
-        </div>
-
-        <Slider label="N" value={count} min={3} max={16} step={1} onChange={setCount} />
-        <Slider
-          label="MIN"
-          value={low}
-          min={0}
-          max={70}
-          suffix="%"
-          onChange={(value) => setLow(Math.min(value, high - 5))}
-        />
-        <Slider
-          label="MAX"
-          value={high}
-          min={30}
-          max={100}
-          suffix="%"
-          onChange={(value) => setHigh(Math.max(value, low + 5))}
-        />
-        <Slider label="CHR" value={chroma} min={0} max={180} suffix="%" onChange={setChroma} />
-      </div>
-    </section>
   );
 }
 

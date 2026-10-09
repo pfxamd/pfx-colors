@@ -11,6 +11,12 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
     for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
       const context = await browser.newContext({ viewport });
       const page = await context.newPage();
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, "clipboard", {
+          configurable: true,
+          value: { writeText: async text => { window.__PFX_COPIED__ = text; } },
+        });
+      });
       const errors = [];
       page.on("pageerror", err => errors.push(err.message));
       try {
@@ -38,6 +44,35 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("button", { name: "Create Tones" }).click();
         await page.locator(".pfx-c-workbench--palette").waitFor();
         assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 9);
+
+        const countControl = page.locator('input[aria-label="Number of tones"]');
+        await countControl.focus();
+        await countControl.press("ArrowRight");
+        assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 10,
+          "Tone count responds to user input");
+        await page.getByRole("button", { name: "Darks", exact: true }).click();
+        await page.locator('input[aria-label="Lock base color in scale"]').check();
+        assert.equal(await page.locator('[aria-label="Base locked"]').count(), 1,
+          "Original base color remains locked in the scale");
+        await page.locator('input[aria-label="Lock base color in scale"]').uncheck();
+        await page.locator(".pfx-c-palette-ribbon button").nth(1).click();
+        const editor = page.locator('input[aria-label="Selected tone lightness"]');
+        await editor.focus();
+        await editor.press("ArrowRight");
+        assert.equal(await page.locator('[aria-label="Manually edited"]').count(), 1,
+          "Individual tone edit is reflected in the scale");
+        await page.getByRole("button", { name: "Export", exact: false }).click();
+        const cssDownload = page.waitForEvent("download");
+        await page.getByRole("button", { name: "Download CSS" }).click();
+        const savedCss = await cssDownload;
+        assert.equal(savedCss.suggestedFilename(), "pfx-tones.css");
+        await page.getByRole("button", { name: "Copy CSS" }).click();
+        assert.match(await page.evaluate(() => window.__PFX_COPIED__ ?? ""),
+          /--tone-01:/, "CSS variables copied to clipboard");
+        await page.getByRole("button", { name: "Send to Gradient" }).click();
+        await page.locator(".pfx-c-workbench--gradient").waitFor();
+        assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 10,
+          "Tone scale transfers to Gradient without loss");
 
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Collections" }).click();
         await page.getByRole("button", { name: "Save current color" }).click();
