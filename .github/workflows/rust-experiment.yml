@@ -67,10 +67,30 @@ jobs:
             sleep 1
           done
           PFX_COLORS_URL=http://127.0.0.1:4174/ node scripts/rust-drag-perf.browser.mjs
+      - name: Assemble self-contained isolated staging preview
+        run: node scripts/prepare-rust-staging.mjs
+      - name: Verify actual independent staging build with two browsers
+        run: |
+          npm run preview -- --outDir staging-dist --host 127.0.0.1 --port 4175 > /tmp/pfx-rust-staging.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4175/ > /dev/null; then break; fi
+            sleep 1
+          done
+          PFX_STAGING_URL=http://127.0.0.1:4175/ node scripts/rust-staging.browser.mjs
+      - name: Bundle independent staging site (ready for static hosting)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pfx-colors-rust-staging-${{ github.sha }}
+          retention-days: 30
+          if-no-files-found: error
+          include-hidden-files: true
+          path: staging-dist/
       - name: Store experiment screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: rust-colors-experiment-evidence
-          path: browser-evidence/rust-experiment/
+          path: |
+            browser-evidence/rust-experiment/
+            browser-evidence/rust-staging/
           if-no-files-found: ignore
