@@ -31,6 +31,8 @@ try {
   mkdirSync(output, { recursive: true });
   cpSync(wasm, join(output, "pfx_color_ffi.wasm"));
   cpSync(wrapper, join(output, "pfx-color-core.mjs"));
+  cpSync(join(temporary, "bindings/javascript/pfx-color-tools.mjs"), join(output, "pfx-color-tools.mjs"));
+  cpSync(join(temporary, "bindings/javascript/pfx-color-workspace.mjs"), join(output, "pfx-color-workspace.mjs"));
   writeFileSync(join(output, "REVISION"), revision + "\n");
   console.log("Pinned Rust engine compiled and bundled locally:", revision);
 } finally {
