@@ -85,15 +85,25 @@ async function scenario(browser, browserName, viewport, engine) {
     const redoGradient = await current.inputValue();
     assert.equal(undoGradient, redoGradient, "gradient edit undo/redo keeps selected color");
     if (engine === "rust") {
-      await page.locator('canvas[data-rust-gradient-preview="ready"]').waitFor({ timeout: 30000 });
-      const sampled = await page.evaluate(() => {
-        const counts = window.__PFX_RUST_OPS__;
+      // Take the pixel and revision snapshot atomically: an observer may
+      // schedule another worker frame between separate Playwright calls.
+      const sampledHandle = await page.waitForFunction(() => {
+        const stats = window.__PFX_RUST_RENDER__;
         const canvas = document.querySelector('canvas[data-rust-gradient-preview="ready"]');
-        const ctx = canvas?.getContext("2d");
+        if (!stats || !canvas || canvas.width <= 0 || canvas.height <= 0 ||
+          stats.paintRevision !== stats.latestRevision) return false;
+        const ctx = canvas.getContext("2d");
         const image = ctx?.getImageData(0, 0, canvas.width, canvas.height).data;
-        return { counts, width: canvas?.width, height: canvas?.height,
-          alphaAtCenter: image ? image[(Math.floor(canvas.height / 2) * canvas.width + Math.floor(canvas.width / 2)) * 4 + 3] : -1 };
-      });
+        return {
+          counts: { ...window.__PFX_RUST_OPS__ },
+          width: canvas.width, height: canvas.height,
+          alphaAtCenter: image ? image[
+            (Math.floor(canvas.height / 2) * canvas.width +
+              Math.floor(canvas.width / 2)) * 4 + 3
+          ] : -1,
+        };
+      }, null, { timeout: 30000 });
+      const sampled = await sampledHandle.jsonValue();
       for (const operation of [
         "study", "tonal", "harmony", "gradientCreate", "gradientSample",
         "gradientRaster", "convert", "formatHex",
