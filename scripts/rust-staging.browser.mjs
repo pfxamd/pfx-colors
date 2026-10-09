@@ -32,6 +32,23 @@ for (const [name, type] of [["chromium", chromium], ["firefox", firefox]]) {
           .waitFor({ timeout: 30000 });
         const stats = await page.evaluate(() => window.__PFX_RUST_RENDER__);
         assert.ok(stats?.worker && stats.painted > 0);
+        const blocked = await page.evaluate(() => {
+          const banner = document.querySelector("#pfx-rust-staging-bar");
+          const rect = banner.getBoundingClientRect();
+          const candidates = document.querySelectorAll(
+            "button, input, select, textarea, [role='slider']"
+          );
+          let total = 0;
+          for (const control of candidates) {
+            const box = control.getBoundingClientRect();
+            if (!box.width || !box.height) continue;
+            const x = Math.max(0, Math.min(rect.right, box.right) - Math.max(rect.left, box.left));
+            const y = Math.max(0, Math.min(rect.bottom, box.bottom) - Math.max(rect.top, box.top));
+            if (x * y >= 32) total += 1;
+          }
+          return total;
+        });
+        assert.equal(blocked, 0, "Staging comparison bar obscures interactive controls");
         const meta = await page.locator('meta[name="robots"]').getAttribute("content");
         assert.match(meta, /noindex/);
         const manifest = await (await context.request.get(new URL("preview-info/build.json", origin).href)).json();
