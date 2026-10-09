@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const revision = "3b5499df2dda2d90ac5ce0c44322edcc833da8a6";
+const revision = "7b382b115de33a43845a5dea9409a57e68d2210f";
 const source = "https://github.com/pfxamd/pfx-color-core.git";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = join(root, "public", "pfx-rust");
