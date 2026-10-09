@@ -2,7 +2,11 @@
 import type { GradientDefinition } from "@pfx/color-core";
 
 type CoreColor = { space: string; channels: number[]; alpha: number };
-type PixelHandle = { rasterRGBA8(width: number, height: number): Uint8ClampedArray; dispose(): void };
+type PixelHandle = {
+  rasterRGBA8(width: number, height: number): Uint8ClampedArray;
+  rasterPreviewRGBA8(width: number, height: number): Uint8ClampedArray;
+  dispose(): void;
+};
 type WasmCore = {
   createCssGradient(stops: Array<{ position: number; color: CoreColor }>,
     options: Record<string, unknown>): PixelHandle;
@@ -58,7 +62,7 @@ function render(core: WasmCore, job: Job): Uint8ClampedArray {
     gamut: "css",
   });
   try {
-    const pixels = handle.rasterRGBA8(width, height);
+    const pixels = handle.rasterPreviewRGBA8(width, height);
     if (pixels.length !== width * height * 4) {
       throw new Error("Rust raster returned an invalid pixel count");
     }
