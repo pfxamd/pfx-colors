@@ -8,6 +8,7 @@
  * contract for picker commits, gradients, undo and redo.
  */
 import type { PfxColorsWorkspace } from "@pfx/color-core";
+import { enableRustOperations } from "./operations";
 
 export type WorkspaceFactory = (initial: string) => PfxColorsWorkspace;
 
@@ -25,6 +26,7 @@ export async function loadExperimentalWorkspace(): Promise<WorkspaceFactory> {
   if (typeof workspaceModule.createPfxColorsWorkspace !== "function") {
     throw new Error("Rust workspace API is missing");
   }
+  enableRustOperations(core);
   // This structural adapter is deliberately isolated and verified against
   // real browser interactions in rust-integration.browser.mjs. The upstream
   // workspace is not advertised as a generally compatible drop-in package.
