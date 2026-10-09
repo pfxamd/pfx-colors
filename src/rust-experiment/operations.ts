@@ -60,9 +60,6 @@ type Operations = {
   sampleGradient: typeof legacySample;
   convert: (input: ColorInput, target: ColorSpaceId) => ColorValue;
   formatHex: (input: ColorInput) => string;
-  rasterizeGradient: (
-    gradient: GradientDefinition, width: number, height: number,
-  ) => Uint8ClampedArray;
 };
 
 const legacy: Operations = {
@@ -73,9 +70,6 @@ const legacy: Operations = {
   sampleGradient: legacySample,
   convert: legacyEngine.color.convert.bind(legacyEngine.color),
   formatHex: legacyEngine.color.formatHex.bind(legacyEngine.color),
-  rasterizeGradient: () => {
-    throw new Error("Rust pixel renderer is not enabled");
-  },
 };
 let active: Operations = legacy;
 const counters: Record<string, number> = {};
@@ -235,42 +229,18 @@ export function enableRustOperations(core: CoreApi): void {
     formatHex(input: ColorInput): string {
       return counted("formatHex", () => hex(from(input)));
     },
-    rasterizeGradient(def: GradientDefinition, width: number, height: number): Uint8ClampedArray {
-      return counted("gradientRaster", () => {
-        if (!Number.isInteger(width) || !Number.isInteger(height)
-          || width <= 0 || height <= 0 || width * height > 32768) {
-          throw new RangeError("Experimental gradient raster dimensions are invalid");
-        }
-        const handle = core.createCssGradient(stopsOf(def), {
-          ...details(def), width, height, centerX: def.centerX * width,
-          centerY: def.centerY * height, radialShape: "circle",
-          radialExtent: "farthest-corner",
-        });
-        const pixels = new Uint8ClampedArray(width * height * 4);
-        try {
-          for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-              const color = handle.samplePixel(x + 0.5, y + 0.5);
-              const i = (y * width + x) * 4;
-              pixels[i] = Math.round(Math.max(0, Math.min(1, color.channels[0])) * 255);
-              pixels[i + 1] = Math.round(Math.max(0, Math.min(1, color.channels[1])) * 255);
-              pixels[i + 2] = Math.round(Math.max(0, Math.min(1, color.channels[2])) * 255);
-              pixels[i + 3] = Math.round(color.alpha * 255);
-            }
-          }
-          return pixels;
-        } finally { handle.dispose(); }
-      });
-    },
+
   };
   // Explicit diagnostic probe used only in branch-based browser verification.
   Object.defineProperty(window, "__PFX_RUST_OPS__", { value: counters, configurable: true });
 }
 
 export function isRustExperiment(): boolean { return active !== legacy; }
-export function rasterizeGradient(
-  gradient: GradientDefinition, width: number, height: number,
-): Uint8ClampedArray { return active.rasterizeGradient(gradient, width, height); }
+/** Incremented only after a real Rust worker raster reaches the canvas. */
+export function recordRustGradientRaster(): void {
+  if (active === legacy) throw new Error("Rust gradient raster is disabled");
+  counters.gradientRaster = (counters.gradientRaster ?? 0) + 1;
+}
 export const generateColorStudy: typeof legacyStudy = (...args) => active.generateColorStudy(...args);
 export const generateTonalPalette: typeof legacyTonal = (...args) => active.generateTonalPalette(...args);
 export const generateHarmony: typeof legacyHarmony = (...args) => active.generateHarmony(...args);
