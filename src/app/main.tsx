@@ -7,6 +7,7 @@ import "./tones.css";
 import "./picker.css";
 import "./harmony.css";
 import "./collections.css";
+import "./gradient.css";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("PFx Colors root element missing");

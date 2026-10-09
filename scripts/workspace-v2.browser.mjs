@@ -135,6 +135,38 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 2,
           "Conic gradient received the current harmony set");
 
+        // Exercise gradient composition and source exports without publishing the branch.
+        const gradientType = page.getByRole("button", { name: "radial gradient" });
+        await gradientType.click();
+        assert.equal(await gradientType.getAttribute("aria-pressed"), "true", "Radial type selected");
+        const angle = page.getByRole("slider", { name: "Gradient angle" });
+        assert.equal(await angle.isDisabled(), true, "Angle disabled for radial geometry");
+        await page.getByRole("button", { name: "linear gradient" }).click();
+        await angle.focus();
+        await angle.press("ArrowRight");
+        assert.equal(await angle.isDisabled(), false, "Linear angle editable");
+        await page.getByRole("button", { name: "Copy CSS", exact: true }).click();
+        assert.match(await page.evaluate(() => window.__PFX_COPIED__), /gradient\(/, "Valid CSS gradient copied");
+        const stopsBefore = await page.locator(".pfx-c-gradient-stop-handle").count();
+        await page.getByRole("button", { name: "Add gradient stop" }).click();
+        assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), stopsBefore + 1, "Added stop");
+        await page.getByRole("button", { name: "Copy stop HEX" }).click();
+        assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^#[0-9A-F]{6}$/, "Stop HEX copied");
+        await page.getByRole("button", { name: "Remove selected stop" }).click();
+        assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), stopsBefore, "Removed stop");
+        await page.getByRole("button", { name: "Export", exact: false }).click();
+        const cssFileEvent = page.waitForEvent("download");
+        await page.getByRole("button", { name: "Download CSS" }).click();
+        assert.equal((await cssFileEvent).suggestedFilename(), "pfx-gradient.css");
+        const jsonFileEvent = page.waitForEvent("download");
+        await page.getByRole("button", { name: "Download JSON" }).click();
+        assert.equal((await jsonFileEvent).suggestedFilename(), "pfx-gradient.json");
+        await page.getByRole("button", { name: "Copy JSON" }).click();
+        const gradientJson = JSON.parse(await page.evaluate(() => window.__PFX_COPIED__));
+        assert.equal(gradientJson.stops.length, stopsBefore, "Exported gradient stops retained");
+        await page.getByRole("button", { name: "Save colors" }).click();
+        await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-gradient.png`, animations: "disabled" });
+
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Collections" }).click();
         await page.getByRole("button", { name: "Save current color" }).click();
         assert.ok(await page.locator(".pfx-c-collections .pfx-v2__swatch").count() >= 1);
