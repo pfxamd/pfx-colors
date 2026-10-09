@@ -208,7 +208,7 @@ export class PilotRustColorEngine implements ColorEngine {
     return this.attempt("interpolate", original, () => {
       const space = canonical(options.space ?? "oklch");
       const outputSpace = canonical(options.outputSpace ?? "srgb");
-      if (!allowed.has(space) || !allowed.has(outputSpace) || options.hue === "raw") return null;
+      if (!allowed.has(space) || !allowed.has(outputSpace)) return null;
       const a = this.input(first), b = this.input(second);
       if (!a || !b || !Number.isFinite(amount)) return null;
       const mixed = this.rust.interpolate(a, b, Math.max(0, Math.min(1, amount)), {
