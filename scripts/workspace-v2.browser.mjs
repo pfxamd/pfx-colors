@@ -67,7 +67,35 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
         await page.locator(".pfx-c-explore").waitFor();
         assert.ok(await page.locator(".pfx-v2__swatch").count() >= 20);
-        await page.locator('input[placeholder="Color name or #RRGGBB"]').fill("#ff8800");
+        const search = page.locator('input[placeholder="Color name or #RRGGBB"]');
+        const countNamed = await page.locator(".pfx-explore__summary strong").innerText();
+        assert.match(countNamed, /148/, "Full 148-name CSS catalog is available");
+        await search.fill("royal blue");
+        await page.getByRole("button", { name: "Find", exact: true }).click();
+        assert.equal(await page.locator(".pfx-c-explore .pfx-v2__swatch").count(), 1,
+          "Name search narrows the named catalog");
+        await search.fill("");
+        await page.getByRole("button", { name: "Find", exact: true }).click();
+        await page.getByRole("button", { name: "All RGB", exact: true }).click();
+        await page.getByRole("button", { name: "Blue", exact: true }).click();
+        await page.waitForFunction(() => document.querySelectorAll(".pfx-c-explore .pfx-v2__swatch").length === 48,
+          null, { timeout: 15000 });
+        assert.equal(await page.getByRole("button", { name: "Blue", exact: true }).getAttribute("aria-pressed"), "true");
+        await page.getByRole("button", { name: "Next", exact: true }).click();
+        await page.waitForFunction(() => document.querySelectorAll(".pfx-c-explore .pfx-v2__swatch").length === 48,
+          null, { timeout: 15000 });
+        await page.getByRole("button", { name: "Previous", exact: true }).click();
+        await page.waitForFunction(() => document.querySelectorAll(".pfx-c-explore .pfx-v2__swatch").length === 48,
+          null, { timeout: 15000 });
+        await page.getByRole("button", { name: "Reset filters", exact: true }).click();
+        await page.getByRole("combobox", { name: "RGB browsing order" }).selectOption("reverse");
+        assert.match(await page.locator(".pfx-c-explore .pfx-v2__swatch-info span").first().innerText(),
+          /#FFFFFF/, "Reverse RGB enumerates complete HEX range");
+        await page.getByRole("button", { name: "Set reference" }).click();
+        await page.locator(".pfx-c-explore .pfx-v2__swatch-color").nth(1).click();
+        assert.match(await page.locator(".pfx-explore__compare-result output").innerText(), /:1 contrast/,
+          "Comparison calculates contrast for selected colors");
+        await search.fill("#ff8800");
         await page.getByRole("button", { name: "Find", exact: true }).click();
         assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(), "#ff8800");
         assert.ok(await page.locator(".pfx-v2__swatch").count() >= 1);
