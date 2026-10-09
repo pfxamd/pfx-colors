@@ -97,7 +97,10 @@ for (const [browserName, engine] of [["chromium", chromium], ["firefox", firefox
         assert.equal(outcome.paintRevision, outcome.latestRevision,
           "Final paint must use the latest drag revision");
         assert.ok(outcome.latestRevision > initial.latestRevision);
-        assert.ok(outcome.painted >= initial.painted + 1);
+        // Preview must advance repeatedly during the pointer gesture, not
+        // freeze until the final request finally matches the current state.
+        assert.ok(outcome.painted >= initial.painted + 5,
+          "Rust gradient preview did not advance during drag: " + JSON.stringify(outcome));
         assert.deepEqual(errors, [], "No runtime errors during drag");
         await page.screenshot({
           path: "browser-evidence/rust-experiment/drag-" + browserName +
