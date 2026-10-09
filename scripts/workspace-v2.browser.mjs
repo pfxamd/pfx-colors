@@ -84,7 +84,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("button", { name: "Next", exact: true }).click();
         await page.waitForFunction(() =>
           document.querySelector(".pfx-explore__summary")?.textContent?.includes("Page 2") &&
-          document.querySelector(".pfx-explore__summary")?.textContent?.includes("Filtered across all RGB colors") &&
+          document.querySelector(".pfx-explore__summary")?.textContent?.includes("Filtered RGB results") &&
           document.querySelectorAll(".pfx-c-explore .pfx-v2__swatch").length === 48,
           null, { timeout: 15000 });
         await page.getByRole("button", { name: "Previous", exact: true }).click();
