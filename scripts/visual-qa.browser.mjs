@@ -9,7 +9,7 @@ mkdirSync(root, { recursive: true });
 const toolNames = ["Home", "Explore", "Picker", "Tones", "Harmony", "Gradient", "Collections"];
 const results = [];
 function luminance(css) {
-  const channels = (css.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+  const channels = /^#[a-f\d]{6}$/i.test(css) ? [1,3,5].map(i => parseInt(css.slice(i,i+2),16)) : (css.match(/[\d.]+/g) ?? []).slice(0,3).map(Number);
   return channels.map(value => {
     const n = value / 255;
     return n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
