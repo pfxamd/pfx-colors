@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: pfxamd/pfx-color-core
-          ref: acf1ad39f69d13ee7057f9483f8a329e750f20b1
+          ref: 28aff99941787ee30f52742c36110bc4e03a8b7c
           path: .rust-color-core
       - name: Set up Rust for WebAssembly
         uses: dtolnay/rust-toolchain@stable
