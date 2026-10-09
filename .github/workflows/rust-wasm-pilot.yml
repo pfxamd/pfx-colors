@@ -1,0 +1,48 @@
+name: Experimental Rust WASM Integration
+
+on:
+  push:
+    branches: [integration/rust-wasm-pilot]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install application dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run pinned TypeScript color tests
+        run: npm test
+      - name: Compile pinned Rust core and copy offline WASM assets
+        run: node scripts/prepare-rust-pilot.mjs
+      - name: Typecheck and bundle self-contained experimental app
+        run: npm run build
+      - name: Install real browser test runner
+        run: npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.56.0
+      - name: Install Chromium and Firefox
+        run: npx playwright install --with-deps chromium firefox
+      - name: Start local preview and test real browser interaction
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/pfx-rust-preview.log 2>&1 &
+          for n in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/rust-pilot-browser.mjs
+      - name: Save compiled isolated pilot
+        uses: actions/upload-artifact@v4
+        with:
+          name: pfx-colors-rust-wasm-experimental
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14

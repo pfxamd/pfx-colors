@@ -1,0 +1,72 @@
+import assert from "node:assert/strict";
+import { chromium, firefox } from "playwright";
+
+const origin = "http://127.0.0.1:4173/";
+
+for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]) {
+  const browser = await browserType.launch({ headless: true });
+  try {
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      for (const requested of ["legacy", "rust"]) {
+        const page = await browser.newPage({ viewport });
+        const errors = [];
+        page.on("pageerror", error => errors.push(error.message));
+        try {
+          const url = requested === "rust" ? origin + "?engine=rust" : origin;
+          const response = await page.goto(url, { waitUntil: "networkidle" });
+          assert.equal(response.status(), 200);
+          await page.locator(".pfx-c-home").waitFor();
+          assert.equal(await page.locator(".pfx-c-study__swatch").count(), 10);
+          assert.equal(await page.locator(".pfx-c-brand strong").textContent(), "PFx Colors");
+          const status = await page.evaluate(() => globalThis.__pfxRustPilot ?? null);
+          if (requested === "legacy") {
+            assert.equal(status, null, "No Rust API should load in the default app");
+          } else {
+            assert.equal(status?.status, "rust", JSON.stringify(status));
+            assert.ok(status?.rustCalls > 0, "Home/Picker should execute actual Rust conversions");
+            assert.ok(status?.routes?.convert > 0, "Color convert must route to Rust");
+          }
+          const current = page.locator('input[aria-label="Current color"]');
+          assert.match(await current.inputValue(), /^#[0-9a-f]{6}$/i);
+          await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Picker" }).click();
+          await page.locator(".pfx-c-workbench--picker").waitFor();
+          await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Palette" }).click();
+          await page.locator(".pfx-c-workbench--palette").waitFor();
+          assert.ok(await page.locator(".pfx-c-palette-ribbon button").count() >= 3);
+          await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Harmony" }).click();
+          await page.locator(".pfx-c-workbench--harmony").waitFor();
+          await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Gradient" }).click();
+          await page.locator(".pfx-c-workbench--gradient").waitFor();
+          const consoleResult = await page.evaluate(async () => {
+            if (!globalThis.__pfxRustPilot) return null;
+            const module = await import("/pfx-rust/pfx-color-core.mjs");
+            const bytes = await fetch("/pfx-rust/pfx_color_ffi.wasm").then(r => r.arrayBuffer());
+            const rust = await module.createPfxColorCore(bytes);
+            return {
+              difference: rust.difference(
+                { space: "srgb", channels: [0, 0, 0], alpha: 1 },
+                { space: "srgb", channels: [1, 1, 1], alpha: 1 }, "ok"),
+              contrast: rust.contrast(
+                { space: "srgb", channels: [0, 0, 0], alpha: 1 },
+                { space: "srgb", channels: [1, 1, 1], alpha: 1 }),
+            };
+          });
+          if (requested === "rust") {
+            assert.ok(Math.abs(consoleResult.contrast - 21) < 1e-12);
+            assert.ok(Math.abs(consoleResult.difference - 1) < 1e-7);
+          }
+          assert.deepEqual(errors, [], name + " " + viewport.width + " " + requested);
+          console.log(name, viewport.width + "x" + viewport.height, requested, "PASS");
+        } finally {
+          await page.close();
+        }
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+}
+console.log("PFx Colors experimental Rust-WASM browser pilot: PASS");
