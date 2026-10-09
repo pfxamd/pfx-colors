@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { copyColorText } from "./clipboard";
 import type { ThemePreference, ResolvedTheme } from "./theme";
 
@@ -33,6 +33,20 @@ type Props = {
 
 export function WorkspaceShell(props: Props) {
   const [copyStatus, setCopyStatus] = useState("");
+  const tabsRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = tabsRef.current;
+    const active = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !active) return;
+    const bounds = nav.getBoundingClientRect();
+    const item = active.getBoundingClientRect();
+    const gutter = 12;
+    if (item.left < bounds.left + gutter) {
+      nav.scrollLeft += item.left - bounds.left - gutter;
+    } else if (item.right > bounds.right - gutter) {
+      nav.scrollLeft += item.right - bounds.right + gutter;
+    }
+  }, [props.activeTool]);
   const copyCurrent = async () => {
     const copied = await copyColorText(props.currentHex.toUpperCase());
     setCopyStatus(copied ? "Copied" : "Copy unavailable");
@@ -46,7 +60,7 @@ export function WorkspaceShell(props: Props) {
           <strong>PFx Colors</strong>
           <span>COLOR WORKSPACE</span>
         </div>
-        <nav className="pfx-c-tabs" aria-label="Color tools">
+        <nav className="pfx-c-tabs" ref={tabsRef} aria-label="Color tools">
           {TOOLS.map(tool => (
             <button type="button" key={tool.id}
               className={props.activeTool === tool.id ? "pfx-is-current" : ""}
