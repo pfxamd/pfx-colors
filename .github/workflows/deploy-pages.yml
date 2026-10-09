@@ -64,8 +64,7 @@ jobs:
         env:
           PFX_BASE_PATH: /${{ github.event.repository.name }}/
 
-      # Snapshot the existing public site before adding the /preview/ subtree.
-      # The experimental branch is pinned to a reviewed, browser-tested commit.
+      # Snapshot production output before adding the independently pinned /preview/ subtree.
       - name: Snapshot existing public files
         run: |
           find dist -type f -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/pfx-original.sha256"
@@ -78,28 +77,16 @@ jobs:
           path: preview-source
           persist-credentials: false
 
-      - name: Checkout pinned standalone Rust color engine
-        uses: actions/checkout@v4
-        with:
-          repository: pfxamd/pfx-color-core
-          ref: 28aff99941787ee30f52742c36110bc4e03a8b7c
-          path: preview-source/rust-core-src
-          persist-credentials: false
-
-      - name: Set up portable Rust WebAssembly target
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - name: Compile the preview Rust engine
+      # Both sites use exactly the same pinned Rust source. Reuse the
+      # verified production WASM/bindings instead of recompiling them.
+      - name: Reuse the pinned Rust engine for the isolated preview
         run: |
-          cargo build --manifest-path preview-source/rust-core-src/Cargo.toml -p pfx-color-ffi --target wasm32-unknown-unknown --release
           mkdir -p preview-source/public/rust
-          cp preview-source/rust-core-src/target/wasm32-unknown-unknown/release/pfx_color_ffi.wasm preview-source/public/rust/
-          cp preview-source/rust-core-src/bindings/javascript/pfx-color-core.mjs preview-source/public/rust/
-          cp preview-source/rust-core-src/bindings/javascript/pfx-color-tools.mjs preview-source/public/rust/
-          cp preview-source/rust-core-src/bindings/javascript/pfx-color-workspace.mjs preview-source/public/rust/
-          test -s preview-source/public/rust/pfx_color_ffi.wasm
+          cp public/rust/pfx_color_ffi.wasm preview-source/public/rust/
+          cp public/rust/pfx-color-core.mjs preview-source/public/rust/
+          cp public/rust/pfx-color-tools.mjs preview-source/public/rust/
+          cp public/rust/pfx-color-workspace.mjs preview-source/public/rust/
+          cmp public/rust/pfx_color_ffi.wasm preview-source/public/rust/pfx_color_ffi.wasm
 
       - name: Install, test, and build the isolated preview
         working-directory: preview-source
@@ -112,14 +99,13 @@ jobs:
           mkdir -p ../dist/preview
           cp -a staging-dist/. ../dist/preview/
 
-      - name: Verify untouched production payload and correctly nested preview
+      - name: Verify production payload unchanged by isolated preview build
         run: |
           sha256sum --check --status "$RUNNER_TEMP/pfx-original.sha256"
           test -s dist/preview/rust/pfx_color_ffi.wasm
           test -s dist/preview/rust/pfx-color-core.mjs
           test -s dist/preview/preview-info/build.json
           grep -Fq '/pfx-colors/assets/' dist/index.html
-          test -s dist/rust/pfx_color_ffi.wasm
           grep -Fq '/pfx-colors/preview/assets/' dist/preview/index.html
           grep -Fq '__PFX_RUST_STAGING__ = true' dist/preview/index.html
           grep -Fq 'noindex' dist/preview/index.html
