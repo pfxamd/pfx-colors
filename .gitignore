@@ -12,3 +12,12 @@ playwright-report/
 .DS_Store
 Thumbs.db
 *.zip
+
+# Generated Rust and staging outputs
+public/rust/
+staging-dist/
+browser-evidence/
+.pfx-rust-core/
+rust-production-source/
+preview-source/
+rust-core-src/
