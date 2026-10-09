@@ -1547,6 +1547,7 @@ function Gradient({
   const previewRef = useRef<HTMLDivElement>(null);
   const rustCanvasRef = useRef<HTMLCanvasElement>(null);
   const rustWorkerRef = useRef<Worker | null>(null);
+  const [rustPreviewFailed, setRustPreviewFailed] = useState(false);
   const renderRevision = useRef(0);
   const inFlight = useRef(false);
   const latestRender = useRef<{
@@ -1632,8 +1633,15 @@ function Gradient({
       durationMs: number; pixels: ArrayBuffer;
     }>) => {
       if (event.data.kind === "error") {
+        console.error("PFx Rust gradient worker error:", event.data.message);
         if (rustCanvasRef.current) rustCanvasRef.current.dataset.rustGradientPreview = "error";
-        throw new Error("Rust gradient worker: " + event.data.message);
+        worker.terminate();
+        rustWorkerRef.current = null;
+        latestRender.current = null;
+        inFlight.current = false;
+        flushRender.current = () => {};
+        setRustPreviewFailed(true);
+        return;
       }
       inFlight.current = false;
       stats.completed += 1;
@@ -1662,8 +1670,15 @@ function Gradient({
       flushRender.current();
     };
     worker.onerror = (event) => {
+      event.preventDefault();
+      console.error("PFx Rust gradient worker failed:", event.message);
       if (rustCanvasRef.current) rustCanvasRef.current.dataset.rustGradientPreview = "error";
-      throw new Error("Rust gradient worker failed: " + event.message);
+      worker.terminate();
+      rustWorkerRef.current = null;
+      latestRender.current = null;
+      inFlight.current = false;
+      flushRender.current = () => {};
+      setRustPreviewFailed(true);
     };
     worker.postMessage({
       kind: "init",
@@ -1833,7 +1848,7 @@ function Gradient({
           <div
             ref={previewRef}
             className="pfx-c-gradient-preview"
-            style={{ background: isRustExperiment() ? "transparent" : css }}
+            style={{ background: isRustExperiment() && !rustPreviewFailed ? "transparent" : css }}
             onClick={(event) => {
               if (event.target !== event.currentTarget) return;
               const rect = event.currentTarget.getBoundingClientRect();
@@ -1844,7 +1859,7 @@ function Gradient({
               commitColor(asInput(sampleGradient(gradient, at)));
             }}
           >
-            {isRustExperiment() && (
+            {isRustExperiment() && !rustPreviewFailed && (
               <canvas
                 ref={rustCanvasRef}
                 aria-hidden="true"
