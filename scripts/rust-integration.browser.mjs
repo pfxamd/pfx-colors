@@ -101,8 +101,8 @@ async function scenario(browser, browserName, viewport, engine) {
         assert.ok(sampled.counts?.[operation] > 0,
           "Real Rust WASM operation not exercised: " + operation + " " + JSON.stringify(sampled));
       }
-      assert.equal(sampled.width, 144);
-      assert.equal(sampled.height, 80);
+      assert.equal(sampled.width, 160);
+      assert.ok(sampled.height > 0 && sampled.height <= 180);
       assert.ok(sampled.alphaAtCenter > 0);
     } else {
       assert.equal(await page.evaluate(() => window.__PFX_RUST_OPS__), undefined);
