@@ -69,7 +69,7 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
   };
   const clearFilters = () => {
     setFilters({ ...DEFAULT_FILTERS });
-    setPage(0);
+    setPage(mode === "rgb" ? Math.floor(colorIndex(selectedHex, rgbOrder) / RGB_PAGE_SIZE) : 0);
     setCursors([0]);
     setScan(EMPTY_SCAN);
   };
@@ -162,7 +162,10 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
           <button type="button" className={mode === "named" ? "pfx-is-active" : ""}
             aria-pressed={mode === "named"} onClick={() => { setMode("named"); setPage(0); }}>Named colors</button>
           <button type="button" className={mode === "rgb" ? "pfx-is-active" : ""}
-            aria-pressed={mode === "rgb"} onClick={() => { setMode("rgb"); setPage(0); }}>All RGB</button>
+            aria-pressed={mode === "rgb"} onClick={() => {
+              setMode("rgb");
+              setPage(filtered ? 0 : Math.floor(colorIndex(selectedHex, rgbOrder) / RGB_PAGE_SIZE));
+            }}>All RGB</button>
         </div>
       </div>
 
@@ -238,7 +241,7 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
               intFormat.format(RGB_TOTAL) + " addressable RGB colors"}</strong>
               <span>{mode === "rgb" && filtered ?
                 scan.searching ? "Scanning color space · " + (scan.progress * 100).toFixed(1) + "%" :
-                  scan.end ? "End of matches reached" : "Filtered across all RGB colors" :
+                  scan.end ? "End of matches reached" : "Filtered RGB results · exact on-demand scan" :
                 mode === "rgb" ? "Complete, exact 24-bit catalog" : "Including CSS spelling aliases"}</span>
             </div>
             <div className="pfx-v2__pager">
