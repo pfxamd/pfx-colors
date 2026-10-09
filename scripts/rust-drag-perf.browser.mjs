@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { chromium, firefox } from "playwright";
 
 const origin = process.env.PFX_COLORS_URL ?? "http://127.0.0.1:4173/";
-mkdirSync("browser-evidence/rust-experiment", { recursive: true });
+mkdirSync("browser-evidence/rust-regression", { recursive: true });
 
 for (const [browserName, engine] of [["chromium", chromium], ["firefox", firefox]]) {
   const browser = await engine.launch({ headless: true });
@@ -103,7 +103,7 @@ for (const [browserName, engine] of [["chromium", chromium], ["firefox", firefox
           "Rust gradient preview did not advance during drag: " + JSON.stringify(outcome));
         assert.deepEqual(errors, [], "No runtime errors during drag");
         await page.screenshot({
-          path: "browser-evidence/rust-experiment/drag-" + browserName +
+          path: "browser-evidence/rust-regression/drag-" + browserName +
             "-" + viewport.width + ".png", animations: "disabled",
         });
         console.log("RUST DRAG PERF PASS", browserName, viewport.width + "x" +
