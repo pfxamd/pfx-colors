@@ -54,6 +54,8 @@ async function scenario(browser, browserName, viewport, engine) {
     assert.match(fromPalette, /^#[0-9a-f]{6}$/i);
     await page.getByRole("button", { name: /UNDO/ }).click();
     const undone = await current.inputValue();
+    console.log("UNDO TRACE", browserName, viewport.width, engine,
+      JSON.stringify({ picker, afterPicker, paletteHexes, fromPalette, undone }));
     assert.equal(undone, afterPicker, "undo must restore the prior picked color");
     await page.getByRole("button", { name: /REDO/ }).click();
     assert.equal(await current.inputValue(), fromPalette, "redo must recover palette selection");
