@@ -1,0 +1,36 @@
+name: Visual review of live Rust preview (no deployment)
+
+on:
+  push:
+    branches: [experiment/rust-color-core]
+    paths:
+      - scripts/live-preview-audit.browser.mjs
+      - .github/workflows/live-preview-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser audit runner
+        run: npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.56.0
+      - name: Install Chromium and Firefox
+        run: npx playwright install --with-deps chromium firefox
+      - name: Inspect actual public preview without changing it
+        env:
+          PFX_LIVE_PREVIEW: https://pfxamd.github.io/pfx-colors/preview/
+        run: node scripts/live-preview-audit.browser.mjs
+      - name: Save screenshots and measured obstructions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pfx-live-rust-visual-review
+          path: browser-evidence/live-review/
+          if-no-files-found: warn
