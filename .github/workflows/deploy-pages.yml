@@ -41,6 +41,88 @@ jobs:
         env:
           PFX_BASE_PATH: /${{ github.event.repository.name }}/
 
+      # Snapshot the existing public site before adding the /preview/ subtree.
+      # The experimental branch is pinned to a reviewed, browser-tested commit.
+      - name: Snapshot existing public files
+        run: |
+          find dist -type f -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/pfx-original.sha256"
+
+      - name: Checkout validated Rust preview source
+        uses: actions/checkout@v4
+        with:
+          repository: pfxamd/pfx-colors
+          ref: 48b5fc5d29c07db1b1ddb5de75d16e9c414ea01a
+          path: preview-source
+          persist-credentials: false
+
+      - name: Checkout pinned standalone Rust color engine
+        uses: actions/checkout@v4
+        with:
+          repository: pfxamd/pfx-color-core
+          ref: 28aff99941787ee30f52742c36110bc4e03a8b7c
+          path: preview-source/rust-core-src
+          persist-credentials: false
+
+      - name: Set up portable Rust WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Compile the preview Rust engine
+        run: |
+          cargo build --manifest-path preview-source/rust-core-src/Cargo.toml -p pfx-color-ffi --target wasm32-unknown-unknown --release
+          mkdir -p preview-source/public/rust
+          cp preview-source/rust-core-src/target/wasm32-unknown-unknown/release/pfx_color_ffi.wasm preview-source/public/rust/
+          cp preview-source/rust-core-src/bindings/javascript/pfx-color-core.mjs preview-source/public/rust/
+          cp preview-source/rust-core-src/bindings/javascript/pfx-color-tools.mjs preview-source/public/rust/
+          cp preview-source/rust-core-src/bindings/javascript/pfx-color-workspace.mjs preview-source/public/rust/
+          test -s preview-source/public/rust/pfx_color_ffi.wasm
+
+      - name: Install, test, and build the isolated preview
+        working-directory: preview-source
+        env:
+          PFX_BASE_PATH: /pfx-colors/preview/
+        run: |
+          npm install --no-audit --no-fund
+          npm run check
+          node scripts/prepare-rust-staging.mjs
+          mkdir -p ../dist/preview
+          cp -a staging-dist/. ../dist/preview/
+
+      - name: Verify untouched production payload and correctly nested preview
+        run: |
+          sha256sum --check --status "$RUNNER_TEMP/pfx-original.sha256"
+          test -s dist/preview/rust/pfx_color_ffi.wasm
+          test -s dist/preview/rust/pfx-color-core.mjs
+          test -s dist/preview/preview-info/build.json
+          grep -Fq '/pfx-colors/preview/assets/' dist/preview/index.html
+          grep -Fq '__PFX_RUST_STAGING__ = true' dist/preview/index.html
+          grep -Fq 'noindex' dist/preview/index.html
+          grep -Fq '"hostingBase": "/pfx-colors/preview/"' dist/preview/preview-info/build.json
+          test ! -e dist/rust/pfx_color_ffi.wasm
+
+      - name: Test combined GitHub Pages site in Chromium and Firefox
+        run: |
+          mkdir -p "$RUNNER_TEMP/pfx-pages-root/pfx-colors"
+          cp -a dist/. "$RUNNER_TEMP/pfx-pages-root/pfx-colors/"
+          python3 -m http.server 4177 --bind 127.0.0.1 --directory "$RUNNER_TEMP/pfx-pages-root" > /tmp/pfx-pages-preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4177/pfx-colors/preview/ > /dev/null; then break; fi
+            sleep 1
+          done
+          cd preview-source
+          npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.56.0
+          npx playwright install --with-deps chromium firefox
+          PFX_STAGING_URL=http://127.0.0.1:4177/pfx-colors/preview/ node scripts/rust-staging.browser.mjs
+
+      - name: Preserve preview browser test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pfx-pages-preview-validation
+          path: preview-source/browser-evidence/rust-staging/
+          if-no-files-found: ignore
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
@@ -52,3 +134,19 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify the public preview path after Pages deployment
+        run: |
+          URL="https://pfxamd.github.io/pfx-colors/preview/"
+          for attempt in $(seq 1 36); do
+            if curl --fail --silent --show-error --location "$URL" -o /tmp/pfx-preview-live.html 2>/dev/null \
+              && grep -Fq '__PFX_RUST_STAGING__ = true' /tmp/pfx-preview-live.html \
+              && curl --fail --silent --show-error --location "${URL}rust/pfx_color_ffi.wasm" -o /tmp/pfx-preview-live.wasm 2>/dev/null \
+              && test "$(wc -c < /tmp/pfx-preview-live.wasm)" -gt 10000; then
+              echo "LIVE GitHub Pages Rust preview confirmed: $URL"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "GitHub Pages preview was not independently confirmed"
+          exit 1
