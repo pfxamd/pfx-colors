@@ -53,6 +53,14 @@ export function createPilotWorkspace(initial: string): PilotWorkspace {
     }
     pilotMetrics.rustCalls++;
     pilotMetrics.routes.workspace = (pilotMetrics.routes.workspace ?? 0) + 1;
+    // Test-only readonly status probe; no mutation of workspace from tests.
+    (window as typeof window & {
+      __pfxRustWorkspaceDebug?: () => { color: string; canUndo: boolean; canRedo: boolean };
+    }).__pfxRustWorkspaceDebug = () => ({
+      color: candidate.getState().color.hex,
+      canUndo: candidate.canUndo(),
+      canRedo: candidate.canRedo(),
+    });
     return candidate;
   } catch (error) {
     pilotMetrics.fallbackCalls++;
