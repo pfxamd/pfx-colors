@@ -8,6 +8,7 @@ import "./picker.css";
 import "./harmony.css";
 import "./collections.css";
 import "./gradient.css";
+import "./home.css";
 import "./explore.css";
 
 const rootElement = document.getElementById("root");
