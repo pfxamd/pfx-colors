@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { chromium, firefox } from "playwright";
 
 const origin = process.env.PFX_COLORS_URL ?? "http://127.0.0.1:4173/";
-const evidence = "browser-evidence/rust-experiment";
+const evidence = "browser-evidence/rust-regression";
 mkdirSync(evidence, { recursive: true });
 
 async function scenario(browser, browserName, viewport, engine) {
@@ -169,4 +169,4 @@ for (const [browserName, kind] of [["chromium", chromium], ["firefox", firefox]]
     await browser.close();
   }
 }
-console.log("PFx real React Rust workspace experiment: PASS");
+console.log("PFx Rust/legacy workspace parity regression: PASS");
