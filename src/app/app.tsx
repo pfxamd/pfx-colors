@@ -1595,13 +1595,18 @@ function Gradient({
   // WASM (the browser merely composites the finished RGBA canvas).
   // The standard published UI remains on its original CSS preview path.
   useEffect(() => {
-    if (!isRustExperiment() || !rustCanvasRef.current) return;
+    if (!isRustExperiment() || !rustCanvasRef.current || !previewRef.current) return;
     const canvas = rustCanvasRef.current;
-    canvas.dataset.rustGradientPreview = "pending";
-    const frame = requestAnimationFrame(() => {
+    const surface = previewRef.current;
+    let scheduled = 0;
+    const paint = () => {
       if (!canvas.isConnected) return;
-      const width = 144;
-      const height = 80;
+      const box = surface.getBoundingClientRect();
+      if (box.width <= 0 || box.height <= 0) return;
+      // Preserve the actual preview box aspect ratio; cap the work per frame
+      // while keeping image smoothing browser-native and pointer events free.
+      const width = 160;
+      const height = Math.max(1, Math.min(180, Math.round(width * box.height / box.width)));
       const pixels = rasterizeGradient(gradient, width, height);
       canvas.width = width;
       canvas.height = height;
@@ -1611,8 +1616,19 @@ function Gradient({
       imagePixels.set(pixels);
       context.putImageData(new ImageData(imagePixels, width, height), 0, 0);
       canvas.dataset.rustGradientPreview = "ready";
-    });
-    return () => cancelAnimationFrame(frame);
+    };
+    const schedule = () => {
+      cancelAnimationFrame(scheduled);
+      canvas.dataset.rustGradientPreview = "pending";
+      scheduled = requestAnimationFrame(paint);
+    };
+    const observer = new ResizeObserver(schedule);
+    observer.observe(surface);
+    schedule();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(scheduled);
+    };
   }, [gradient]);
 
   const css = gradientToCss(gradient);
