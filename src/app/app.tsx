@@ -1639,7 +1639,11 @@ function Gradient({
       stats.completed += 1;
       stats.maxRustMs = Math.max(stats.maxRustMs, event.data.durationMs);
       const canvas = rustCanvasRef.current;
-      if (canvas && canvas.isConnected && event.data.revision === renderRevision.current) {
+      // Show each newly completed frame while a drag is in progress.
+      // Waiting for an exact revision match makes Firefox appear frozen
+      // under continuous input because every result arrives one step behind.
+      // Never paint backwards, and only declare "ready" for the final frame.
+      if (canvas && canvas.isConnected && event.data.revision > stats.paintRevision) {
         canvas.width = event.data.width;
         canvas.height = event.data.height;
         const context = canvas.getContext("2d");
@@ -1647,7 +1651,8 @@ function Gradient({
         context.putImageData(new ImageData(
           new Uint8ClampedArray(event.data.pixels), event.data.width, event.data.height,
         ), 0, 0);
-        canvas.dataset.rustGradientPreview = "ready";
+        canvas.dataset.rustGradientPreview =
+          event.data.revision === renderRevision.current ? "ready" : "pending";
         stats.painted += 1;
         stats.paintRevision = event.data.revision;
         recordRustGradientRaster();
