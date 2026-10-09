@@ -8,7 +8,7 @@ migration and does not deploy to GitHub Pages.
 
 - Website repository: `pfxamd/pfx-colors`; production branch `main` untouched.
 - Rust source: `pfxamd/pfx-color-core`, pinned **exactly** to commit
-  `acf1ad39f69d13ee7057f9483f8a329e750f20b1`.
+  `28aff99941787ee30f52742c36110bc4e03a8b7c`.
 - The branch CI builds this Rust source for
   `wasm32-unknown-unknown` and stages the actual compiled
   `pfx_color_ffi.wasm` plus the independent first-party
@@ -49,7 +49,7 @@ CSS syntax serialization and React input/state orchestration remain JavaScript.
 
 The default mode continues using the original TypeScript functions and
 CSS-based gradient preview, with no Rust WASM download. This is a
-feature-gated experiment, not a production release. The experimental worker uses one Rust bulk RGBA8 raster call per frame (not one WASM call per pixel) to compute up to 160px-wide pixel buffers
+feature-gated experiment, not a production release. The experimental worker uses one bounded LUT-accelerated Rust preview RGBA8 raster call per frame (not one WASM call per pixel) to compute up to 160px-wide pixel buffers
 off the main UI thread. The separate `rust-drag-perf.browser.mjs`
 test uses trusted pointer drags and checks frame intervals, final-frame
 freshness and worker diagnostics in Chromium and Firefox across desktop/mobile
@@ -91,3 +91,15 @@ Do not merge this branch or deploy the Rust mode based solely on
 standalone Rust tests. Require successful branch-only browser tests,
 resolved compatibility differences, all runtime fallbacks explicitly
 specified and approval of a separately reviewed production migration.
+
+
+## Final preview policy
+
+The Rust core now exposes **two separate** raster methods:
+`rasterRGBA8` (exact scalar parity for color-critical output) and
+`rasterPreviewRGBA8` (bounded 8-bit lookup per stop interval for responsive
+live previews). The worker uses the latter; the exact function remains
+available for export. CI compares the fast preview with the exact raster
+across complex colors, hard stops, alpha and repeated gradients with a
+strict channel tolerance. Preview pixel quantization is deliberate and
+must not be confused with exact raster semantics.
