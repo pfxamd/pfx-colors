@@ -46,6 +46,12 @@ for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]
           assert.ok(stopsAfterAdd >= 0, "Gradient remains interactive after adding a stop");
           if (requested === "rust") {
             const routes = await page.evaluate(() => globalThis.__pfxRustPilot?.routes ?? {});
+            for (const feature of [
+              "convert", "gamut", "mapGamut", "colorStudy",
+              "tonalPalette", "harmony", "interpolate", "gradientSample",
+            ]) {
+              assert.ok(routes[feature] > 0, feature + " must genuinely execute in Rust WASM");
+            }
             console.log(name, viewport.width, "Rust routes:", JSON.stringify(routes));
           }
           const consoleResult = await page.evaluate(async () => {
@@ -72,6 +78,20 @@ for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]
           await page.close();
         }
       }
+      // Simulate unavailable WASM. The same interface must remain usable with
+      // the original engine, without an unhandled error or a blank page.
+      const offline = await browser.newPage({ viewport });
+      const offlineErrors = [];
+      offline.on("pageerror", error => offlineErrors.push(error.message));
+      await offline.route("**/pfx-rust/pfx_color_ffi.wasm", route => route.abort());
+      await offline.goto(origin + "?engine=rust", { waitUntil: "networkidle" });
+      await offline.locator(".pfx-c-home").waitFor();
+      assert.equal(await offline.locator(".pfx-c-study__swatch").count(), 10);
+      const fallback = await offline.evaluate(() => globalThis.__pfxRustPilot?.status);
+      assert.equal(fallback, "fallback", "Unavailable WASM must use the legacy engine");
+      assert.deepEqual(offlineErrors, []);
+      await offline.close();
+      console.log(name, viewport.width + "x" + viewport.height, "unavailable-WASM fallback PASS");
     }
   } finally {
     await browser.close();

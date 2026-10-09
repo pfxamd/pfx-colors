@@ -22,10 +22,14 @@ operations and significant deviations use the existing Color.js path.
 Input parsing, CSS serialization and HEX are still normalized through the
 legacy engine; this integration is **not** a complete Rust-only migration.
 
+The experimental interface now also runs the actual Rust Color Study generator, tonal palette, geometric harmony and gradient sampling; the installed legacy implementation remains the fallback for input and parity edge cases. The colors produced by the Rust Color Study may differ from the historical algorithm because its deterministic generator is distinct. This intentionally changes generated color values in the opt-in mode, never page structure or styling.
+
 The experiment operates on the existing ColorEngine singleton before
 React startup. It does not modify the UI, CSS, HTML, workspace history,
 or the upstream vendored TypeScript core. Defaults always use the stable
 engine, including if the optional pilot cannot initialize.
+
+GitHub Actions additionally verifies non-zero Rust routes for conversion, gamut, gamut mapping, Color Study, tonal palette, harmony, interpolation and gradient sampling, and simulates a failed WASM fetch to verify safe fallback.
 
 GitHub Actions runs TypeScript tests, the compiled Rust WASM, TypeScript
 typecheck/build and real Chromium/Firefox desktop/mobile interaction.
