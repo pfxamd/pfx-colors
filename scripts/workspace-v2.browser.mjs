@@ -173,16 +173,19 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("button", { name: /Recent/ }).click();
         assert.ok(await page.locator(".pfx-c-collections .pfx-v2__swatch").count() >= 1);
         await page.getByRole("button", { name: /Saved sets/ }).click();
-        assert.equal(await page.locator(".pfx-c-collections__set").count(), 1,
-          "Harmony set saved to collections");
+        assert.equal(await page.locator(".pfx-c-collections__set").count(), 2,
+          "Harmony and Gradient sets saved to Collections");
         await page.reload({ waitUntil: "networkidle" });
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Collections" }).click();
         await page.getByRole("button", { name: /Saved sets/ }).click();
-        assert.equal(await page.locator(".pfx-c-collections__set").count(), 1,
-          "Saved harmony set survives reload");
+        assert.equal(await page.locator(".pfx-c-collections__set").count(), 2,
+          "Saved Harmony and Gradient sets survive reload");
         await page.getByRole("button", { name: "Remove set Complementary harmony" }).click();
+        assert.equal(await page.locator(".pfx-c-collections__set").count(), 1,
+          "Harmony set can be removed independently");
+        await page.getByRole("button", { name: "Remove set Gradient · linear" }).click();
         assert.equal(await page.locator(".pfx-c-collections__set").count(), 0,
-          "Saved harmony set can be removed");
+          "Gradient set can be removed independently");
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-collections.png`, animations: "disabled" });
 
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "No horizontal page overflow");
