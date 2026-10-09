@@ -37,7 +37,7 @@ function readList(key: string): string[] {
   }
 }
 
-function persist(key: string, values: string[]): void {
+function persist<T>(key: string, values: readonly T[]): void {
   try { window.localStorage.setItem(key, JSON.stringify(values)); } catch { /* storage unavailable */ }
 }
 
