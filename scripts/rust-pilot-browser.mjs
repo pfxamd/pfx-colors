@@ -10,12 +10,13 @@ for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]
       { width: 1440, height: 900 },
       { width: 390, height: 844 },
     ]) {
-      for (const requested of ["legacy", "rust"]) {
+      for (const requested of ["legacy", "rust", "rust-workspace"]) {
         const page = await browser.newPage({ viewport });
         const errors = [];
         page.on("pageerror", error => errors.push(error.message));
         try {
-          const url = requested === "rust" ? origin + "?engine=rust" : origin;
+          const url = requested === "legacy" ? origin : requested === "rust"
+            ? origin + "?engine=rust" : origin + "?engine=rust&workspace=rust";
           const response = await page.goto(url, { waitUntil: "networkidle" });
           assert.equal(response.status(), 200);
           await page.locator(".pfx-c-home").waitFor();
@@ -44,13 +45,16 @@ for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]
           await page.locator('button[aria-label="Add gradient stop"]').click();
           const stopsAfterAdd = await page.locator(".pfx-c-gradient-rail").locator('[role="slider"]').count();
           assert.ok(stopsAfterAdd >= 0, "Gradient remains interactive after adding a stop");
-          if (requested === "rust") {
+          if (requested !== "legacy") {
             const routes = await page.evaluate(() => globalThis.__pfxRustPilot?.routes ?? {});
             for (const feature of [
               "convert", "formatHex", "gamut", "mapGamut", "colorStudy",
               "tonalPalette", "harmony", "interpolate", "gradientSample",
             ]) {
               assert.ok(routes[feature] > 0, feature + " must genuinely execute in Rust WASM");
+            }
+            if (requested === "rust-workspace") {
+              assert.ok(routes.workspace > 0, "Rust workspace must initialize and drive the UI");
             }
             console.log(name, viewport.width, "Rust routes:", JSON.stringify(routes));
           }
@@ -68,7 +72,7 @@ for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]
                 { space: "srgb", channels: [1, 1, 1], alpha: 1 }),
             };
           });
-          if (requested === "rust") {
+          if (requested !== "legacy") {
             assert.ok(Math.abs(consoleResult.contrast - 21) < 1e-12);
             assert.ok(Math.abs(consoleResult.difference - 1) < 1e-7);
           }
