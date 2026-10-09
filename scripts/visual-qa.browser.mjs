@@ -72,6 +72,12 @@ for (const [browserName, launcher] of [["chromium",chromium],["firefox",firefox]
                 tokens, feedbackWidth:feedback?.getBoundingClientRect().width ?? 0,
               };
             });
+            assert.equal(await page.locator(".pfx-c-dock").count(), 0,
+              browserName+" "+tool+" still has a bottom dock");
+            assert.equal(await page.locator(".pfx-v2__color-chip").count(), 1,
+              "Navbar swatch available in all tools");
+            assert.ok(await page.getByRole("button", { name: "UNDO" }).isVisible(),
+              "History controls remain visible");
             assert.ok(v.titleVisible,browserName+" "+tool+" missing heading");
             assert.ok(contrast(v.titleColor,v.pageBackground)>=4.5,
               browserName+" "+tool+" unreadable title in "+theme+": "+contrast(v.titleColor,v.pageBackground).toFixed(2));

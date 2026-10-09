@@ -28,6 +28,7 @@ async function scenario(browser, browserName, viewport, engine) {
     assert.equal(await page.locator(".pfx-home__study-swatches button").count(), 10);
     assert.equal(await page.locator(".pfx-c-engine-label").getAttribute("data-engine"), engine);
     const current = page.locator('input[aria-label="Current color"]');
+    await page.getByRole("button", { name: "Edit current HEX" }).click();
     await current.fill("#336699");
     await current.press("Enter");
     assert.equal((await current.inputValue()).toLowerCase(), "#336699", engine + ": hex selection");
