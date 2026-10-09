@@ -36,13 +36,13 @@ async function scenario(browser, browserName, viewport, engine) {
     const picker = await current.inputValue();
     assert.equal(picker.toLowerCase(), "#336699");
     const pickerControl = page.locator('.pfx-c-console input[type="range"]').first();
-    await pickerControl.evaluate(element => {
-      element.value = "40";
-      element.dispatchEvent(new Event("input", { bubbles: true }));
-      element.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    // Numeric slider may have custom pointer controls; input remains a valid
-    // DOM and no page errors should result.
+    await pickerControl.focus();
+    await pickerControl.press("ArrowRight");
+    // Use genuine keyboard input, not synthesized DOM events, and await
+    // React's state commit before recording the undo baseline.
+    await page.waitForFunction(previous =>
+      document.querySelector('input[aria-label="Current color"]')?.value !== previous,
+      picker);
     const afterPicker = await current.inputValue();
     await page.screenshot({ path: evidence + "/" + browserName + "-" + viewport.width + "-" + engine + "-picker.png", animations: "disabled" });
     await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Palette" }).click();
