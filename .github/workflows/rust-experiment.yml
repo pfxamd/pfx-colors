@@ -77,6 +77,16 @@ jobs:
             sleep 1
           done
           PFX_STAGING_URL=http://127.0.0.1:4175/ node scripts/rust-staging.browser.mjs
+      - name: Verify nested GitHub Pages preview path
+        run: |
+          PFX_BASE_PATH=/pfx-colors/preview/ npm run build
+          PFX_BASE_PATH=/pfx-colors/preview/ node scripts/prepare-rust-staging.mjs
+          PFX_BASE_PATH=/pfx-colors/preview/ npm run preview -- --outDir staging-dist --host 127.0.0.1 --port 4176 > /tmp/pfx-github-preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4176/pfx-colors/preview/ > /dev/null; then break; fi
+            sleep 1
+          done
+          PFX_STAGING_URL=http://127.0.0.1:4176/pfx-colors/preview/ node scripts/rust-staging.browser.mjs
       - name: Bundle independent staging site (ready for static hosting)
         uses: actions/upload-artifact@v4
         with:
