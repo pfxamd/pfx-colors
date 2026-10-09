@@ -1,0 +1,37 @@
+name: Visual Browser Smoke
+
+on:
+  workflow_run:
+    workflows: ["Deploy GitHub Pages"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser runner
+        run: npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.56.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify deployed app on desktop and mobile
+        run: node scripts/browser-smoke.mjs
+        env:
+          PFX_COLORS_URL: https://pfxamd.github.io/pfx-colors/
+      - name: Save browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pfx-colors-browser-evidence
+          path: browser-evidence/
+          if-no-files-found: ignore
