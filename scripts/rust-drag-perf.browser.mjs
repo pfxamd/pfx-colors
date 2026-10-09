@@ -57,12 +57,25 @@ for (const [browserName, engine] of [["chromium", chromium], ["firefox", firefox
         }
         await page.mouse.up();
 
-        await page.waitForFunction(previous =>
-          window.__PFX_RUST_RENDER__?.latestRevision > previous
-          && window.__PFX_RUST_RENDER__?.paintRevision ===
-            window.__PFX_RUST_RENDER__?.latestRevision
-          && document.querySelector('canvas[data-rust-gradient-preview]')?.dataset
-            .rustGradientPreview === "ready", initial.latestRevision, { timeout: 30000 });
+        // React / ResizeObserver may commit one more geometry revision after
+        // the final mouse event. Require the newest frame to stay current for
+        // a settling window rather than passing on a transient match.
+        await page.waitForFunction(previous => {
+          const stats = window.__PFX_RUST_RENDER__;
+          const caughtUp = stats?.latestRevision > previous
+            && stats?.paintRevision === stats?.latestRevision
+            && document.querySelector('canvas[data-rust-gradient-preview]')?.dataset
+              .rustGradientPreview === "ready";
+          if (!caughtUp) {
+            window.__PFX_STABLE_FRAME__ = null;
+            return false;
+          }
+          if (window.__PFX_STABLE_FRAME__?.revision !== stats.latestRevision) {
+            window.__PFX_STABLE_FRAME__ = { revision: stats.latestRevision, since: performance.now() };
+            return false;
+          }
+          return performance.now() - window.__PFX_STABLE_FRAME__.since >= 180;
+        }, initial.latestRevision, { timeout: 30000 });
 
         const outcome = await page.evaluate(() => {
           window.__PFX_DRAG_FRAMES__.active = false;
