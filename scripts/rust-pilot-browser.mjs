@@ -33,6 +33,16 @@ for (const [name, browserType] of [["Chromium", chromium], ["Firefox", firefox]]
           }
           const current = page.locator('input[aria-label="Current color"]');
           assert.match(await current.inputValue(), /^#[0-9a-f]{6}$/i);
+          if (requested === "rust-workspace") {
+            const initialColor = await current.inputValue();
+            await current.fill("#336699");
+            await page.locator(".pfx-c-brand strong").click();
+            assert.equal(await current.inputValue(), "#336699");
+            await page.locator(".pfx-c-history button").first().click();
+            assert.equal(await current.inputValue(), initialColor, "Rust workspace undo restores color");
+            await page.locator(".pfx-c-history button").last().click();
+            assert.equal(await current.inputValue(), "#336699", "Rust workspace redo restores color");
+          }
           await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Picker" }).click();
           await page.locator(".pfx-c-workbench--picker").waitFor();
           await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Palette" }).click();
