@@ -31,8 +31,9 @@ const head = `
 `;
 const stagingBar = `
     <aside id="pfx-rust-staging-bar" aria-label="Experimental preview"
-      style="position:fixed;z-index:2147483600;bottom:12px;right:12px;
+      style="position:relative;z-index:2;margin:12px auto 16px;
         display:flex;align-items:center;gap:10px;padding:9px 12px;
+        width:max-content;max-width:calc(100% - 24px);
         color:#f5f5f5;background:#202124;border:1px solid #62646a;
         border-radius:9px;font:500 12px system-ui;box-shadow:0 4px 24px #0005">
       <span>Rust preview · staging</span>
