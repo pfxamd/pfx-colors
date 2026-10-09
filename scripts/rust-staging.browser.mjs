@@ -49,7 +49,8 @@ for (const [name, type] of [["chromium", chromium], ["firefox", firefox]]) {
           if (request.url().endsWith("/pfx_color_ffi.wasm")) wasmRequests.push(request.url());
         });
         await bar.getByRole("link", { name: "TypeScript" }).click();
-        await page.locator(".pfx-c-engine-label[data-engine='legacy']").waitFor();
+        await page.locator(".pfx-c-engine-label[data-engine='legacy']")
+          .waitFor({ state: "attached" });
         assert.equal(await page.locator(".pfx-c-study__swatch").count(), 10);
         assert.deepEqual(wasmRequests, [],
           "Legacy switch must not load the experimental Rust WASM");
