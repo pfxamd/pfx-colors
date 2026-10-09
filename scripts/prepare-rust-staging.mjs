@@ -2,8 +2,8 @@
  * Prepare a standalone static staging artifact from already-tested dist/.
  * Nothing in the production branch or GitHub Pages deployment is changed.
  *
- * Staging works at an independent web origin rooted at / (Cloudflare Pages,
- * static object host, etc). It deliberately has NO deployment side effects.
+ * Staging works at a dedicated static root or a GitHub Pages project subpath.
+ * This script deliberately has NO deployment side effects.
  */
 import assert from "node:assert/strict";
 import { cp, mkdir, readFile, writeFile, stat } from "node:fs/promises";
@@ -44,7 +44,10 @@ const page = original.replace("<head>", "<head>" + head)
 assert.match(page, /__PFX_RUST_STAGING__ = true/);
 assert.match(page, /noindex, nofollow/);
 await writeFile(pagePath, page);
-await writeFile(join(output, "robots.txt"), "User-agent: *\nDisallow: /\n");
+const basePath = process.env.PFX_BASE_PATH ?? "/";
+assert.match(basePath, /^\/[a-zA-Z0-9/_-]*\/$/);
+await writeFile(join(output, "robots.txt"),
+  "User-agent: *\\nDisallow: " + basePath + "\\n");
 await mkdir(join(output, "preview-info"), { recursive: true });
 const manifest = {
   kind: "pfx-colors-rust-staging",
@@ -55,7 +58,7 @@ const manifest = {
   rustSourceRevision: "28aff99941787ee30f52742c36110bc4e03a8b7c",
   productionModified: false,
   robots: "noindex,nofollow",
-  hostingBase: "/",
+  hostingBase: basePath,
 };
 await writeFile(join(output, "preview-info", "build.json"),
   JSON.stringify(manifest, null, 2) + "\n");
@@ -63,4 +66,4 @@ for (const file of [
   "index.html", "rust/pfx_color_ffi.wasm",
   "rust/pfx-color-core.mjs", "rust/pfx-color-workspace.mjs", "robots.txt",
 ]) assert.ok((await stat(join(output, file))).size > 0, file);
-console.log("PFx independent Rust staging build ready (no deployment)");
+console.log("PFx independent Rust staging build ready at " + basePath + " (no deployment)");
