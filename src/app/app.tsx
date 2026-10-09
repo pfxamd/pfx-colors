@@ -23,7 +23,6 @@ import {
 import { useNormalizedDragSurface } from "../interaction/use-normalized-drag-surface";
 import { useHorizontalTrackDrag } from "../interaction/use-horizontal-track-drag";
 import { useAngleHandleDrag, useNormalizedHandleDrag } from "../interaction/use-gradient-geometry";
-import { useColorFieldControl } from "../interaction/use-color-field-control";
 import { useRadialDrag } from "../interaction/use-radial-drag";
 import { useScalarDial } from "../interaction/use-scalar-dial";
 import { PfxColorsWorkspace, type WorkspaceState } from "@pfx/color-core";
@@ -34,6 +33,7 @@ import { useColorLibrary } from "./use-color-library";
 import { Explore } from "./explore";
 import { Collections } from "./collections";
 import { Tones } from "./tones";
+import { Picker } from "./picker";
 
 function asInput(value: ColorValue): ColorInput {
   return {
@@ -154,7 +154,9 @@ export function App({
           toggleFavorite={library.toggleFavorite}
         />
       )}
-      {activeTool === "picker" && <Picker state={state} commitColor={commitColor} />}
+      {activeTool === "picker" && <Picker state={state} commitColor={commitColor} openTones={openTones}
+        favorite={library.favorites.includes(state.color.hex.toLowerCase())}
+        toggleFavorite={library.toggleFavorite} />}
       {activeTool === "tones" && (
         <Tones state={state} workspace={workspace} sync={sync}
           commitColor={commitColor} openGradient={() => setActiveTool("gradient")} />
@@ -366,180 +368,6 @@ function Home({
   );
 }
 
-function PickerHueRail({
-  hue,
-  onChange,
-}: {
-  hue: number;
-  onChange: (value: number) => void;
-}) {
-  const railRef = useRef<HTMLDivElement>(null);
-
-  useHorizontalTrackDrag(railRef, railRef, {
-    value: hue / 360,
-    min: 0,
-    max: 1,
-    step: 1 / 360,
-    onChange(value) {
-      onChange(value * 360);
-    },
-  });
-
-  return (
-    <div className="pfx-c-picker-controls">
-      <div
-        ref={railRef}
-        className="pfx-c-picker-hue"
-        role="slider"
-        tabIndex={0}
-        aria-label="Hue"
-        aria-valuemin={0}
-        aria-valuemax={360}
-        aria-valuenow={Math.round(hue)}
-      >
-        <span
-          className="pfx-c-picker-hue__handle"
-          style={{
-            left: String((hue / 360) * 100) + "%",
-            background: "hsl(" + round(hue) + " 100% 50%)",
-          }}
-        />
-        <output>{String(Math.round(hue)).padStart(3, "0")}°</output>
-      </div>
-    </div>
-  );
-}
-
-function Picker({
-  state,
-  commitColor,
-}: {
-  state: WorkspaceState;
-  commitColor: (input: ColorInput) => void;
-}) {
-  const hsl = state.color.values.hsl;
-  const oklch = state.color.values.oklch;
-  const hue = Number(hsl?.coordinates[0] ?? 0);
-  const saturation = Number(hsl?.coordinates[1] ?? 0);
-  const lightness = Number(hsl?.coordinates[2] ?? 0);
-  const fieldRef = useRef<HTMLDivElement>(null);
-  const [fieldActive, setFieldActive] = useState(false);
-
-  useColorFieldControl(fieldRef, {
-    value: {
-      x: saturation / 100,
-      y: 1 - lightness / 100,
-    },
-    onChange({ x, y }) {
-      commitColor(
-        "hsl(" +
-          round(hue) +
-          " " +
-          round(x * 100) +
-          "% " +
-          round((1 - y) * 100) +
-          "%)",
-      );
-    },
-    onActiveChange: setFieldActive,
-  });
-
-  const commitHue = (value: number) => {
-    commitColor(
-      "hsl(" +
-        round(value) +
-        " " +
-        round(saturation) +
-        "% " +
-        round(lightness) +
-        "%)",
-    );
-  };
-
-  const fieldStyle = { "--pfx-hue": String(hue) } as CSSProperties;
-
-  return (
-    <section className="pfx-c-workbench pfx-c-workbench--picker">
-      <div className="pfx-c-picker-main">
-        <div
-          ref={fieldRef}
-          className={
-            "pfx-c-color-field" + (fieldActive ? " pfx-is-active" : "")
-          }
-          style={fieldStyle}
-          tabIndex={0}
-          aria-label="Color field. Use pointer or arrow keys. Hold Shift for precision."
-        >
-          <div
-            className={
-              "pfx-c-color-cursor" +
-              (saturation > 82 ? " pfx-is-right-edge" : "") +
-              (saturation < 18 ? " pfx-is-left-edge" : "") +
-              (lightness > 82 ? " pfx-is-top-edge" : "")
-            }
-            style={{
-              left: String(saturation) + "%",
-              top: String(100 - lightness) + "%",
-              "--pfx-picked-color": state.color.hex,
-            } as CSSProperties}
-          >
-            <span className="pfx-c-color-cursor__swatch" />
-            <span className="pfx-c-color-cursor__crosshair" />
-            <output className="pfx-c-color-cursor__readout">
-              <strong>{state.color.hex.toUpperCase()}</strong>
-              <small>
-                S {String(Math.round(saturation)).padStart(3, "0")} · L{" "}
-                {String(Math.round(lightness)).padStart(3, "0")}
-              </small>
-            </output>
-          </div>
-          <span>COLOR FIELD / DRAG · SHIFT PRECISION · ARROWS</span>
-        </div>
-
-        <PickerHueRail hue={hue} onChange={commitHue} />
-      </div>
-
-      <aside className="pfx-c-console">
-        <div className="pfx-c-color-block" style={{ background: state.color.hex }}>
-          <strong>{state.color.hex.toUpperCase()}</strong>
-        </div>
-
-        <Slider
-          label="S"
-          value={saturation}
-          min={0}
-          max={100}
-          suffix="%"
-          onChange={(value) =>
-            commitColor(
-              "hsl(" + round(hue) + " " + value + "% " + round(lightness) + "%)",
-            )
-          }
-        />
-        <Slider
-          label="L"
-          value={lightness}
-          min={0}
-          max={100}
-          suffix="%"
-          onChange={(value) =>
-            commitColor(
-              "hsl(" + round(hue) + " " + round(saturation) + "% " + value + "%)",
-            )
-          }
-        />
-
-        <div className="pfx-c-readouts">
-          <Readout label="L" value={round(oklch?.coordinates[0], 4)} />
-          <Readout label="C" value={round(oklch?.coordinates[1], 4)} />
-          <Readout label="H" value={round(oklch?.coordinates[2], 2)} />
-          <Readout label="A" value={round(state.color.alpha, 2)} />
-        </div>
-      </aside>
-    </section>
-  );
-}
-
 function CurrentColorInput({
   value,
   commitColor,
@@ -576,51 +404,6 @@ function CurrentColorInput({
         }
       }}
     />
-  );
-}
-
-function Slider({
-  label,
-  value,
-  min,
-  max,
-  suffix = "",
-  hue = false,
-  step = 0.5,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  suffix?: string;
-  hue?: boolean;
-  step?: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label className="pfx-c-slider">
-      <span>{label}</span>
-      <input
-        className={hue ? "pfx-is-hue" : ""}
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(event) => onChange(Number(event.target.value))}
-      />
-      <output>{round(value) + suffix}</output>
-    </label>
-  );
-}
-
-function Readout({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <small>{label}</small>
-      <strong>{value}</strong>
-    </div>
   );
 }
 

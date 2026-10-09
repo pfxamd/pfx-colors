@@ -4,6 +4,7 @@ import { App } from "./app";
 import "./styles.css";
 import "./workspace-v2.css";
 import "./tones.css";
+import "./picker.css";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("PFx Colors root element missing");

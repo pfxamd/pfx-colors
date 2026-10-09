@@ -32,6 +32,35 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.reload({ waitUntil: "networkidle" });
         assert.equal(await page.locator(".pfx-v2").getAttribute("data-theme"), "dark", "Appearance persisted");
 
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Picker" }).click();
+        await page.locator(".pfx-picker__field").waitFor();
+        const currentInput = page.locator('input[aria-label="Current color"]');
+        const beforePicker = await currentInput.inputValue();
+        await page.locator(".pfx-picker__field").click({ position: { x: 80, y: 100 } });
+        await page.waitForFunction(before =>
+          document.querySelector('input[aria-label="Current color"]')?.value !== before,
+          beforePicker);
+        await page.getByRole("button", { name: "Copy RGB" }).click();
+        assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^rgb\(/,
+          "Picker copied an actual RGB declaration");
+        await page.getByRole("button", { name: "RGB", exact: true }).click();
+        const red = page.getByRole("spinbutton", { name: "Red channel" });
+        await red.fill("120");
+        await red.press("Enter");
+        const pickedAfterRgb = await currentInput.inputValue();
+        assert.equal(pickedAfterRgb.toLowerCase().slice(1,3), "78", "Numeric RGB editing works");
+        const hueRail = page.getByRole("slider", { name: "Hue", exact: true });
+        await hueRail.focus();
+        await hueRail.press("ArrowRight");
+        await page.getByRole("slider", { name: "Opacity" }).focus();
+        await page.getByRole("slider", { name: "Opacity" }).press("Home");
+        await page.getByRole("button", { name: "Copy HEX", exact: true }).last().click();
+        assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^#[0-9A-F]{8}$/,
+          "Transparent colors retain their alpha channel in HEX copies");
+        await page.getByRole("slider", { name: "Opacity" }).press("End");
+        await page.getByRole("button", { name: "Save color" }).click();
+        await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-picker.png`, animations: "disabled" });
+
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
         await page.locator(".pfx-c-explore").waitFor();
         assert.ok(await page.locator(".pfx-v2__swatch").count() >= 20);
