@@ -34,7 +34,7 @@ export function loadToneConfig(storage: Pick<Storage, "getItem"> | null): ToneCo
     const value: unknown = JSON.parse(raw);
     if (!value || typeof value !== "object") return { ...DEFAULT_TONES };
     const v = value as Partial<ToneConfig>;
-    if (!Number.isInteger(v.count) || (v.count ?? 0) < 3 || (v.count ?? 0) > 16 ||
+    if (typeof v.count !== "number" || !Number.isInteger(v.count) || v.count < 3 || v.count > 16 ||
         typeof v.min !== "number" || typeof v.max !== "number" ||
         v.min < 0 || v.max > 100 || v.min >= v.max ||
         typeof v.chroma !== "number" || !Number.isFinite(v.chroma) ||
