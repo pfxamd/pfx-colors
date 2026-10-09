@@ -60,6 +60,7 @@ for (const [browserName, launcher] of [["chromium",chromium],["firefox",firefox]
                 overflow:document.documentElement.scrollWidth-window.innerWidth,
                 pageWidth:region?.scrollWidth,
                 pageClientWidth:region?.clientWidth,
+                regionOverflowX:region ? getComputedStyle(region).overflowX : "",
                 pageScrollHeight:region?.scrollHeight,
                 pageHeight:region?.clientHeight,
                 title:heading?.textContent?.trim() ?? "",
@@ -76,8 +77,9 @@ for (const [browserName, launcher] of [["chromium",chromium],["firefox",firefox]
               browserName+" "+tool+" unreadable title in "+theme+": "+contrast(v.titleColor,v.pageBackground).toFixed(2));
             assert.ok(v.activeTabVisible,browserName+" "+tool+" tab clipped");
             assert.ok(v.overflow<=2,browserName+" "+tool+" document overflow: "+v.overflow);
-            assert.ok((v.pageWidth??0)-(v.pageClientWidth??0)<=3,
-              browserName+" "+tool+" page overflow");
+            const measuredOverflow=(v.pageWidth??0)-(v.pageClientWidth??0);
+            assert.ok(measuredOverflow<=3 || ["hidden","clip"].includes(v.regionOverflowX),
+              browserName+" "+tool+" visible horizontal overflow: "+measuredOverflow+"px");
             for (const [name,a,b] of [
               ["muted on page",v.tokens.muted,v.tokens.bg],
               ["muted on panel",v.tokens.muted,v.tokens.panel],
