@@ -12,6 +12,8 @@ export interface RustColor {
 
 export interface RustColorApi {
   parseCss(css: string): RustColor;
+  formatHex(color: RustColor, method?: "css" | "clip" | "oklchChroma"): string;
+  formatCss(color: RustColor): string;
   convert(color: RustColor, target: string): RustColor;
   difference(first: RustColor, second: RustColor, method: string): number;
   contrast(first: RustColor, second: RustColor): number;
@@ -149,7 +151,14 @@ export class PilotRustColorEngine implements ColorEngine {
   }
 
   formatHex(input: ColorInput): string {
-    return this.legacy.formatHex(input);
+    const original = this.legacy.formatHex(input);
+    return this.attempt("formatHex", original, () => {
+      const numeric = this.input(input);
+      if (!numeric) return null;
+      const formatted = this.rust.formatHex(numeric, "css");
+      // No rounding, alpha or gamut difference is allowed for HEX output.
+      return formatted.toLowerCase() === original.toLowerCase() ? formatted : null;
+    });
   }
 
   contrast(
