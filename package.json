@@ -5,16 +5,17 @@
   "type": "module",
   "scripts": {
     "sync:interaction": "node scripts/sync-interaction-core.mjs",
-    "predev": "npm run sync:interaction",
+    "predev": "npm run sync:interaction && npm run sync:color",
     "dev": "vite",
-    "prebuild": "npm run sync:interaction",
+    "prebuild": "npm run sync:interaction && npm run sync:color",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "pretest": "npm run sync:interaction",
+    "pretest": "npm run sync:interaction && npm run sync:color",
     "test": "vitest run",
-    "pretypecheck": "npm run sync:interaction",
+    "pretypecheck": "npm run sync:interaction && npm run sync:color",
     "typecheck": "tsc --noEmit",
-    "check": "npm run test && npm run build"
+    "check": "npm run test && npm run build",
+    "sync:color": "node scripts/sync-color-core.mjs"
   },
   "dependencies": {
     "colorjs.io": "0.7.1",

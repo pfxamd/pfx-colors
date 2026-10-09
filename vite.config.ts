@@ -7,6 +7,9 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      "@pfx/color-core": fileURLToPath(
+        new URL("./vendor/PFx-Color-Core/src/index.ts", import.meta.url),
+      ),
       "@pfx/interaction-core": fileURLToPath(
         new URL("./vendor/PFx-Interaction-Core/packages/interaction-core/src/index.ts", import.meta.url),
       ),

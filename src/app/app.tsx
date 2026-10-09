@@ -8,7 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
-import { colorEngine, type ColorInput, type ColorValue } from "../engine";
+import { colorEngine, type ColorInput, type ColorValue } from "@pfx/color-core";
 import {
   createGradient,
   generateColorStudy,
@@ -20,14 +20,14 @@ import {
   type GradientStopInput,
   type GradientType,
   type HarmonyScheme,
-} from "../tools";
+} from "@pfx/color-core";
 import { useNormalizedDragSurface } from "../interaction/use-normalized-drag-surface";
 import { useHorizontalTrackDrag } from "../interaction/use-horizontal-track-drag";
 import { useAngleHandleDrag, useNormalizedHandleDrag } from "../interaction/use-gradient-geometry";
 import { useColorFieldControl } from "../interaction/use-color-field-control";
 import { useRadialDrag } from "../interaction/use-radial-drag";
 import { useScalarDial } from "../interaction/use-scalar-dial";
-import { PfxColorsWorkspace, type WorkspaceState } from "../workspace";
+import { PfxColorsWorkspace, type WorkspaceState } from "@pfx/color-core";
 
 type ToolId = "home" | "picker" | "palette" | "harmony" | "gradient";
 
