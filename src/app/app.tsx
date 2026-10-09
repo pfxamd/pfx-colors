@@ -147,6 +147,7 @@ export function App({
         <Explore
           activeHex={state.color.hex}
           select={commitColor}
+          openPicker={(hex: string) => { commitColor(hex); setActiveTool("picker"); }}
           openTones={openTones}
           favorites={library.favorites}
           toggleFavorite={library.toggleFavorite}
