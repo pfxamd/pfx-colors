@@ -13,7 +13,7 @@ async function scenario(browser, browserName, viewport, engine) {
   const failures = [];
   page.on("pageerror", error => errors.push(error.message));
   page.on("response", response => {
-    if (!response.ok() && response.url().includes("/rust/")) {
+    if (response.status() >= 400 && response.url().includes("/rust/")) {
       failures.push(response.status() + " " + response.url());
     }
   });
