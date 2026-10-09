@@ -51,7 +51,7 @@ export function Tones({ state, workspace, sync, commitColor, openGradient,
   const [overrides, setOverrides] = useStoredState<ToneOverrides>(
     "pfx-colors.tones.overrides.v2", {}, isOverrides);
   const [selected, setSelected] = useStoredState("pfx-colors.tones.selected.v2", 0,
-    value => Number.isInteger(value) && numberBetween(0, 15)(value));
+    (value: unknown): value is number => Number.isInteger(value) && numberBetween(0, 15)(value));
   const [status, setStatus] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
 

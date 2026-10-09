@@ -18,7 +18,7 @@ export function saveGradientDraft(gradient: GradientDefinition): void {
       stops: gradient.stops.map(stop => ({
         position: stop.position,
         color: { space: stop.source.space,
-          coordinates: [...stop.source.coordinates], alpha: stop.source.alpha },
+          coordinates: stop.source.coordinates.map(value => value ?? 0), alpha: stop.source.alpha },
       })),
     };
     window.localStorage.setItem(GRADIENT_DRAFT_KEY, JSON.stringify(data));
