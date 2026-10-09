@@ -1,5 +1,6 @@
 import { colorEngine } from "@pfx/color-core";
 import { PilotRustColorEngine, pilotMetrics, type RustColorApi } from "./opt-in-engine";
+import { setPilotToolCore } from "./pilot-tools";
 
 /**
  * Only ?engine=rust enables this experiment. Default navigation is unchanged.
@@ -28,6 +29,7 @@ export async function initializeRustPilot(): Promise<void> {
     Object.assign(colorEngine, {
       color: new PilotRustColorEngine(legacy, rust, pilotMetrics),
     });
+    setPilotToolCore(rust);
     pilotMetrics.status = "rust";
   } catch (error) {
     pilotMetrics.reason = error instanceof Error ? error.message : String(error);

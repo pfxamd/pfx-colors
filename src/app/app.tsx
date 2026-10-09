@@ -11,16 +11,13 @@ import {
 import { colorEngine, type ColorInput, type ColorValue } from "@pfx/color-core";
 import {
   createGradient,
-  generateColorStudy,
-  generateHarmony,
-  generateTonalPalette,
   gradientToCss,
   HARMONY_SCHEMES,
-  sampleGradient,
   type GradientStopInput,
   type GradientType,
   type HarmonyScheme,
 } from "@pfx/color-core";
+import { generateColorStudy, generateHarmony, generateTonalPalette, sampleGradient } from "../rust/pilot-tools";
 import { useNormalizedDragSurface } from "../interaction/use-normalized-drag-surface";
 import { useHorizontalTrackDrag } from "../interaction/use-horizontal-track-drag";
 import { useAngleHandleDrag, useNormalizedHandleDrag } from "../interaction/use-gradient-geometry";
