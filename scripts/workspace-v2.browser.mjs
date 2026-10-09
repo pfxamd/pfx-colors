@@ -106,11 +106,51 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 10,
           "Tone scale transfers to Gradient without loss");
 
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Harmony" }).click();
+        await page.locator(".pfx-c-workbench--harmony").waitFor();
+        assert.equal(await page.locator(".pfx-c-harmony-presets button").count(), 6,
+          "All six harmony relationships available");
+        await page.locator(".pfx-c-harmony-presets button[aria-label='analogous']").click();
+        assert.equal(await page.locator(".pfx-c-harmony-swatches article").count(), 3);
+        const spread = page.getByRole("slider", { name: "Harmony spread" });
+        await spread.focus();
+        await spread.press("ArrowRight");
+        assert.match(await spread.inputValue(), /35/,
+          "Adjustable harmony geometry responds to input");
+        await page.locator(".pfx-c-harmony-presets button[aria-label='complementary']").click();
+        assert.equal(await page.locator('[aria-label^="Drag harmony color "]').count(), 2);
+        const wheel = page.getByRole("slider", { name: "Rotate harmony" });
+        const beforeRotation = await wheel.getAttribute("aria-valuenow");
+        await wheel.focus();
+        await wheel.press("ArrowRight");
+        assert.notEqual(await wheel.getAttribute("aria-valuenow"), beforeRotation,
+          "Harmony wheel rotates from the keyboard");
+        await page.getByRole("button", { name: "Copy all HEX" }).click();
+        assert.match(await page.evaluate(() => window.__PFX_COPIED__ ?? ""),
+          /^#[0-9A-F]{6}\n#[0-9A-F]{6}$/, "All harmony HEX codes copied");
+        await page.getByRole("button", { name: "Save set" }).click();
+        await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-harmony.png`, animations: "disabled" });
+        await page.getByRole("button", { name: "Send harmony to gradient" }).click();
+        await page.locator(".pfx-c-workbench--gradient").waitFor();
+        assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 2,
+          "Conic gradient received the current harmony set");
+
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Collections" }).click();
         await page.getByRole("button", { name: "Save current color" }).click();
         assert.ok(await page.locator(".pfx-c-collections .pfx-v2__swatch").count() >= 1);
         await page.getByRole("button", { name: /Recent/ }).click();
         assert.ok(await page.locator(".pfx-c-collections .pfx-v2__swatch").count() >= 1);
+        await page.getByRole("button", { name: /Saved sets/ }).click();
+        assert.equal(await page.locator(".pfx-c-collections__set").count(), 1,
+          "Harmony set saved to collections");
+        await page.reload({ waitUntil: "networkidle" });
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Collections" }).click();
+        await page.getByRole("button", { name: /Saved sets/ }).click();
+        assert.equal(await page.locator(".pfx-c-collections__set").count(), 1,
+          "Saved harmony set survives reload");
+        await page.getByRole("button", { name: "Remove set Complementary harmony" }).click();
+        assert.equal(await page.locator(".pfx-c-collections__set").count(), 0,
+          "Saved harmony set can be removed");
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-collections.png`, animations: "disabled" });
 
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "No horizontal page overflow");

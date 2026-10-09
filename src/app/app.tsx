@@ -15,16 +15,12 @@ import {
   isRustEngine, recordRustGradientRaster,
 } from "../rust/operations";
 import {
-  HARMONY_SCHEMES,
   type GradientStopInput,
   type GradientType,
-  type HarmonyScheme,
 } from "@pfx/color-core";
 import { useNormalizedDragSurface } from "../interaction/use-normalized-drag-surface";
 import { useHorizontalTrackDrag } from "../interaction/use-horizontal-track-drag";
 import { useAngleHandleDrag, useNormalizedHandleDrag } from "../interaction/use-gradient-geometry";
-import { useRadialDrag } from "../interaction/use-radial-drag";
-import { useScalarDial } from "../interaction/use-scalar-dial";
 import { PfxColorsWorkspace, type WorkspaceState } from "@pfx/color-core";
 import type { WorkspaceFactory } from "../rust/loader";
 import { WorkspaceShell, TOOLS, type ToolId } from "./workspace-shell";
@@ -34,6 +30,7 @@ import { Explore } from "./explore";
 import { Collections } from "./collections";
 import { Tones } from "./tones";
 import { Picker } from "./picker";
+import { Harmony } from "./harmony";
 
 function asInput(value: ColorValue): ColorInput {
   return {
@@ -163,14 +160,17 @@ export function App({
       )}
       {activeTool === "harmony" && (
         <Harmony state={state} workspace={workspace} sync={sync}
-          commitColor={commitColor} openGradient={() => setActiveTool("gradient")} />
+          commitColor={commitColor} openGradient={() => setActiveTool("gradient")}
+          saveSet={library.saveSet} favorites={library.favorites}
+          toggleFavorite={library.toggleFavorite} />
       )}
       {activeTool === "gradient" && (
         <Gradient state={state} workspace={workspace} sync={sync} commitColor={commitColor} />
       )}
       {activeTool === "collections" && (
         <Collections currentHex={state.color.hex} favorites={library.favorites}
-          recent={library.recent} select={commitColor} openTones={openTones}
+          recent={library.recent} sets={library.sets} removeSet={library.removeSet}
+          select={commitColor} openTones={openTones}
           toggleFavorite={library.toggleFavorite} clearRecent={library.clearRecent} />
       )}
     </WorkspaceShell>
@@ -404,414 +404,6 @@ function CurrentColorInput({
         }
       }}
     />
-  );
-}
-
-const HARMONY_PRESET_OFFSETS: Record<HarmonyScheme, readonly number[]> = {
-  analogous: [-30, 0, 30],
-  complementary: [0, 180],
-  "split-complementary": [0, 150, 210],
-  triadic: [0, 120, 240],
-  tetradic: [0, 60, 180, 240],
-  square: [0, 90, 180, 270],
-};
-
-function HarmonyPresetGlyph({ scheme }: { scheme: HarmonyScheme }) {
-  return (
-    <span className="pfx-c-harmony-preset__glyph" aria-hidden="true">
-      <i />
-      {HARMONY_PRESET_OFFSETS[scheme].map((angle, index) => {
-        const radians = ((angle - 90) * Math.PI) / 180;
-        const x = 50 + Math.cos(radians) * 36;
-        const y = 50 + Math.sin(radians) * 36;
-        return (
-          <b
-            key={scheme + "-" + String(index)}
-            style={{ left: String(x) + "%", top: String(y) + "%" }}
-          />
-        );
-      })}
-    </span>
-  );
-}
-
-function HarmonyRotationDial({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  const dialRef = useRef<HTMLDivElement>(null);
-  useScalarDial(dialRef, {
-    value,
-    min: 0,
-    max: 359,
-    step: 1,
-    onChange,
-  });
-
-  return (
-    <div
-      ref={dialRef}
-      className="pfx-c-harmony-dial"
-      style={{ "--pfx-dial-angle": value + "deg" } as CSSProperties}
-      role="slider"
-      tabIndex={0}
-      aria-label="Rotate harmony"
-      aria-valuemin={0}
-      aria-valuemax={359}
-      aria-valuenow={Math.round(value)}
-      title="Rotate harmony"
-    >
-      <span className="pfx-c-harmony-dial__track" />
-      <span className="pfx-c-harmony-dial__needle" />
-      <i className="pfx-c-harmony-dial__handle" />
-      <div className="pfx-c-harmony-dial__readout">
-        <span>↻</span>
-        <strong>{String(Math.round(value)).padStart(3, "0")}°</strong>
-      </div>
-    </div>
-  );
-}
-
-function HarmonyNode({
-  wheelRef,
-  index,
-  hue,
-  hex,
-  onDrag,
-  onSelect,
-}: {
-  wheelRef: RefObject<HTMLDivElement | null>;
-  index: number;
-  hue: number;
-  hex: string;
-  onDrag: (hue: number) => void;
-  onSelect: () => void;
-}) {
-  const nodeRef = useRef<HTMLButtonElement>(null);
-  const didDrag = useRef(false);
-  const radians = ((hue - 90) * Math.PI) / 180;
-  const x = 50 + Math.cos(radians) * 40;
-  const y = 50 + Math.sin(radians) * 40;
-
-  useRadialDrag(nodeRef, wheelRef, (angle) => {
-    didDrag.current = true;
-    onDrag(angle);
-  });
-
-  return (
-    <button
-      ref={nodeRef}
-      type="button"
-      className="pfx-c-node"
-      style={{
-        left: String(x) + "%",
-        top: String(y) + "%",
-        background: hex,
-      }}
-      onPointerDown={() => {
-        didDrag.current = false;
-      }}
-      onClick={() => {
-        if (didDrag.current) {
-          didDrag.current = false;
-          return;
-        }
-        onSelect();
-      }}
-      aria-label={"Drag harmony color " + String(index + 1)}
-    >
-      {index + 1}
-    </button>
-  );
-}
-
-function Harmony({
-  state,
-  workspace,
-  sync,
-  commitColor,
-  openGradient,
-}: {
-  state: WorkspaceState;
-  workspace: PfxColorsWorkspace;
-  sync: (next?: WorkspaceState) => void;
-  commitColor: (input: ColorInput) => void;
-  openGradient: () => void;
-}) {
-  const [scheme, setScheme] = useState<HarmonyScheme>("triadic");
-  const [analogousAngle, setAnalogousAngle] = useState(30);
-  const [splitAngle, setSplitAngle] = useState(30);
-  const [tetradicAngle, setTetradicAngle] = useState(60);
-  const wheelRef = useRef<HTMLDivElement>(null);
-
-  const harmony = useMemo(
-    () =>
-      generateHarmony(asInput(state.color.source), scheme, {
-        analogousAngle,
-        splitAngle,
-        tetradicAngle,
-      }),
-    [
-      analogousAngle,
-      scheme,
-      splitAngle,
-      state.color.source,
-      tetradicAngle,
-    ],
-  );
-
-  const oklch = state.color.values.oklch;
-  const lightness = Number(oklch?.coordinates[0] ?? 0);
-  const chroma = Number(oklch?.coordinates[1] ?? 0);
-
-  const setHarmonyHue = (nextHue: number) => {
-    commitColor({
-      space: "oklch",
-      coordinates: [lightness, chroma, ((nextHue % 360) + 360) % 360],
-      alpha: state.color.alpha,
-    });
-  };
-
-  const rotateHarmonyFromHandle = (index: number, handleHue: number) => {
-    const hueOffset = harmony.colors[index]?.hueOffset ?? 0;
-    setHarmonyHue(handleHue - hueOffset);
-  };
-
-  const geometry =
-    scheme === "analogous"
-      ? {
-          value: analogousAngle,
-          min: 5,
-          max: 90,
-          step: 5,
-          set: setAnalogousAngle,
-          adjustable: true,
-        }
-      : scheme === "split-complementary"
-        ? {
-            value: splitAngle,
-            min: 5,
-            max: 90,
-            step: 5,
-            set: setSplitAngle,
-            adjustable: true,
-          }
-        : scheme === "tetradic"
-          ? {
-              value: tetradicAngle,
-              min: 15,
-              max: 165,
-              step: 5,
-              set: setTetradicAngle,
-              adjustable: true,
-            }
-          : {
-              value:
-                scheme === "complementary"
-                  ? 180
-                  : scheme === "triadic"
-                    ? 120
-                    : 90,
-              min: 0,
-              max: 0,
-              step: 0,
-              set: (_value: number) => {},
-              adjustable: false,
-            };
-
-  const nudgeGeometry = (direction: -1 | 1) => {
-    if (!geometry.adjustable) return;
-    geometry.set(
-      Math.max(
-        geometry.min,
-        Math.min(
-          geometry.max,
-          geometry.value + direction * geometry.step,
-        ),
-      ),
-    );
-  };
-
-  const resetGeometry = () => {
-    if (scheme === "analogous") setAnalogousAngle(30);
-    if (scheme === "split-complementary") setSplitAngle(30);
-    if (scheme === "tetradic") setTetradicAngle(60);
-  };
-
-  const sendToGradient = () => {
-    sync(
-      workspace.generateHarmony(scheme, {
-        analogousAngle,
-        splitAngle,
-        tetradicAngle,
-      }),
-    );
-    sync(workspace.createGradientFromHarmony({ type: "conic" }));
-    openGradient();
-  };
-
-  return (
-    <section className="pfx-c-workbench pfx-c-workbench--harmony">
-      <div className="pfx-c-wheel-zone">
-        <div ref={wheelRef} className="pfx-c-wheel">
-          {harmony.colors.map((color) => {
-            const hue = ((harmony.baseHue + color.hueOffset) % 360 + 360) % 360;
-            return (
-              <span
-                key={"arm-" + color.index}
-                className="pfx-c-harmony-arm"
-                style={{ "--pfx-angle": hue + "deg" } as CSSProperties}
-                aria-hidden="true"
-              />
-            );
-          })}
-
-          <div className="pfx-c-wheel__center">
-            <img src="./logo.svg" alt="" />
-          </div>
-
-          {harmony.colors.map((color) => {
-            const hue = ((harmony.baseHue + color.hueOffset) % 360 + 360) % 360;
-            return (
-              <HarmonyNode
-                key={color.index}
-                wheelRef={wheelRef}
-                index={color.index}
-                hue={hue}
-                hex={color.hex}
-                onDrag={(nextHue) => rotateHarmonyFromHandle(color.index, nextHue)}
-                onSelect={() => commitColor(asInput(color.value))}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      <aside className="pfx-c-harmony-deck">
-        <header className="pfx-c-harmony-deck__head">
-          <span>HARMONY</span>
-          <i />
-          <strong>{scheme.replaceAll("-", " ").toUpperCase()}</strong>
-        </header>
-
-        <div className="pfx-c-harmony-presets" aria-label="Harmony schemes">
-          {HARMONY_SCHEMES.map((item) => (
-            <button
-              key={item}
-              type="button"
-              className={
-                "pfx-c-harmony-preset" +
-                (item === scheme ? " pfx-is-current" : "")
-              }
-              onClick={() => setScheme(item)}
-              aria-label={item.replaceAll("-", " ")}
-              aria-pressed={item === scheme}
-              title={item.replaceAll("-", " ")}
-            >
-              <HarmonyPresetGlyph scheme={item} />
-            </button>
-          ))}
-        </div>
-
-        <div className="pfx-c-harmony-control-stage">
-          <HarmonyRotationDial
-            value={harmony.baseHue}
-            onChange={setHarmonyHue}
-          />
-
-          <div className="pfx-c-harmony-geometry">
-            <button
-              type="button"
-              onClick={() => nudgeGeometry(-1)}
-              disabled={!geometry.adjustable}
-              aria-label="Decrease harmony spread"
-              title="Decrease spread"
-            >
-              −
-            </button>
-            <div>
-              <span className="pfx-c-harmony-geometry__icon" aria-hidden="true">
-                ◠
-              </span>
-              <output>{Math.round(geometry.value)}°</output>
-              <small>{geometry.adjustable ? "SPREAD" : "LOCKED"}</small>
-            </div>
-            <button
-              type="button"
-              onClick={() => nudgeGeometry(1)}
-              disabled={!geometry.adjustable}
-              aria-label="Increase harmony spread"
-              title="Increase spread"
-            >
-              +
-            </button>
-          </div>
-
-          <div className="pfx-c-harmony-nudges">
-            <button
-              type="button"
-              onClick={() => setHarmonyHue(harmony.baseHue - 15)}
-              aria-label="Rotate harmony counterclockwise"
-              title="Rotate -15°"
-            >
-              ↶
-            </button>
-            <span
-              className="pfx-c-harmony-link"
-              role="img"
-              aria-label="Harmony geometry linked"
-              title="Linked geometry"
-            >
-              ⛓
-            </span>
-            <button
-              type="button"
-              onClick={() => setHarmonyHue(harmony.baseHue + 15)}
-              aria-label="Rotate harmony clockwise"
-              title="Rotate +15°"
-            >
-              ↷
-            </button>
-            <button
-              type="button"
-              onClick={resetGeometry}
-              disabled={!geometry.adjustable}
-              aria-label="Reset harmony geometry"
-              title="Reset geometry"
-            >
-              ↺
-            </button>
-          </div>
-        </div>
-
-        <div className="pfx-c-harmony-swatches" aria-label="Harmony colors">
-          {harmony.colors.map((color) => (
-            <button
-              key={"swatch-" + color.index}
-              type="button"
-              style={{ background: color.hex }}
-              onClick={() => commitColor(asInput(color.value))}
-              aria-label={"Use " + color.hex}
-              title={color.hex.toUpperCase()}
-            />
-          ))}
-        </div>
-
-        <button
-          type="button"
-          className="pfx-c-harmony-gradient-action"
-          onClick={sendToGradient}
-          aria-label="Send harmony to gradient"
-          title="Send to gradient"
-        >
-          <span />
-          <i>→</i>
-        </button>
-      </aside>
-    </section>
   );
 }
 
