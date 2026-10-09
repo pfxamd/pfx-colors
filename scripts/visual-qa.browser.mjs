@@ -29,7 +29,7 @@ for (const [browserName, launcher] of [["chromium",chromium],["firefox",firefox]
       page.on("pageerror",e => errors.push(e.message));
       try {
         await page.goto(base,{waitUntil:"networkidle",timeout:60000});
-        await page.locator(".pfx-c-engine-label[data-engine='rust']").waitFor();
+        await page.locator(".pfx-c-engine-label[data-engine='rust']").waitFor({state:"attached"});
         for (const theme of ["dark","light"]) {
           await page.getByRole("button",{name:theme+" theme"}).click();
           assert.equal(await page.locator(".pfx-v2").getAttribute("data-theme"),theme);
@@ -64,12 +64,16 @@ for (const [browserName, launcher] of [["chromium",chromium],["firefox",firefox]
                 pageHeight:region?.clientHeight,
                 title:heading?.textContent?.trim() ?? "",
                 titleVisible:Boolean(heading?.getBoundingClientRect().height),
+                titleColor:heading ? getComputedStyle(heading).color : "",
+                pageBackground:region ? getComputedStyle(region).backgroundColor : "",
                 activeTabVisible:Boolean(tabRect&&navRect &&
                   tabRect.left >= navRect.left-2 && tabRect.right <= navRect.right+2),
                 tokens, feedbackWidth:feedback?.getBoundingClientRect().width ?? 0,
               };
             });
             assert.ok(v.titleVisible,browserName+" "+tool+" missing heading");
+            assert.ok(contrast(v.titleColor,v.pageBackground)>=4.5,
+              browserName+" "+tool+" unreadable title in "+theme+": "+contrast(v.titleColor,v.pageBackground).toFixed(2));
             assert.ok(v.activeTabVisible,browserName+" "+tool+" tab clipped");
             assert.ok(v.overflow<=2,browserName+" "+tool+" document overflow: "+v.overflow);
             assert.ok((v.pageWidth??0)-(v.pageClientWidth??0)<=3,

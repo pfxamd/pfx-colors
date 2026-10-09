@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGradient } from "../src/rust/operations";
-import { gradientCssExport, gradientExport } from "../src/app/gradient-export";
+import { gradientCssExport, gradientExport, compactGradientCss } from "../src/app/gradient-export";
 
 describe("Gradient export", () => {
   const gradient = createGradient([
@@ -24,5 +24,13 @@ describe("Gradient export", () => {
     const css = gradientCssExport("linear-gradient(90deg, red, blue)");
     expect(css).toContain("--pfx-gradient: linear-gradient(90deg, red, blue)");
     expect(css).toContain("background: var(--pfx-gradient)");
+  });
+});
+
+describe("Gradient CSS precision", () => {
+  it("rounds verbose RGB channel values without changing the gradient", () => {
+    const source = "linear-gradient(90deg, rgb(254.999999999 0.000000001 19.999999999) 0%, rgb(0 157.123456 176.987654) 100%)";
+    expect(compactGradientCss(source)).toBe(
+      "linear-gradient(90deg, rgb(255 0 20) 0%, rgb(0 157.123 176.988) 100%)");
   });
 });

@@ -22,3 +22,10 @@ export function gradientExport(gradient: GradientDefinition): string {
 export function gradientCssExport(gradientCss: string): string {
   return `:root {\n  --pfx-gradient: ${gradientCss};\n}\n\n.gradient {\n  background: var(--pfx-gradient);\n}\n`;
 }
+
+/** Remove floating-point conversion noise from portable CSS output. */
+export function compactGradientCss(css: string): string {
+  return css.replace(/\brgb\(([^)]*)\)/gi, (_whole, channels: string) =>
+    "rgb(" + channels.replace(/-?\d+\.\d{4,}/g, value =>
+      Number(Number(value).toFixed(3)).toString()) + ")");
+}

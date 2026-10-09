@@ -10,7 +10,7 @@ import { colorEngine, createGradient, generateHarmony, gradientToCss, sampleGrad
 import { copyColorText } from "./clipboard";
 import { useStoredState, numberBetween, oneOf } from "./workspace-state";
 import { saveGradientDraft } from "./gradient-session";
-import { gradientExport, gradientCssExport } from "./gradient-export";
+import { gradientExport, gradientCssExport, compactGradientCss } from "./gradient-export";
 
 function validCenter(value: unknown): value is { x: number; y: number } {
   if (!value || typeof value !== "object") return false;
@@ -602,7 +602,7 @@ export function Gradient({
     };
   }, [gradient]);
 
-  const css = gradientToCss(gradient);
+  const css = compactGradientCss(gradientToCss(gradient));
   const cssFile = gradientCssExport(css);
   const jsonFile = gradientExport(gradient);
   const activeStop = gradient.stops[selectedStop] ?? gradient.stops[0];
