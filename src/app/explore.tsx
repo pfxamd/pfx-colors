@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type KeyboardEvent } from "react";
 import { copyColorText } from "./clipboard";
 import { normalizeHex, NAMED_COLORS } from "./color-library";
+import { statsFromRgb } from "./explore-model";
 import {
   MAX_CHROMA, FAMILIES, atlasChildren, atlasPath, contrastRatio, gamutMappedHex,
   hexToRgb, oklchToRgb, perceptualDistance, relatedShades, rgbToOklch,
@@ -33,6 +34,9 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const selected = useMemo(() => rgbToOklch(hexToRgb(selectedHex)), [selectedHex]);
   const selectedRgb = useMemo(() => hexToRgb(selectedHex), [selectedHex]);
+  const hslStats = statsFromRgb(...selectedRgb);
+  const hsl = "hsl(" + Math.round(hslStats.hue) + " " + Math.round(hslStats.saturation) + "% " + Math.round(hslStats.lightness) + "%)";
+  const rgbText = "rgb(" + selectedRgb.join(" ") + ")";
   const parent = stack.at(-1) ?? null;
   const tiles = useMemo(() => {
     const children = atlasChildren(parent);
@@ -80,9 +84,10 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
     setShowNames(true);
     setStatus(namedResults.length ? "Choose a matching named color." : "No matching name. Try a HEX code or another color name.");
   };
-  const copy = async (hex: string) => {
-    setStatus(await copyColorText(hex.toUpperCase()) ? hex.toUpperCase() + " copied." : "Clipboard unavailable.");
+  const copyText = async (value: string, label: string) => {
+    setStatus(await copyColorText(value) ? label + " copied." : "Clipboard unavailable.");
   };
+  const copy = (hex: string) => copyText(hex.toUpperCase(), "HEX");
   const save = (hex: string) => toggleFavorite(hex);
 
   // The depth canvas is perceptual: vertical = OKLCH lightness, horizontal = chroma.
@@ -154,7 +159,7 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
         <form className="pfx-explore__searchform" onSubmit={event => { event.preventDefault(); search(); }}>
           <label htmlFor="pfx-color-search"><span className="pfx-explore__sr-only">Search a named color or exact HEX</span></label>
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4" stroke="currentColor" strokeWidth="1.7"/><path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.7"/></svg>
-          <input id="pfx-color-search" type="search" autoComplete="off" value={query}
+          <input id="pfx-color-search" type="search" autoComplete="off" aria-label="Search a color name or exact HEX" value={query}
             onChange={event => { setQuery(event.target.value); setShowNames(true); }}
             placeholder="Search a color name or enter #RRGGBB" />
           <button type="submit">Locate color <span aria-hidden="true">↗</span></button>
@@ -324,11 +329,11 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
             <small>Click the color code to copy</small>
           </div>
           <div className="pfx-explore__inspector-values">
-            <div><span>RGB</span><code>{selectedRgb.join(", ")}</code><button type="button" onClick={() => void copy(selectedHex)}>Copy HEX</button></div>
-            <div><span>HSL</span><code>{Math.round(selected.h)}° hue*</code><button type="button" onClick={() => updateLch(selected.l, selected.c, selected.h + 15)}>+15°</button></div>
-            <div><span>OKLCH</span><code>{selected.l.toFixed(3)} · {selected.c.toFixed(3)} · {Math.round(selected.h)}°</code></div>
+            <div><span>RGB</span><code>{selectedRgb.join(", ")}</code><button type="button" onClick={() => void copyText(rgbText, "RGB")}>Copy</button></div>
+            <div><span>HSL</span><code>{Math.round(hslStats.hue)}°, {Math.round(hslStats.saturation)}%, {Math.round(hslStats.lightness)}%</code><button type="button" onClick={() => void copyText(hsl, "HSL")}>Copy</button></div>
+            <div><span>OKLCH</span><code>{selected.l.toFixed(3)} · {selected.c.toFixed(3)} · {Math.round(selected.h)}°</code><button type="button" onClick={() => void copyText("oklch(" + (selected.l * 100).toFixed(2) + "% " + selected.c.toFixed(4) + " " + selected.h.toFixed(2) + ")", "OKLCH")}>Copy</button></div>
           </div>
-          <p className="pfx-explore__inspector-footnote">*Hue shown above is OKLCH, not HSL.</p>
+
           <div className="pfx-explore__contrast">
             <div className="pfx-explore__contrast-top"><strong>Text contrast</strong><span>{ratio.toFixed(2)}:1</span></div>
             <div className="pfx-explore__contrast-preview" style={{ color: selectedHex, backgroundColor: background === "white" ? "#fff" : "#000" }}>
