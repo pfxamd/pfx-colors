@@ -133,6 +133,8 @@
 /* Fit the Picker workstation within the available stage without page scrolling. */
 .pfx-v2 .pfx-picker.pfx-c-workbench--picker {
   display:grid;
+  /* Override the original workbench's two-column grid on the page itself. */
+  grid-template-columns:minmax(0,1fr);
   grid-template-rows:auto minmax(0,1fr);
   gap:clamp(10px,1.5vh,16px);
   overflow:hidden;
