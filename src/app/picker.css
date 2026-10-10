@@ -376,6 +376,15 @@
 }
 .pfx-picker__status:not(:empty) { padding-block: 8px; border-top: 1px solid var(--pfx-line); }
 
+/* Short laptop viewports: keep both tools visible without needless page scrolling. */
+@media (min-width: 961px) and (max-height: 820px) {
+  .pfx-v2 .pfx-picker.pfx-c-workbench--picker { padding: 12px 16px; }
+  .pfx-picker__heading { margin-bottom: 10px; }
+  .pfx-v2 .pfx-c-color-field.pfx-picker__field { aspect-ratio: 2.18; }
+  .pfx-picker__hue-panel { padding: 10px 13px 12px; gap: 9px; }
+  .pfx-picker__edit { gap: 8px; padding-bottom: 10px; }
+  .pfx-picker__advanced > summary { min-height: 35px; }
+}
 @media (max-width: 960px) {
   .pfx-picker__layout {
     grid-template-columns: minmax(0,520px);
