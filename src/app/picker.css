@@ -43,7 +43,14 @@
   background: var(--pfx-accent);
   color: var(--pfx-bg);
 }
-.pfx-picker__layout { display: block; width: 100%; min-height: 0; }
+.pfx-picker__layout {
+  display: grid;
+  grid-template-columns: minmax(0,520px) minmax(0,355px);
+  gap: 14px;
+  align-items: start;
+  width: min(100%,889px);
+  min-height: 0;
+}
 .pfx-picker__canvas-card {
   width: min(100%, 520px);
   min-width: 0;
@@ -369,6 +376,13 @@
 }
 .pfx-picker__status:not(:empty) { padding-block: 8px; border-top: 1px solid var(--pfx-line); }
 
+@media (max-width: 960px) {
+  .pfx-picker__layout {
+    grid-template-columns: minmax(0,520px);
+    width: min(100%,520px);
+    gap: 14px;
+  }
+}
 @media (max-width: 580px) {
   .pfx-v2 .pfx-picker.pfx-c-workbench--picker { padding: 12px; }
   .pfx-picker__heading { gap: 9px; margin-bottom: 12px; }
