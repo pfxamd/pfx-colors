@@ -173,9 +173,9 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await pickerPanel.locator(".pfx-c-palette-ribbon button").count(), 9,
           "Initial live tones are visible next to Picker");
         assert.equal(await pickerPanel.locator(".pfx-picker__inspector").count(), 0);
-        assert.ok(await page.getByRole("slider", { name: "Opacity" }).isVisible());
-        assert.ok(await page.getByRole("slider", { name: "Saturation" }).isVisible());
-        assert.ok(await page.getByRole("slider", { name: "Lightness" }).isVisible());
+        assert.ok(await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Opacity", exact: true }).isVisible());
+        assert.ok(await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Saturation", exact: true }).isVisible());
+        assert.ok(await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Lightness", exact: true }).isVisible());
         const sliderPaint = await page.locator(".pfx-picker__canvas-card").evaluate(card =>
           ["opacity", "saturation", "lightness"].map(kind => {
             const rail = card.querySelector(".pfx-picker__rail--" + kind);
@@ -284,8 +284,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           getComputedStyle(el).getPropertyValue("--pfx-rail-gradient").trim());
         assert.notEqual(saturationTrackAfter, saturationTrackBefore,
           "Saturation artwork follows Hue changes");
-        await page.getByRole("slider", { name: "Opacity" }).focus();
-        await page.getByRole("slider", { name: "Opacity" }).press("Home");
+        await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Opacity" }).focus();
+        await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Opacity" }).press("Home");
         await page.locator(".pfx-picker__canvas-card").getByRole("button", { name: "Copy HEX" }).click();
         assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^#[0-9A-F]{8}$/,
           "Transparent colors retain alpha channel");
