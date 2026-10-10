@@ -119,6 +119,24 @@ export function relatedShades(hex: string): string[] {
     (a, b) => perceptualDistance(a, hex) - perceptualDistance(b, hex)
   ).slice(0, 16);
 }
+/** Use a visible first sample if the inherited workspace color is almost black. */
+export const EXPLORE_START_HEX = "#4778d6";
+export function initialExploreColor(hex: string): string {
+  const color = rgbToOklch(hexToRgb(hex));
+  return color.l < 0.25 && color.c < 0.04 ? EXPLORE_START_HEX : hex.toLowerCase();
+}
+
+/** Changing hue means exploring a hue: lift invisible or neutral shades into view. */
+export function discoverHue(hex: string, hue: number): string {
+  const source = rgbToOklch(hexToRgb(hex));
+  const needsVisibleTone = source.l < 0.42 || source.l > 0.93 || source.c < 0.045;
+  return gamutMappedHex({
+    l: needsVisibleTone ? 0.7 : source.l,
+    c: needsVisibleTone ? 0.14 : Math.max(source.c, 0.11),
+    h: ((hue % 360) + 360) % 360,
+  });
+}
+
 export function contrastRatio(a: string, b: string): number {
   const lum = (hex: string) => {
     const [r, g, b] = hexToRgb(hex).map(linearize);

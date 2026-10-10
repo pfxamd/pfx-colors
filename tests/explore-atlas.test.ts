@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  TOTAL_RGB, atlasChildren, atlasPath, contrastRatio, gamutMappedHex, hexToRgb,
+  TOTAL_RGB, atlasChildren, atlasPath, contrastRatio, discoverHue, gamutMappedHex, hexToRgb, initialExploreColor,
   oklchToRgb, perceptualDistance, relatedShades, rgbToHex, rgbToOklch,
   tileCount, tileHasHex, tileRange, tileRepresentative,
 } from "../src/app/explore-atlas";
@@ -68,6 +68,27 @@ describe("Explore 2.0: perception and contrast", () => {
     expect(oklchToRgb({ l: .7, c: .4, h: 260 })).toBeNull();
     expect(gamutMappedHex({ l: .7, c: .4, h: 260 })).toMatch(/^#[0-9a-f]{6}$/);
     expect(oklchToRgb({ l: .5, c: 0, h: 0 })).not.toBeNull();
+  });
+
+  it("starts near-black exploration with a visible sample without corrupting exact colors", () => {
+    expect(initialExploreColor("#010101")).toBe("#4778d6");
+    expect(initialExploreColor("#000000")).toBe("#4778d6");
+    expect(initialExploreColor("#ffffff")).toBe("#ffffff");
+    expect(initialExploreColor("#ff0000")).toBe("#ff0000");
+
+    for (const hue of [28, 100, 150, 205, 260, 310]) {
+      const visible = rgbToOklch(hexToRgb(discoverHue("#010101", hue)));
+      expect(visible.l).toBeGreaterThan(0.5);
+      expect(visible.c).toBeGreaterThan(0.06);
+    }
+  });
+
+  it("keeps dark neutrals selectable and preserves non-neutral brightness when changing hue", () => {
+    expect(rgbToHex(hexToRgb("#000000"))).toBe("#000000");
+    const darkRed = rgbToOklch(hexToRgb("#ba3344"));
+    const blue = rgbToOklch(hexToRgb(discoverHue("#ba3344", 260)));
+    expect(Math.abs(darkRed.l - blue.l)).toBeLessThan(0.03);
+    expect(blue.c).toBeGreaterThan(0.07);
   });
 
   it("computes exact WCAG relative-luminance contrast", () => {
