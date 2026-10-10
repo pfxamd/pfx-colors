@@ -168,51 +168,118 @@
 }
 .pfx-picker__hue-row { display: grid; gap: 9px; }
 .pfx-picker__hue-row > label,
-.pfx-picker__alpha > span,
-.pfx-picker__channel-slider > span {
+.pfx-picker__rail > span {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  color: var(--pfx-muted);
   font-size: 10px;
   font-weight: 650;
-  color: var(--pfx-muted);
 }
 .pfx-picker__hue-row strong,
-.pfx-picker__alpha strong,
-.pfx-picker__channel-slider strong {
-  font: 700 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+.pfx-picker__rail strong {
   color: var(--pfx-text);
+  font: 700 11px ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+
+/* Hue keeps the shared drag/keyboard engine. Its thumb follows the other rails. */
 .pfx-v2 .pfx-c-picker-hue.pfx-picker__hue {
-  height: 15px;
-  border: 1px solid var(--pfx-line-strong);
-  border-radius: 5px;
-  box-shadow: none;
+  height: 14px;
+  border: 1px solid rgba(0, 0, 0, .28);
+  border-radius: 999px;
+  background: linear-gradient(to right,
+    #f00 0%, #ff0 16.6667%, #0f0 33.3333%, #0ff 50%,
+    #00f 66.6667%, #f0f 83.3333%, #f00 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
+  cursor: ew-resize;
   touch-action: none;
-  outline-offset: 6px;
+  outline-offset: 7px;
 }
 .pfx-picker__hue .pfx-c-picker-hue__handle {
-  width: 14px;
-  height: 27px;
-  border: 2px solid #fff;
-  border-radius: 4px;
-  box-shadow: 0 0 0 1.5px #222733, 0 2px 6px #0003;
+  width: 22px;
+  height: 22px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px rgba(23,28,37,.78), 0 2px 7px rgba(0,0,0,.24);
+  pointer-events: none;
 }
-.pfx-picker__alpha,
-.pfx-picker__channel-slider { display: grid; gap: 7px; min-width: 0; }
-.pfx-v2 .pfx-picker__alpha input[type="range"],
-.pfx-v2 .pfx-picker__channel-slider input[type="range"] {
+.pfx-v2 .pfx-c-picker-hue.pfx-picker__hue:focus-visible {
+  outline: 2px solid var(--pfx-accent);
+}
+
+/* Native input semantics, custom track and color-accurate thumb artwork.
+   The alpha track layers actual-color transparency over a checkerboard.
+   Saturation and lightness tracks regenerate for the current HSL channels. */
+.pfx-picker__rail { display: grid; gap: 7px; min-width: 0; }
+.pfx-v2 .pfx-picker__rail input[type="range"] {
   display: block;
   width: 100%;
-  height: 19px;
+  height: 26px;
+  min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
+  border-radius: 0;
+  outline-offset: 4px;
   background: transparent;
-  accent-color: var(--pfx-accent);
   cursor: ew-resize;
+  appearance: none;
+  -webkit-appearance: none;
+  touch-action: pan-y;
 }
+.pfx-v2 .pfx-picker__rail input[type="range"]::-webkit-slider-runnable-track {
+  height: 14px;
+  border: 1px solid rgba(0, 0, 0, .2);
+  border-radius: 999px;
+  background-image: var(--pfx-rail-gradient), var(--pfx-rail-checker);
+  background-size: 100% 100%, 12px 12px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.13);
+}
+.pfx-v2 .pfx-picker__rail input[type="range"]::-moz-range-track {
+  height: 14px;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, .2);
+  border-radius: 999px;
+  background-image: var(--pfx-rail-gradient), var(--pfx-rail-checker);
+  background-size: 100% 100%, 12px 12px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.13);
+}
+.pfx-v2 .pfx-picker__rail input[type="range"]::-moz-range-progress {
+  background: transparent;
+}
+.pfx-v2 .pfx-picker__rail input[type="range"]::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -5px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--pfx-rail-thumb);
+  box-shadow: 0 0 0 1.5px rgba(23,28,37,.78), 0 2px 7px rgba(0,0,0,.24);
+}
+.pfx-v2 .pfx-picker__rail input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--pfx-rail-thumb);
+  box-shadow: 0 0 0 1.5px rgba(23,28,37,.78), 0 2px 7px rgba(0,0,0,.24);
+}
+.pfx-v2 .pfx-picker__rail input[type="range"]:focus-visible {
+  outline: 2px solid var(--pfx-accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pfx-v2 .pfx-picker__rail input[type="range"]::-webkit-slider-thumb {
+    transition: box-shadow 120ms ease;
+  }
+  .pfx-v2 .pfx-picker__rail input[type="range"]::-moz-range-thumb {
+    transition: box-shadow 120ms ease;
+  }
+}
+
 .pfx-picker__advanced {
   border-top: 1px solid var(--pfx-line);
   padding: 0 16px;
