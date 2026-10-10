@@ -288,7 +288,7 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
             <div className="pfx-explore__spectrum-body">
               <div className="pfx-explore__wheel-wrap">
                 <button type="button" className="pfx-explore__wheel"
-                  aria-label={"Hue " + Math.round(selected.h) + " degrees. Use arrow keys to adjust."}
+                  aria-label={"Hue " + Math.round(browseHue) + " degrees. Use arrow keys to adjust."}
                   onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); updateFromWheel(event); }}
                   onPointerMove={event => { if (event.buttons) updateFromWheel(event); }}
                   onPointerUp={commitPreview} onPointerCancel={commitPreview}
