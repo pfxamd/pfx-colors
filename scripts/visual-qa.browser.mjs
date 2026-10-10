@@ -31,8 +31,14 @@ for (const [browserName, launcher] of [["chromium",chromium],["firefox",firefox]
         await page.goto(base,{waitUntil:"networkidle",timeout:60000});
         await page.locator(".pfx-c-engine-label[data-engine='rust']").waitFor({state:"attached"});
         for (const theme of ["dark","light"]) {
-          await page.getByRole("button",{name:theme+" theme"}).click();
+          const toggle = page.locator(".pfx-v2__theme-toggle");
+          assert.equal(await toggle.count(), 1, "There is one theme toggle in the navbar");
+          if (await page.locator(".pfx-v2").getAttribute("data-theme") !== theme) {
+            await toggle.click();
+          }
           assert.equal(await page.locator(".pfx-v2").getAttribute("data-theme"),theme);
+          assert.equal(await toggle.locator("svg").getAttribute("data-theme-icon"),
+            theme === "dark" ? "moon" : "sun", "Theme icon matches current appearance");
           for (const tool of toolNames) {
             await page.locator('nav[aria-label="Color tools"] button').filter({hasText:tool}).click();
             const region = page.locator(".pfx-v2__page");
