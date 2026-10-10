@@ -50,7 +50,8 @@ async function scenario(browser, browserName, viewport, engine) {
     assert.equal(await page.locator('nav[aria-label="Color tools"] button').filter({hasText:"Tones"}).count(), 0,
       "Tones are integrated into Picker, not a standalone tab");
     assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 9);
-    const paletteHexes = await page.locator(".pfx-c-palette-ribbon button span").allTextContents();
+    const paletteHexes = await page.locator(".pfx-c-palette-ribbon button").evaluateAll(
+      buttons => buttons.map(button => button.getAttribute("title")?.split(" ")[0] ?? ""));
     await page.locator(".pfx-c-palette-ribbon button").nth(2).click();
     assert.equal((await current.inputValue()).toLowerCase(), afterPicker.toLowerCase(),
       "Previewing a tone must not change the active Picker color");

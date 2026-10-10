@@ -9,6 +9,7 @@ export type ToneConfig = {
   chroma: number;
   distribution: ToneDistribution;
   lockBase: boolean;
+  autoRange: boolean;
 };
 export type ToneOverride = { lightness: number; chroma: number };
 export type ToneOverrides = Record<number, ToneOverride>;
@@ -21,18 +22,39 @@ export type ToneItem = {
   lightness: number;
   chroma: number;
   edited: boolean;
+  base: boolean;
 };
 export const DEFAULT_TONES: ToneConfig = {
-  count: 9, min: 8, max: 96, chroma: 100, distribution: "even", lockBase: false,
+  count: 9, min: 24, max: 88, chroma: 100, distribution: "even",
+  lockBase: false, autoRange: true,
 };
-export const TONES_SETTINGS_KEY = "pfx-colors.tones.v2";
+export const TONES_SETTINGS_KEY = "pfx-colors.tones.v3";
+const OLD_SETTINGS_KEY = "pfx-colors.tones.v2";
 
-export function loadToneConfig(storage: Pick<Storage, "getItem"> | null): ToneConfig {
+/** A useful tonal neighborhood around the actual color, not arbitrary black-to-white endpoints. */
+export function toneBoundsForSeed(seed: ColorInput): Pick<ToneConfig, "min" | "max"> {
+  const lightness = baseToneLightness(seed);
+  const min = lightness < 18 ? Math.max(0, Math.floor(lightness - 7))
+    : Math.max(18, Math.round(lightness - 28));
+  const max = Math.min(98, Math.max(min + 18, Math.round(lightness + 26)));
+  return { min, max };
+}
+
+export function defaultTonesForSeed(seed: ColorInput): ToneConfig {
+  return { ...DEFAULT_TONES, ...toneBoundsForSeed(seed) };
+}
+
+export function loadToneConfig(
+  storage: Pick<Storage, "getItem"> | null,
+  seed: ColorInput = "#336699",
+): ToneConfig {
+  const fallback = defaultTonesForSeed(seed);
   try {
-    const raw = storage?.getItem(TONES_SETTINGS_KEY);
-    if (!raw) return { ...DEFAULT_TONES };
+    const recent = storage?.getItem(TONES_SETTINGS_KEY);
+    const raw = recent ?? storage?.getItem(OLD_SETTINGS_KEY);
+    if (!raw) return fallback;
     const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== "object") return { ...DEFAULT_TONES };
+    if (!value || typeof value !== "object") return fallback;
     const v = value as Partial<ToneConfig>;
     if (typeof v.count !== "number" || !Number.isInteger(v.count) || v.count < 3 || v.count > 16 ||
         typeof v.min !== "number" || typeof v.max !== "number" ||
@@ -40,10 +62,17 @@ export function loadToneConfig(storage: Pick<Storage, "getItem"> | null): ToneCo
         typeof v.chroma !== "number" || !Number.isFinite(v.chroma) ||
         v.chroma < 0 || v.chroma > 180 ||
         !["even", "shadows", "highlights"].includes(v.distribution ?? "") ||
-        typeof v.lockBase !== "boolean") return { ...DEFAULT_TONES };
-    return { count: v.count, min: v.min, max: v.max, chroma: v.chroma,
-      distribution: v.distribution as ToneDistribution, lockBase: v.lockBase };
-  } catch { return { ...DEFAULT_TONES }; }
+        typeof v.lockBase !== "boolean") return fallback;
+    // Older saved scales used 8%-96% for every color: migrate once while retaining
+    // the chosen tone count, distribution and chroma.
+    const autoRange = recent ? v.autoRange !== false : true;
+    return {
+      count: v.count, chroma: v.chroma,
+      distribution: v.distribution as ToneDistribution,
+      lockBase: v.lockBase, autoRange,
+      ...(autoRange ? toneBoundsForSeed(seed) : { min: v.min, max: v.max }),
+    };
+  } catch { return fallback; }
 }
 
 export function tonePosition(t: number, distribution: ToneDistribution): number {
@@ -73,14 +102,15 @@ export function buildTones(seed: ColorInput, config: ToneConfig, overrides: Tone
   const positions = Array.from({ length: count }, (_, index) =>
     tonePosition(index / (count - 1), distribution));
   const seedLightness = baseToneLightness(seed);
-  const lockedIndex = lockBase && seedLightness >= min - 0.0001 && seedLightness <= max + 0.0001
+  const baseIndex = seedLightness >= min - 0.0001 && seedLightness <= max + 0.0001
     ? positions.reduce((best, value, i) => Math.abs(min + (max - min) * value - seedLightness)
        < Math.abs(min + (max - min) * positions[best] - seedLightness) ? i : best, 0)
     : -1;
   const seedHex = colorEngine.color.formatHex(seed);
   return positions.map((position, index) => {
-    const locked = index === lockedIndex;
+    const locked = lockBase && index === baseIndex;
     const custom = locked ? undefined : overrides[index];
+    const base = index === baseIndex && !custom;
     let sample = generated[Math.round(position * (precision - 1))];
     if (custom) {
       // Use the same pinned engine for manual modifications, not an independent JS converter.
@@ -95,12 +125,12 @@ export function buildTones(seed: ColorInput, config: ToneConfig, overrides: Tone
     }
     return {
       index, position: index / (count - 1),
-      hex: locked ? seedHex : sample.hex,
-      source: locked ? seed : input(sample),
+      hex: base ? seedHex : sample.hex,
+      source: base ? seed : input(sample),
       locked,
       lightness: custom?.lightness ?? min + (max - min) * position,
       chroma: custom?.chroma ?? chroma,
-      edited: Boolean(custom),
+      edited: Boolean(custom), base,
     };
   });
 }

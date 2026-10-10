@@ -82,63 +82,68 @@
 }
 .pfx-c-tones__seedbar code { font: 700 11px ui-monospace, monospace; color: var(--pfx-text); }
 .pfx-c-tones__seedbar small { margin-left: auto; font-size: 9px; }
+/* The spectrum is a single continuous instrument, not a mini card collection. */
+.pfx-tones-embedded .pfx-c-tones__spectrum {
+  position: relative;
+  padding: 0 0 9px;
+}
 .pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0,1fr));
-  gap: 4px;
+  display: flex;
   width: 100%;
-  height: auto;
+  height: 78px;
+  gap: 0;
   min-height: 0;
   padding: 0;
   margin: 0;
-  overflow: visible;
+  border-radius: 8px;
   background: none;
+  overflow: visible;
 }
 .pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button {
-  display: flex;
+  display: block;
   position: relative;
-  isolation: isolate;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 4px;
+  flex: 1 1 0;
+  width: 0;
   min-width: 0;
-  min-height: 38px;
-  padding: 5px 5px 4px;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  margin: 0;
   border: 0;
-  border-radius: 5px;
-  text-align: left;
+  border-radius: 0;
   box-shadow: none;
-  overflow: hidden;
-  transition: box-shadow .12s ease;
+  cursor: pointer;
+  transition: none;
+}
+.pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button:first-child {
+  border-radius: 8px 0 0 8px;
+}
+.pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button:last-child {
+  border-radius: 0 8px 8px 0;
 }
 .pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button:hover {
-  box-shadow: inset 0 0 0 2px rgba(127,127,127,.48);
+  z-index: 1;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.65);
 }
 .pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button.pfx-is-selected {
-  box-shadow: inset 0 0 0 2px var(--pfx-accent), inset 0 0 0 3.5px var(--pfx-panel);
+  z-index: 2;
+  box-shadow: inset 0 0 0 2px var(--pfx-panel), 0 0 0 2px var(--pfx-accent);
 }
-.pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button small,
-.pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button span {
-  position: static;
-  display: block;
-  max-width: 100%;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  writing-mode: horizontal-tb;
-  transform: none;
-  font: 600 9px ui-monospace, monospace;
-}
-.pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button small { font-size: 9px; opacity: .8; }
-.pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button b {
+.pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button.pfx-is-selected::after {
+  content: "";
   position: absolute;
-  top: 3px;
-  right: 4px;
-  font-size: 9px;
+  bottom: -8px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--pfx-accent);
+  transform: translateX(-50%);
+}
+.pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button:focus-visible {
+  z-index: 3;
+  outline: 2px solid var(--pfx-accent);
+  outline-offset: 3px;
 }
 .pfx-c-tones__settings,
 .pfx-c-tones__inspector {
@@ -256,21 +261,36 @@
   padding: 4px 6px;
 }
 .pfx-c-tones__inspector { display: grid; align-content: start; gap: 6px; padding-top: 9px; }
-.pfx-c-tones__inspector-head { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
-.pfx-c-tones__inspector-head > strong { font-size: 11px; }
-.pfx-c-tones__inspector-head > span { color: var(--pfx-muted); font-size: 9px; }
-.pfx-c-tones__preview {
+.pfx-c-tones__selected {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 40px;
-  padding: 8px 9px;
-  border-radius: 6px;
+  justify-content: flex-start;
+  gap: 7px;
+  min-height: 36px;
 }
-.pfx-c-tones__preview > strong { font: 720 14px ui-monospace,monospace; }
-.pfx-c-tones__preview > span { font-size: 10px; font-weight: 600; white-space: nowrap; }
-.pfx-c-tones__tone-actions { display: flex; justify-content: flex-start; gap: 5px; }
+.pfx-c-tones__selected-swatch {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border: 1px solid rgba(0,0,0,.18);
+  border-radius: 5px;
+}
+.pfx-c-tones__selected > strong {
+  color: var(--pfx-text);
+  font: 700 12px ui-monospace, monospace;
+}
+.pfx-c-tones__contrast {
+  color: var(--pfx-muted);
+  font: 10px ui-monospace, monospace;
+}
+.pfx-c-tones__tone-actions {
+  display: flex;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 .pfx-c-tones__manual { border-top: 1px solid var(--tone-border); margin-top: 3px; }
 .pfx-c-tones__manual-controls > button { justify-self: start; }
 .pfx-c-tones__manual-controls > p { margin: 0; font-size: 10px; color: var(--pfx-muted); }
@@ -284,5 +304,5 @@
   .pfx-c-tones__heading > span { margin-right: auto; }
   .pfx-c-tones__header-actions { margin-left: 0; }
   .pfx-v2 .pfx-tones-embedded { padding: 10px; }
-  .pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon button { min-height: 35px; }
+  .pfx-v2 .pfx-c-palette-ribbon.pfx-c-tones__ribbon { height: 66px; }
 }

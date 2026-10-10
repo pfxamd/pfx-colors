@@ -4,7 +4,7 @@ import { normalizeHex } from "./color-library";
 import { copyColorText } from "./clipboard";
 import { useStoredState, isHex, numberBetween } from "./workspace-state";
 import {
-  baseToneLightness, buildTones, DEFAULT_TONES, loadToneConfig, textContrast,
+  baseToneLightness, buildTones, defaultTonesForSeed, toneBoundsForSeed, loadToneConfig, textContrast,
   tonesCss, tonesJson, TONES_SETTINGS_KEY,
   type ToneConfig, type ToneOverrides, type ToneDistribution,
 } from "./tones-model";
@@ -43,10 +43,10 @@ export function Tones({ state, workspace, sync, commitColor, openGradient }: Pro
   // not unexpectedly regenerate the entire tonal family.
   const [seed, setSeed] = useStoredState("pfx-colors.tones.seed.v2", state.color.hex, isHex);
   const [settings, setSettings] = useState<ToneConfig>(() =>
-    loadToneConfig(typeof window === "undefined" ? null : window.localStorage));
+    loadToneConfig(typeof window === "undefined" ? null : window.localStorage, state.color.hex));
   const [overrides, setOverrides] = useStoredState<ToneOverrides>(
-    "pfx-colors.tones.overrides.v2", {}, isOverrides);
-  const [selected, setSelected] = useStoredState("pfx-colors.tones.selected.v2", 0,
+    "pfx-colors.tones.overrides.v3", {}, isOverrides);
+  const [selected, setSelected] = useStoredState("pfx-colors.tones.selected.v3", Math.floor((settings.count - 1) / 2),
     (value: unknown): value is number => Number.isInteger(value) && numberBetween(0, 15)(value));
   const [status, setStatus] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
@@ -58,15 +58,17 @@ export function Tones({ state, workspace, sync, commitColor, openGradient }: Pro
     if (!normalized || normalized.toLowerCase() === seed.toLowerCase()) return;
     setSeed(normalized);
     setOverrides({});
-    setSelected(0);
-    if (settings.lockBase) {
-      const lightness = baseToneLightness(normalized);
-      setSettings(previous => ({
-        ...previous, min: Math.min(previous.min, Math.floor(lightness)),
-        max: Math.max(previous.max, Math.ceil(lightness)),
-      }));
-    }
-  }, [state.color.hex, seed, setSeed, setOverrides, setSelected, settings.lockBase]);
+    const nextSettings = settings.autoRange
+      ? { ...settings, ...toneBoundsForSeed(normalized) }
+      : settings.lockBase
+        ? { ...settings, min: Math.min(settings.min, Math.floor(baseToneLightness(normalized))),
+            max: Math.max(settings.max, Math.ceil(baseToneLightness(normalized))) }
+        : settings;
+    setSettings(nextSettings);
+    // Preview the seed's tonal neighbor, not the darkest endpoint.
+    const newTones = buildTones(normalized, nextSettings);
+    setSelected(Math.max(0, newTones.findIndex(tone => tone.base)));
+  }, [state.color.hex, seed, setSeed, setOverrides, setSelected]);
   const seedLightness = useMemo(() => baseToneLightness(seed), [seed]);
   const tones = useMemo(() => buildTones(seed, settings, overrides), [seed, settings, overrides]);
   const selectedTone = tones[Math.min(selected, tones.length - 1)] ?? tones[0];
@@ -83,12 +85,16 @@ export function Tones({ state, workspace, sync, commitColor, openGradient }: Pro
   }, [settings.count]);
 
   const updateSettings = (change: Partial<ToneConfig>) => {
-    setSettings(previous => ({ ...previous, ...change }));
+    setSettings(previous => ({
+      ...previous, ...change,
+      autoRange: change.min !== undefined || change.max !== undefined ? false : previous.autoRange,
+    }));
     setOverrides({});
   };
 
   const setLock = (lockBase: boolean) => {
     if (!lockBase) { updateSettings({ lockBase: false }); return; }
+    if (settings.autoRange) { updateSettings({ lockBase: true }); return; }
     updateSettings({
       lockBase: true,
       min: Math.min(settings.min, Math.floor(seedLightness)),
@@ -155,23 +161,21 @@ export function Tones({ state, workspace, sync, commitColor, openGradient }: Pro
         <code>{seed.toUpperCase()}</code>
         <small>Picker color</small>
       </div>
-      <div className="pfx-c-palette-ribbon pfx-c-tones__ribbon" aria-label="Generated tones">
-        {tones.map(tone => {
-          const contrast = textContrast(tone.hex);
-          return (
+      <div className="pfx-c-tones__spectrum" aria-label="Generated tones">
+        <div className="pfx-c-palette-ribbon pfx-c-tones__ribbon" role="group" aria-label="Choose a tone">
+          {tones.map(tone => (
             <button type="button" key={tone.index}
               className={tone.index === selected ? "pfx-is-selected" : ""}
-              style={{ backgroundColor: tone.hex, color: contrast.color }}
+              style={{ backgroundColor: tone.hex }}
               onClick={() => selectTone(tone.index)}
               aria-pressed={tone.index === selected}
-              aria-label={"Select tone " + (tone.index + 1) + " " + tone.hex}>
-              <small>{String(tone.index + 1).padStart(2, "0")}</small>
-              <span>{tone.hex.toUpperCase()}</span>
-              {tone.locked && <b aria-label="Base locked" title="Base color locked">●</b>}
-              {tone.edited && <b aria-label="Manually edited" title="Manually adjusted">✦</b>}
-            </button>
-          );
-        })}
+              aria-label={"Select tone " + (tone.index + 1) + " " + tone.hex}
+              data-locked={tone.locked || undefined}
+              data-edited={tone.edited || undefined}
+              data-base={tone.base || undefined}
+              title={tone.hex.toUpperCase() + (tone.base ? " · Base color" : "")} />
+          ))}
+        </div>
       </div>
       <details className="pfx-c-tones__settings" open>
         <summary><strong>Generator</strong><span>Scale controls</span></summary>
@@ -221,23 +225,19 @@ export function Tones({ state, workspace, sync, commitColor, openGradient }: Pro
             </label>
           </div>
           <button className="pfx-c-tones__reset" type="button"
-            onClick={() => { setSettings({ ...DEFAULT_TONES }); setOverrides({}); }}>Reset generator</button>
+            onClick={() => { setSettings(defaultTonesForSeed(seed)); setOverrides({}); }}>Reset generator</button>
         </div>
       </details>
       {selectedTone && (
         <section className="pfx-c-tones__inspector" aria-label="Selected tone inspector">
-          <div className="pfx-c-tones__inspector-head">
-            <strong>Tone {String(selectedTone.index + 1).padStart(2, "0")}</strong>
-            <span>{selectedTone.locked ? "Base locked" : selectedTone.edited ? "Manual" : "Generated"}</span>
-          </div>
-          <div className="pfx-c-tones__preview"
-            style={{ backgroundColor: selectedTone.hex, color: foreground.color }}>
+          <div className="pfx-c-tones__selected">
+            <span className="pfx-c-tones__selected-swatch" style={{ backgroundColor: selectedTone.hex }} aria-hidden="true" />
             <strong>{selectedTone.hex.toUpperCase()}</strong>
-            <span>Contrast {foreground.ratio.toFixed(2)}:1</span>
-          </div>
-          <div className="pfx-c-tones__tone-actions">
-            <button type="button" onClick={() => void copy(selectedTone.hex.toUpperCase(), "Tone HEX copied")}>Copy HEX</button>
-            <button type="button" onClick={() => commitColor(selectedTone.hex)}>Use color</button>
+            <span className="pfx-c-tones__contrast">Contrast {foreground.ratio.toFixed(2)}:1</span>
+            <div className="pfx-c-tones__tone-actions">
+              <button type="button" onClick={() => void copy(selectedTone.hex.toUpperCase(), "Tone HEX copied")}>Copy</button>
+              <button type="button" onClick={() => commitColor(selectedTone.hex)}>Use color</button>
+            </div>
           </div>
           <details className="pfx-c-tones__manual">
             <summary>Fine-tune tone</summary>
