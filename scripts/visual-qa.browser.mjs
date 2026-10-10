@@ -84,10 +84,15 @@ for (const [browserName, launcher] of [["chromium",chromium],["firefox",firefox]
               "Navbar swatch available in all tools");
             assert.ok(await page.getByRole("button", { name: "UNDO" }).isVisible(),
               "History controls remain visible");
-            if (tool === "Picker") {
-              assert.equal(v.titleVisible, false, "Picker intentionally has no redundant page heading");
-              assert.equal(await page.locator(".pfx-picker__card-caption .pfx-picker__save").count(), 1,
-                "Picker Save button lives in the compact in-card toolbar");
+            if (tool === "Picker" || tool === "Gradient") {
+              assert.equal(v.titleVisible, false, tool+" intentionally has no redundant page heading");
+              if (tool === "Picker") {
+                assert.equal(await page.locator(".pfx-picker__card-caption .pfx-picker__save").count(), 1,
+                  "Picker Save button lives in the compact in-card toolbar");
+              } else {
+                assert.equal(await page.locator(".pfx-gradient__toolbar .pfx-gradient__top-actions").count(), 1,
+                  "Gradient commands live in the compact toolbar");
+              }
             } else {
               assert.ok(v.titleVisible,browserName+" "+tool+" missing heading");
               assert.ok(contrast(v.titleColor,v.pageBackground)>=4.5,

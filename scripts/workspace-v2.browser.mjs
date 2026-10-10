@@ -467,6 +467,46 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.locator(".pfx-c-workbench--gradient").waitFor();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 2,
           "Conic gradient received the current harmony set");
+        const gradientLayout = await page.locator(".pfx-gradient").evaluate(el => {
+          const page = el.getBoundingClientRect();
+          const header = el.querySelector(".pfx-gradient__toolbar").getBoundingClientRect();
+          const preview = el.querySelector(".pfx-c-gradient-preview").getBoundingClientRect();
+          const canvas = el.querySelector(".pfx-c-gradient-canvas-card").getBoundingClientRect();
+          const inspector = el.querySelector(".pfx-c-gradient-inspector").getBoundingClientRect();
+          const footer = el.querySelector(".pfx-gradient__footer").getBoundingClientRect();
+          return {
+            width: page.width, pageScroll: el.scrollHeight - el.clientHeight,
+            pageOverflowX: el.scrollWidth - el.clientWidth,
+            headerHeight: header.height,
+            previewWidth: preview.width, previewHeight: preview.height,
+            canvasWidth: canvas.width, inspectorWidth: inspector.width,
+            gap: inspector.left - canvas.right, inspectorBelow: inspector.top >= canvas.bottom,
+            footerBelow: footer.top >= canvas.bottom,
+            sourceX: canvas.left - page.left,
+            inspectorEnd: inspector.bottom - page.top,
+          };
+        });
+        assert.equal(await page.locator(".pfx-gradient h1").count(), 0,
+          "Gradient has no unnecessary large heading");
+        assert.equal(await page.locator(".pfx-gradient__toolbar .pfx-gradient__top-actions button").count(), 5,
+          "Existing gradient commands share one compact toolbar");
+        assert.ok(gradientLayout.pageOverflowX <= 2, "Gradient never overflows horizontally");
+        assert.ok(gradientLayout.previewHeight >= 250 && gradientLayout.previewHeight <= 465,
+          "Main preview is prominent without overwhelming the viewport");
+        if (viewport.width >= 1200) {
+          assert.ok(gradientLayout.headerHeight <= 58, "Gradient toolbar stays one compact row");
+          assert.ok(gradientLayout.canvasWidth >= 540 && gradientLayout.canvasWidth <= 710,
+            "Preview workspace remains bounded rather than stretched");
+          assert.ok(gradientLayout.inspectorWidth >= 305 && gradientLayout.inspectorWidth <= 355,
+            "Inspector stays compact beside the preview");
+          assert.ok(gradientLayout.gap >= 9 && gradientLayout.gap <= 22,
+            "Preview and controls stay precisely aligned");
+          assert.equal(gradientLayout.inspectorBelow, false, "Controls are beside the preview on laptop");
+          assert.ok(gradientLayout.pageScroll <= 3,
+            "Gradient fits a standard 1440×900 workspace without vertical scrolling: " +
+              JSON.stringify(gradientLayout));
+        }
+
 
         // Exercise gradient composition and source exports without publishing the branch.
         const gradientType = page.getByRole("button", { name: "radial gradient" });
