@@ -199,15 +199,6 @@ export function Picker({ state, workspace, sync, commitColor, openGradient, favo
 
   return (
     <section className="pfx-c-workbench--picker pfx-picker pfx-v2__page" aria-label="Color picker workstation">
-      <div className="pfx-v2__page-heading pfx-picker__heading">
-        <h1>Picker</h1>
-        <div className="pfx-picker__top-actions">
-          <button type="button" aria-pressed={favorite}
-            onClick={() => toggleFavorite(state.color.hex)}>
-            {favorite ? "★ Saved" : "☆ Save color"}
-          </button>
-        </div>
-      </div>
       <div className="pfx-picker__layout">
         <div className="pfx-picker__canvas-card">
           <div className="pfx-picker__card-caption">
@@ -242,6 +233,14 @@ export function Picker({ state, workspace, sync, commitColor, openGradient, favo
             </select>
             <button className="pfx-picker__copy" type="button" onClick={() => void copySelected()}
               aria-label={"Copy " + format.toUpperCase()} title="Copy current format">Copy</button>
+            <button className={"pfx-picker__save" + (favorite ? " pfx-is-saved" : "")}
+              type="button" aria-pressed={favorite}
+              aria-label={favorite ? "Remove saved color" : "Save color"}
+              title={favorite ? "Remove saved color" : "Save current color"}
+              onClick={() => toggleFavorite(state.color.hex)}>
+              <span aria-hidden="true">{favorite ? "★" : "☆"}</span>
+              <span>{favorite ? "Saved" : "Save"}</span>
+            </button>
           </div>
           {valueError && <p className="pfx-picker__error" role="alert">{valueError}</p>}
           <div className="pfx-c-picker-main pfx-picker__surface">

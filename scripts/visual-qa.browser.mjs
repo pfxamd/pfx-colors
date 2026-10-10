@@ -84,9 +84,15 @@ for (const [browserName, launcher] of [["chromium",chromium],["firefox",firefox]
               "Navbar swatch available in all tools");
             assert.ok(await page.getByRole("button", { name: "UNDO" }).isVisible(),
               "History controls remain visible");
-            assert.ok(v.titleVisible,browserName+" "+tool+" missing heading");
-            assert.ok(contrast(v.titleColor,v.pageBackground)>=4.5,
-              browserName+" "+tool+" unreadable title in "+theme+": "+contrast(v.titleColor,v.pageBackground).toFixed(2));
+            if (tool === "Picker") {
+              assert.equal(v.titleVisible, false, "Picker intentionally has no redundant page heading");
+              assert.equal(await page.locator(".pfx-picker__card-caption .pfx-picker__save").count(), 1,
+                "Picker Save button lives in the compact in-card toolbar");
+            } else {
+              assert.ok(v.titleVisible,browserName+" "+tool+" missing heading");
+              assert.ok(contrast(v.titleColor,v.pageBackground)>=4.5,
+                browserName+" "+tool+" unreadable title in "+theme+": "+contrast(v.titleColor,v.pageBackground).toFixed(2));
+            }
             assert.ok(v.activeTabVisible,browserName+" "+tool+" tab clipped");
             assert.ok(v.overflow<=2,browserName+" "+tool+" document overflow: "+v.overflow);
             const measuredOverflow=(v.pageWidth??0)-(v.pageClientWidth??0);
