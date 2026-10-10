@@ -35,8 +35,13 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator(".pfx-c-engine-label").textContent(), "RUST / CORE");
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true,
           "No horizontal overflow in production preview");
-        for (const name of ["Picker", "Tones", "Harmony", "Gradient"]) {
+        for (const name of ["Picker", "Harmony", "Gradient"]) {
           await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: name }).click();
+          if (name === "Picker") {
+            await page.locator(".pfx-tones-embedded").waitFor();
+            assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 9,
+              "Picker includes Tones in the Rust production build");
+          }
           if (name === "Gradient") {
             await page.locator('canvas[data-rust-gradient-preview="ready"]').waitFor({ timeout: 30000 });
             assert.equal(await page.evaluate(() => window.__PFX_RUST_RENDER__?.worker), true);
