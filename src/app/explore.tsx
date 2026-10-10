@@ -143,7 +143,7 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
       const l = 1 - y / (h - 1);
       for (let x = 0; x < w; x++) {
         const c = x / (w - 1) * MAX_CHROMA;
-        const rgb = oklchToRgb({ l, c, h: selected.h });
+        const rgb = oklchToRgb({ l, c, h: browseHue });
         const index = (y * w + x) * 4;
         if (rgb) {
           image.data[index] = rgb[0];
@@ -154,13 +154,13 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
       }
     }
     ctx.putImageData(image, 0, 0);
-  }, [Math.round(selected.h * 10) / 10]);
+  }, [Math.round(browseHue * 10) / 10]);
 
   const updateFromDepth = (event: PointerEvent<HTMLCanvasElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
     const y = Math.max(0, Math.min(1, (event.clientY - box.top) / box.height));
-    preview(gamutMappedHex({ l: 1 - y, c: x * MAX_CHROMA, h: selected.h }));
+    preview(gamutMappedHex({ l: 1 - y, c: x * MAX_CHROMA, h: browseHue }));
   };
   const updateFromWheel = (event: PointerEvent<HTMLButtonElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
