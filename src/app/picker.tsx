@@ -72,10 +72,39 @@ function HueRail({ value, update }: { value: number; update: (value: number) => 
   );
 }
 
-function ChannelSlider({ label, value, onChange }: {
-  label: string; value: number; onChange: (next: number) => void;
+type RailKind = "opacity" | "saturation" | "lightness";
+
+function ColorRail({ kind, value, hue, saturation, lightness, rgb, onChange }: {
+  kind: RailKind;
+  value: number;
+  hue: number;
+  saturation: number;
+  lightness: number;
+  rgb: readonly number[];
+  onChange: (next: number) => void;
 }) {
-  return <label className="pfx-picker__channel-slider">
+  const label = kind === "opacity" ? "Opacity" :
+    kind === "saturation" ? "Saturation" : "Lightness";
+  const currentRgb = `rgb(${rgb.join(" ")})`;
+  const gradient = kind === "opacity"
+    ? `linear-gradient(to right, rgb(${rgb.join(" ")} / 0), ${currentRgb})`
+    : kind === "saturation"
+      ? `linear-gradient(to right, hsl(${hue} 0% ${lightness}%), hsl(${hue} 100% ${lightness}%))`
+      : `linear-gradient(to right, hsl(${hue} ${saturation}% 0%), hsl(${hue} ${saturation}% 50%) 50%, hsl(${hue} ${saturation}% 100%))`;
+  const thumb = kind === "opacity"
+    ? `rgb(${rgb.join(" ")} / ${value / 100})`
+    : kind === "saturation"
+      ? `hsl(${hue} ${value}% ${lightness}%)`
+      : `hsl(${hue} ${saturation}% ${value}%)`;
+  const railStyle = {
+    "--pfx-rail-gradient": gradient,
+    "--pfx-rail-thumb": thumb,
+    "--pfx-rail-checker": kind === "opacity"
+      ? "conic-gradient(#b7bfca 25%, #f7f8fa 0 50%, #b7bfca 0 75%, #f7f8fa 0)"
+      : "linear-gradient(transparent, transparent)",
+  } as CSSProperties;
+
+  return <label className={`pfx-picker__rail pfx-picker__rail--${kind}`} style={railStyle}>
     <span>{label}<strong>{Math.round(value)}%</strong></span>
     <input type="range" min={0} max={100} step={1} value={Math.round(value)}
       aria-label={label} onChange={event => onChange(Number(event.target.value))} />
@@ -232,20 +261,19 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
             </div>
             <div className="pfx-picker__hue-panel">
               <HueRail value={hue} update={next => setHsl(next, saturation, lightness)} />
-              <label className="pfx-picker__alpha">
-                <span>Opacity <strong>{Math.round(alpha * 100)}%</strong></span>
-                <input type="range" min={0} max={100} step={1}
-                  aria-label="Opacity" value={Math.round(alpha * 100)}
-                  onChange={event => setHsl(hue, saturation, lightness, Number(event.target.value) / 100)} />
-              </label>
+              <ColorRail kind="opacity" value={alpha * 100} hue={hue}
+                saturation={saturation} lightness={lightness} rgb={rgb}
+                onChange={value => setHsl(hue, saturation, lightness, value / 100)} />
             </div>
           </div>
           <details className="pfx-picker__advanced" open>
             <summary>Channels</summary>
             <div className="pfx-picker__edit">
-              <ChannelSlider label="Saturation" value={saturation}
+              <ColorRail kind="saturation" value={saturation} hue={hue}
+                saturation={saturation} lightness={lightness} rgb={rgb}
                 onChange={value => setHsl(hue, value, lightness)} />
-              <ChannelSlider label="Lightness" value={lightness}
+              <ColorRail kind="lightness" value={lightness} hue={hue}
+                saturation={saturation} lightness={lightness} rgb={rgb}
                 onChange={value => setHsl(hue, saturation, value)} />
               {format === "rgb" && <div className="pfx-picker__numerics">
                 {(["Red", "Green", "Blue"] as const).map((label, i) =>

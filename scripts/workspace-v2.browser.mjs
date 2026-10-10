@@ -138,6 +138,28 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.ok(await page.getByRole("slider", { name: "Opacity" }).isVisible());
         assert.ok(await page.getByRole("slider", { name: "Saturation" }).isVisible());
         assert.ok(await page.getByRole("slider", { name: "Lightness" }).isVisible());
+        const sliderPaint = await page.locator(".pfx-picker__canvas-card").evaluate(card =>
+          ["opacity", "saturation", "lightness"].map(kind => {
+            const rail = card.querySelector(".pfx-picker__rail--" + kind);
+            const input = rail?.querySelector('input[type="range"]');
+            const style = rail && getComputedStyle(rail);
+            return {
+              kind,
+              gradient: style?.getPropertyValue("--pfx-rail-gradient").trim() ?? "",
+              checker: style?.getPropertyValue("--pfx-rail-checker").trim() ?? "",
+              thumb: style?.getPropertyValue("--pfx-rail-thumb").trim() ?? "",
+              appearance: input ? getComputedStyle(input).appearance : "",
+            };
+          }));
+        for (const rail of sliderPaint) {
+          assert.match(rail.gradient, /linear-gradient\(/,
+            rail.kind + " uses a model-aware gradient, not native gray fill");
+          assert.ok(rail.thumb.length > 6, rail.kind + " has a custom color thumb");
+          assert.equal(rail.appearance, "none", rail.kind + " uses custom native-range styling");
+        }
+        assert.match(sliderPaint[0].checker, /conic-gradient\(/, "Opacity shows real transparency");
+        assert.match(sliderPaint[1].gradient, /hsl\(/, "Saturation follows active HSL");
+        assert.match(sliderPaint[2].gradient, /50%\) 50%/, "Lightness has the HSL midpoint");
         assert.equal(await format.inputValue(), "hex");
         assert.equal((await valueField.inputValue()).toLowerCase(), (await currentInput.inputValue()).toLowerCase());
         const beforePicker = await currentInput.inputValue();
@@ -175,7 +197,13 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await format.selectOption("hex");
         const hueRail = page.getByRole("slider", { name: "Hue", exact: true });
         await hueRail.focus();
+        const saturationTrackBefore = await page.locator(".pfx-picker__rail--saturation").evaluate(el =>
+          getComputedStyle(el).getPropertyValue("--pfx-rail-gradient").trim());
         await hueRail.press("ArrowRight");
+        const saturationTrackAfter = await page.locator(".pfx-picker__rail--saturation").evaluate(el =>
+          getComputedStyle(el).getPropertyValue("--pfx-rail-gradient").trim());
+        assert.notEqual(saturationTrackAfter, saturationTrackBefore,
+          "Saturation artwork follows Hue changes");
         await page.getByRole("slider", { name: "Opacity" }).focus();
         await page.getByRole("slider", { name: "Opacity" }).press("Home");
         await page.getByRole("button", { name: "Copy HEX" }).click();
