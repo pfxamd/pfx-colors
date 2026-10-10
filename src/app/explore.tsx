@@ -3,7 +3,7 @@ import { copyColorText } from "./clipboard";
 import { normalizeHex, NAMED_COLORS } from "./color-library";
 import { statsFromRgb } from "./explore-model";
 import {
-  MAX_CHROMA, FAMILIES, atlasChildren, atlasPath, contrastRatio, gamutMappedHex,
+  MAX_CHROMA, FAMILIES, atlasChildren, atlasPath, contrastRatio, discoverHue, gamutMappedHex, initialExploreColor,
   hexToRgb, oklchToRgb, perceptualDistance, relatedShades, rgbToOklch,
   rgbToHex, tileCount, tileHasHex, tileRange, tileRepresentative,
   type AtlasTile,
@@ -24,11 +24,14 @@ const hexUpper = (hex: string) => hex.toUpperCase();
 const hueDistance = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
 
 export function Explore({ activeHex, select, openPicker, openTones, favorites, toggleFavorite }: Props) {
-  const [selectedHex, setSelectedHex] = useState(activeHex.toLowerCase());
+  const startHex = useRef(initialExploreColor(activeHex));
+  const didInitialize = useRef(false);
+  const [selectedHex, setSelectedHex] = useState(startHex.current);
   const [query, setQuery] = useState("");
   const [stack, setStack] = useState<AtlasTile[]>([]);
   const [sort, setSort] = useState<Sort>("perceptual");
   const [background, setBackground] = useState<"white" | "black">("white");
+  const [comparison, setComparison] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [showNames, setShowNames] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,8 +61,21 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
   const related = useMemo(() => relatedShades(selectedHex), [selectedHex]);
   const activeName = NAMED_COLORS.find(([, hex]) => hex === selectedHex)?.[0];
   const ratio = contrastRatio(selectedHex, background === "white" ? "#ffffff" : "#000000");
+  const comparisonRatio = comparison ? contrastRatio(selectedHex, comparison) : null;
+  const previewInk = contrastRatio(selectedHex, "#ffffff") >= contrastRatio(selectedHex, "#000000") ? "#fff" : "#171717";
 
-  useEffect(() => setSelectedHex(activeHex.toLowerCase()), [activeHex]);
+  useEffect(() => {
+    if (!didInitialize.current) {
+      didInitialize.current = true;
+      if (startHex.current !== activeHex.toLowerCase()) {
+        // A near-black inherited workspace state is not a useful discovery entry point.
+        // This runs only on entry; deliberately selecting black later remains untouched.
+        select(startHex.current);
+        return;
+      }
+    }
+    setSelectedHex(activeHex.toLowerCase());
+  }, [activeHex]);
 
   const choose = (hex: string) => {
     const normalized = hex.toLowerCase();
@@ -128,13 +144,13 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
     const x = event.clientX - box.left - box.width / 2;
     const y = event.clientY - box.top - box.height / 2;
     const h = (Math.atan2(y, x) * 180 / Math.PI + 90 + 360) % 360;
-    updateLch(selected.l, selected.c, h);
+    choose(discoverHue(selectedHex, h));
   };
   const wheelKey = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(event.key)) return;
     event.preventDefault();
     const delta = event.key === "ArrowRight" || event.key === "ArrowUp" ? 3 : -3;
-    updateLch(selected.l, selected.c, selected.h + delta);
+    choose(discoverHue(selectedHex, selected.h + delta));
   };
   const currentStage = (parent?.depth ?? 0) / 2 + 1;
   const selectedContained = parent ? tileHasHex(parent, selectedHex) : true;
@@ -202,7 +218,7 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
                   {FAMILIES.map(family => (
                     <button type="button" key={family.label}
                       className={hueDistance(selected.h, family.hue) < 14 && selected.c > 0.025 ? "is-active" : ""}
-                      onClick={() => updateLch(selected.l || .7, Math.max(selected.c, .13), family.hue)}>
+                      onClick={() => choose(discoverHue(selectedHex, family.hue))}>
                       <span style={{ background: gamutMappedHex({ l: .7, c: .14, h: family.hue }) }}/>{family.label}
                     </button>
                   ))}
@@ -214,7 +230,7 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
                 <div className="pfx-explore__hue-track">
                   <label htmlFor="pfx-hue-control">Hue <output>{Math.round(selected.h)}°</output></label>
                   <input id="pfx-hue-control" type="range" min="0" max="359" step="1" value={Math.round(selected.h)}
-                    onChange={event => updateLch(selected.l, selected.c, Number(event.target.value))} />
+                    onChange={event => choose(discoverHue(selectedHex, Number(event.target.value)))} />
                 </div>
               </div>
             </div>
@@ -322,7 +338,9 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
           <div className="pfx-explore__inspector-head"><span>COLOR INSPECTOR</span>
             <button type="button" aria-pressed={favorites.includes(selectedHex)} onClick={() => save(selectedHex)}>
               {favorites.includes(selectedHex) ? "★ Saved" : "☆ Save"}</button></div>
-          <div className="pfx-explore__inspector-color" style={{ backgroundColor: selectedHex }} />
+          <div className="pfx-explore__inspector-color" style={{ backgroundColor: selectedHex, color: previewInk }}>
+            <span>LIVE SELECTION</span><span>{hexUpper(selectedHex)}</span>
+          </div>
           <div className="pfx-explore__inspector-ident">
             <span>{activeName ?? "SELECTED COLOR"}</span>
             <button type="button" onClick={() => void copy(selectedHex)} title="Copy HEX">{hexUpper(selectedHex)} <span>↗</span></button>
@@ -346,6 +364,23 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
               </div>
               <span>{ratio >= 4.5 ? "AA normal text" : ratio >= 3 ? "AA large text only" : "Below AA text"}</span>
             </div>
+          </div>
+          <div className="pfx-explore__comparison">
+            <div className="pfx-explore__comparison-head">
+              <strong>Compare colors</strong>
+              <button type="button" onClick={() => setComparison(selectedHex)}>
+                {comparison ? "Update reference" : "Set reference"}
+              </button>
+            </div>
+            {comparison ? <>
+              <div className="pfx-explore__comparison-swatches">
+                <div><span style={{ background: comparison }} /><small>REFERENCE {comparison.toUpperCase()}</small></div>
+                <div><span style={{ background: selectedHex }} /><small>SELECTED {selectedHex.toUpperCase()}</small></div>
+              </div>
+              <div className="pfx-explore__comparison-result">
+                <span>Contrast between colors</span><strong>{comparisonRatio!.toFixed(2)}:1</strong>
+              </div>
+            </> : <p>Pin a color, then select another shade to compare them.</p>}
           </div>
           <div className="pfx-explore__inspector-links">
             <button type="button" onClick={() => openPicker(selectedHex)}>Open Picker <span>↗</span></button>
