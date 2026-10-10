@@ -36,7 +36,7 @@ async function scenario(browser, browserName, viewport, engine) {
     await page.locator(".pfx-c-workbench--picker").waitFor();
     const picker = await current.inputValue();
     assert.equal(picker.toLowerCase(), "#336699");
-    const pickerControl = page.locator('.pfx-c-console input[type="range"]').first();
+    const pickerControl = page.getByRole("slider", { name: "Hue", exact: true });
     await pickerControl.focus();
     await pickerControl.press("ArrowRight");
     // Use genuine keyboard input, not synthesized DOM events, and await
