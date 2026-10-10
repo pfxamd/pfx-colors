@@ -141,6 +141,27 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
             copyLeft: copy.left, copyRight: copy.right,
             overflowX: el.scrollWidth-el.clientWidth };
         });
+        assert.equal(await pickerPanel.locator(".pfx-picker__heading").count(), 0,
+          "No detached Picker title below the navigation");
+        const saveButton = pickerPanel.locator(".pfx-picker__card-caption .pfx-picker__save");
+        assert.equal(await saveButton.count(), 1,
+          "Save is inside the Picker value toolbar, not in a separate heading");
+        const saveGeometry = await pickerPanel.locator(".pfx-picker__card-caption").evaluate(caption => {
+          const copy = caption.querySelector(".pfx-picker__copy").getBoundingClientRect();
+          const save = caption.querySelector(".pfx-picker__save").getBoundingClientRect();
+          const bar = caption.getBoundingClientRect();
+          return { saveWidth: save.width, gap: save.left - copy.right,
+            height: bar.height, topDelta: Math.abs(save.top - copy.top),
+            overflowX: caption.scrollWidth-caption.clientWidth };
+        });
+        assert.ok(saveGeometry.saveWidth <= 115, "Save button stays compact");
+        assert.ok(saveGeometry.overflowX <= 2, "Toolbar never overflows horizontally");
+        if (viewport.width >= 1200) {
+          assert.ok(saveGeometry.gap >= 0 && saveGeometry.gap <= 14,
+            "Save stays immediately beside Copy without stretched spacing");
+          assert.ok(saveGeometry.topDelta <= 2, "HEX toolbar controls share one row");
+          assert.ok(saveGeometry.height <= 65, "No new large caption row");
+        }
         assert.ok(fit.overflowX <= 2, "Picker has no horizontal overflow");
         assert.ok(fit.cardWidth <= 524 && fit.cardWidth >= 285, "One compact picker card");
         assert.ok(fit.fieldWidth >= 250, "Picker field is usable");
@@ -308,6 +329,14 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^#[0-9A-F]{8}$/,
           "Transparent colors retain alpha channel");
         await page.getByRole("slider", { name: "Opacity" }).press("End");
+        await page.getByRole("button", { name: "Save color" }).click();
+        assert.equal(await saveButton.getAttribute("aria-pressed"), "true",
+          "Saved state remains connected to the existing favorites library");
+        assert.ok(await pickerPanel.locator(".pfx-picker__save.pfx-is-saved").isVisible(),
+          "Saved state has visual feedback");
+        await page.getByRole("button", { name: "Remove saved color" }).click();
+        assert.equal(await saveButton.getAttribute("aria-pressed"), "false",
+          "Saving can be undone inside the same toolbar");
         await page.getByRole("button", { name: "Save color" }).click();
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-picker.png`, animations: "disabled" });
 
