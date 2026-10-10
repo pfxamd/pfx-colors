@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import type { ColorInput, WorkspaceState, PfxColorsWorkspace } from "@pfx/color-core";
 import { normalizeHex } from "./color-library";
 import { copyColorText } from "./clipboard";
@@ -27,6 +28,7 @@ type Props = {
   sync: (next?: WorkspaceState) => void;
   commitColor: (value: ColorInput) => void;
   openGradient: () => void;
+  spectrumTarget: HTMLElement | null;
 };
 
 function saveFile(name: string, content: string, type: string) {
@@ -38,7 +40,7 @@ function saveFile(name: string, content: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
-export function Tones({ state, workspace, sync, commitColor, openGradient }: Props) {
+export function Tones({ state, workspace, sync, commitColor, openGradient, spectrumTarget }: Props) {
   // Keep the seed independent of selected swatches: selecting a tone must
   // not unexpectedly regenerate the entire tonal family.
   const [seed, setSeed] = useStoredState("pfx-colors.tones.seed.v2", state.color.hex, isHex);
@@ -161,22 +163,24 @@ export function Tones({ state, workspace, sync, commitColor, openGradient }: Pro
         <code>{seed.toUpperCase()}</code>
         <small>Picker color</small>
       </div>
-      <div className="pfx-c-tones__spectrum" aria-label="Generated tones">
-        <div className="pfx-c-palette-ribbon pfx-c-tones__ribbon" role="group" aria-label="Choose a tone">
-          {tones.map(tone => (
-            <button type="button" key={tone.index}
-              className={tone.index === selected ? "pfx-is-selected" : ""}
-              style={{ backgroundColor: tone.hex }}
-              onClick={() => selectTone(tone.index)}
-              aria-pressed={tone.index === selected}
-              aria-label={"Select tone " + (tone.index + 1) + " " + tone.hex}
-              data-locked={tone.locked || undefined}
-              data-edited={tone.edited || undefined}
-              data-base={tone.base || undefined}
-              title={tone.hex.toUpperCase() + (tone.base ? " · Base color" : "")} />
-          ))}
-        </div>
-      </div>
+      {spectrumTarget && createPortal(
+        <div className="pfx-c-tones__spectrum" aria-label="Generated tones">
+          <div className="pfx-c-palette-ribbon pfx-c-tones__ribbon" role="group" aria-label="Choose a tone">
+            {tones.map(tone => (
+              <button type="button" key={tone.index}
+                className={tone.index === selected ? "pfx-is-selected" : ""}
+                style={{ backgroundColor: tone.hex }}
+                onClick={() => selectTone(tone.index)}
+                aria-pressed={tone.index === selected}
+                aria-label={"Select tone " + (tone.index + 1) + " " + tone.hex}
+                data-locked={tone.locked || undefined}
+                data-edited={tone.edited || undefined}
+                data-base={tone.base || undefined}
+                title={tone.hex.toUpperCase() + (tone.base ? " · Base color" : "")} />
+            ))}
+          </div>
+        </div>, spectrumTarget
+      )}
       <details className="pfx-c-tones__settings" open>
         <summary><strong>Generator</strong><span>Scale controls</span></summary>
         <div className="pfx-c-tones__fields">
