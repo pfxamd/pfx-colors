@@ -1,29 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type KeyboardEvent } from "react";
 import { copyColorText } from "./clipboard";
-import { useStoredState, oneOf } from "./workspace-state";
-import { NAMED_COLORS, normalizeHex, RGB_PAGE_SIZE, RGB_TOTAL } from "./color-library";
+import { normalizeHex, NAMED_COLORS } from "./color-library";
 import {
-  colorAt, colorIndex, DEFAULT_FILTERS, FAMILY_ANCHORS, hasExploreFilters, hexStats,
-  namedMatches, pairContrast, type ExploreFilters, type Family, type RgbOrder,
-} from "./explore-model";
+  MAX_CHROMA, FAMILIES, atlasChildren, atlasPath, contrastRatio, gamutMappedHex,
+  hexToRgb, oklchToRgb, perceptualDistance, relatedShades, rgbToOklch,
+  rgbToHex, tileCount, tileHasHex, tileRange, tileRepresentative,
+  type AtlasTile,
+} from "./explore-atlas";
+import "./explore.css";
 
-const LAST_PAGE = Math.ceil(RGB_TOTAL / RGB_PAGE_SIZE) - 1;
-const FAMILIES: Family[] = [
-  "all", "red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink", "neutral",
-];
-const intFormat = new Intl.NumberFormat("en-US");
-const clamp = (value: number) => Math.max(0, Math.min(255, value));
-
-function validFilters(value: unknown): value is ExploreFilters {
-  if (!value || typeof value !== "object") return false;
-  const f = value as Partial<ExploreFilters>;
-  return FAMILIES.includes(f.family as Family) &&
-    ["any", "warm", "cool", "neutral"].includes(f.temperature ?? "") &&
-    [f.minLightness, f.maxLightness, f.minSaturation, f.maxSaturation].every(
-      n => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 100) &&
-    (f.minLightness as number) <= (f.maxLightness as number) &&
-    (f.minSaturation as number) <= (f.maxSaturation as number);
-}
 type Props = {
   activeHex: string;
   select: (hex: string) => void;
@@ -32,310 +17,339 @@ type Props = {
   favorites: readonly string[];
   toggleFavorite: (hex: string) => void;
 };
-
-type Scan = { colors: string[]; nextCursor: number; end: boolean; searching: boolean; progress: number };
-const EMPTY_SCAN: Scan = { colors: [], nextCursor: 0, end: false, searching: false, progress: 0 };
-
-function similarColors(hex: string): string[] {
-  const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
-  const deltas = [[22,0,0],[-22,0,0],[0,22,0],[0,-22,0],[0,0,22],[0,0,-22],[18,18,18],[-18,-18,-18]];
-  return [...new Set(deltas.map(delta => "#" + rgb.map((channel, i) =>
-    clamp(channel + delta[i]).toString(16).padStart(2, "0")).join("")))]
-    .filter(color => color !== hex);
-}
+type Sort = "perceptual" | "lightness" | "rgb";
+const format = new Intl.NumberFormat("en-US");
+const hexUpper = (hex: string) => hex.toUpperCase();
+const hueDistance = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
 
 export function Explore({ activeHex, select, openPicker, openTones, favorites, toggleFavorite }: Props) {
-  const [mode, setMode] = useStoredState<"named" | "rgb">(
-    "pfx-colors.explore.mode.v2", "named", oneOf(["named", "rgb"] as const));
-  const [query, setQuery] = useState("");
-  const [filters, setFilters] = useStoredState<ExploreFilters>(
-    "pfx-colors.explore.filters.v2", { ...DEFAULT_FILTERS }, validFilters);
-  const [namedOrder, setNamedOrder] = useStoredState<"name" | "hue" | "lightness" | "saturation">(
-    "pfx-colors.explore.named-order.v2", "name",
-    oneOf(["name", "hue", "lightness", "saturation"] as const));
-  const [rgbOrder, setRgbOrder] = useStoredState<RgbOrder>(
-    "pfx-colors.explore.rgb-order.v2", "spectrum",
-    oneOf(["spectrum", "hex", "reverse"] as const));
-  const [page, setPage] = useState(0);
-  const [anchor, setAnchor] = useState(() => colorIndex("#8b89aa", "spectrum"));
-  const [cursors, setCursors] = useState<number[]>([0]);
-  const [scan, setScan] = useState<Scan>(EMPTY_SCAN);
   const [selectedHex, setSelectedHex] = useState(activeHex.toLowerCase());
-  const [comparison, setComparison] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [stack, setStack] = useState<AtlasTile[]>([]);
+  const [sort, setSort] = useState<Sort>("perceptual");
+  const [background, setBackground] = useState<"white" | "black">("white");
   const [status, setStatus] = useState("");
+  const [showNames, setShowNames] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const selected = useMemo(() => rgbToOklch(hexToRgb(selectedHex)), [selectedHex]);
+  const selectedRgb = useMemo(() => hexToRgb(selectedHex), [selectedHex]);
+  const parent = stack.at(-1) ?? null;
+  const tiles = useMemo(() => {
+    const children = atlasChildren(parent);
+    const average = (tile: AtlasTile) => rgbToHex(tileRepresentative(tile));
+    if (sort === "rgb") return children;
+    return children.sort((a, b) => {
+      const aa = average(a), bb = average(b);
+      if (sort === "lightness") return rgbToOklch(hexToRgb(aa)).l - rgbToOklch(hexToRgb(bb)).l;
+      return perceptualDistance(aa, selectedHex) - perceptualDistance(bb, selectedHex);
+    });
+  }, [parent?.depth, parent?.r, parent?.g, parent?.b, selectedHex, sort]);
+  const namedResults = useMemo(() => {
+    const needle = query.trim().toLowerCase().replace(/[\s-]/g, "");
+    if (!needle || normalizeHex(query)) return [];
+    return NAMED_COLORS.filter(([name, hex]) =>
+      name.toLowerCase().replace(/[\s-]/g, "").includes(needle) || hex.includes(needle)
+    ).slice(0, 8);
+  }, [query]);
+  const related = useMemo(() => relatedShades(selectedHex), [selectedHex]);
+  const activeName = NAMED_COLORS.find(([, hex]) => hex === selectedHex)?.[0];
+  const ratio = contrastRatio(selectedHex, background === "white" ? "#ffffff" : "#000000");
 
   useEffect(() => setSelectedHex(activeHex.toLowerCase()), [activeHex]);
-  const filtered = hasExploreFilters(filters);
-  const named = useMemo(() => namedMatches(query, filters, namedOrder),
-    [query, filters, namedOrder]);
 
-  const setFamilyOrFilter = (change: Partial<ExploreFilters>) => {
-    const next = { ...filters, ...change };
-    setFilters(next);
-    setPage(0);
-    setCursors([0]);
-    setScan(EMPTY_SCAN);
-    if (next.family !== "all") setAnchor(colorIndex(FAMILY_ANCHORS[next.family], rgbOrder));
-  };
-  const switchOrder = (order: RgbOrder) => {
-    setRgbOrder(order);
-    setPage(0);
-    setCursors([0]);
-    const origin = filters.family === "all" ? selectedHex : FAMILY_ANCHORS[filters.family];
-    setAnchor(colorIndex(origin, order));
-  };
-  const clearFilters = () => {
-    setFilters({ ...DEFAULT_FILTERS });
-    setPage(mode === "rgb" ? Math.floor(colorIndex(selectedHex, rgbOrder) / RGB_PAGE_SIZE) : 0);
-    setCursors([0]);
-    setScan(EMPTY_SCAN);
-  };
-
-  useEffect(() => {
-    if (mode !== "rgb" || !filtered) return;
-    const worker = new Worker(new URL("./explore-worker.ts", import.meta.url), { type: "module" });
-    const cursor = cursors[page];
-    if (cursor == null) return () => worker.terminate();
-    setScan({ ...EMPTY_SCAN, searching: true, progress: cursor / RGB_TOTAL });
-    worker.onmessage = (event: MessageEvent<{
-      kind: "progress" | "result";
-      id: number; cursor?: number; colors?: string[]; nextCursor?: number; end?: boolean;
-    }>) => {
-      if (event.data.id !== 1) return;
-      if (event.data.kind === "progress") {
-        setScan(previous => ({ ...previous, progress: (event.data.cursor ?? cursor) / RGB_TOTAL }));
-      } else {
-        const nextCursor = event.data.nextCursor ?? cursor;
-        setScan({
-          colors: event.data.colors ?? [], nextCursor, end: Boolean(event.data.end),
-          searching: false, progress: nextCursor / RGB_TOTAL,
-        });
-        setCursors(previous => {
-          if (previous[page + 1] === nextCursor) return previous;
-          return [...previous.slice(0, page + 1), nextCursor];
-        });
-      }
-    };
-    worker.onerror = () => {
-      setScan({ ...EMPTY_SCAN, searching: false, end: true });
-      setStatus("Color search unavailable. Reset filters and try again.");
-    };
-    worker.postMessage({ id: 1, anchor, cursor, order: rgbOrder, filters });
-    return () => worker.terminate();
-    // Cursor values are page bookmarks; changing them after a completed search
-    // must not restart the current search.
-  }, [mode, filtered, filters, rgbOrder, anchor, page]);
-
-  const cards = useMemo(() => {
-    if (mode === "named") return named.slice(page * RGB_PAGE_SIZE, (page + 1) * RGB_PAGE_SIZE);
-    if (filtered) return scan.colors.map(hex => ({ name: "", hex }));
-    return Array.from({ length: Math.min(RGB_PAGE_SIZE, RGB_TOTAL - page * RGB_PAGE_SIZE) },
-      (_, i) => ({ name: "", hex: colorAt(page * RGB_PAGE_SIZE + i, rgbOrder) }));
-  }, [mode, named, page, filtered, scan.colors, rgbOrder]);
-
-  const jumpToHex = (hex: string) => {
-    const normalized = normalizeHex(hex);
-    if (!normalized) return;
-    setMode("rgb");
-    clearFilters();
-    const index = colorIndex(normalized, rgbOrder);
-    setPage(Math.floor(index / RGB_PAGE_SIZE));
+  const choose = (hex: string) => {
+    const normalized = hex.toLowerCase();
     setSelectedHex(normalized);
     select(normalized);
-    setStatus("Exact RGB color located");
   };
-  const find = () => {
-    const hex = normalizeHex(query);
-    if (hex) jumpToHex(hex);
-    else {
-      setMode("named");
-      setPage(0);
-      setStatus(query.trim() ? "Showing matching named colors" : "");
+  const updateLch = (l: number, c: number, h: number) => {
+    choose(gamutMappedHex({ l: Math.max(0, Math.min(1, l)), c: Math.max(0, Math.min(MAX_CHROMA, c)), h: ((h % 360) + 360) % 360 }));
+  };
+  const jumpTo = (hex: string) => {
+    choose(hex);
+    setStack(atlasPath(hex).slice(0, 3));
+    setQuery(hex.toUpperCase());
+    setShowNames(false);
+    setStatus("Exact RGB location opened in the atlas.");
+  };
+  const search = () => {
+    const exact = normalizeHex(query);
+    if (exact) { jumpTo(exact); return; }
+    const match = namedResults.find(([name]) => name.toLowerCase().replace(/[\s-]/g, "") === query.trim().toLowerCase().replace(/[\s-]/g, ""));
+    if (match) { jumpTo(match[1]); return; }
+    setShowNames(true);
+    setStatus(namedResults.length ? "Choose a matching named color." : "No matching name. Try a HEX code or another color name.");
+  };
+  const copy = async (hex: string) => {
+    setStatus(await copyColorText(hex.toUpperCase()) ? hex.toUpperCase() + " copied." : "Clipboard unavailable.");
+  };
+  const save = (hex: string) => toggleFavorite(hex);
+
+  // The depth canvas is perceptual: vertical = OKLCH lightness, horizontal = chroma.
+  // Unrepresentable sRGB points remain transparent, making the gamut boundary visible.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const w = 272, h = 192;
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return;
+    const image = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) {
+      const l = 1 - y / (h - 1);
+      for (let x = 0; x < w; x++) {
+        const c = x / (w - 1) * MAX_CHROMA;
+        const rgb = oklchToRgb({ l, c, h: selected.h });
+        const index = (y * w + x) * 4;
+        if (rgb) {
+          image.data[index] = rgb[0];
+          image.data[index + 1] = rgb[1];
+          image.data[index + 2] = rgb[2];
+          image.data[index + 3] = 255;
+        } else image.data[index + 3] = 0;
+      }
     }
+    ctx.putImageData(image, 0, 0);
+  }, [Math.round(selected.h * 10) / 10]);
+
+  const updateFromDepth = (event: PointerEvent<HTMLCanvasElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+    const y = Math.max(0, Math.min(1, (event.clientY - box.top) / box.height));
+    updateLch(1 - y, x * MAX_CHROMA, selected.h);
   };
-  const choose = (hex: string) => {
-    setSelectedHex(hex);
-    select(hex);
+  const updateFromWheel = (event: PointerEvent<HTMLButtonElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - box.left - box.width / 2;
+    const y = event.clientY - box.top - box.height / 2;
+    const h = (Math.atan2(y, x) * 180 / Math.PI + 90 + 360) % 360;
+    updateLch(selected.l, selected.c, h);
   };
-  const copy = async (value: string, label: string) => {
-    setStatus(await copyColorText(value) ? label + " copied" : "Clipboard unavailable");
+  const wheelKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (!["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+    event.preventDefault();
+    const delta = event.key === "ArrowRight" || event.key === "ArrowUp" ? 3 : -3;
+    updateLch(selected.l, selected.c, selected.h + delta);
   };
-  const totalNamedPages = Math.max(1, Math.ceil(named.length / RGB_PAGE_SIZE));
-  const nextDisabled = mode === "named" ? page >= totalNamedPages - 1
-    : filtered ? scan.searching || scan.end || scan.colors.length === 0
-      : page >= LAST_PAGE;
-  const previousDisabled = page === 0 || scan.searching && filtered && mode === "rgb";
-  const stats = hexStats(selectedHex);
-  const rgb = [1, 3, 5].map(i => parseInt(selectedHex.slice(i, i + 2), 16));
-  const hexName = NAMED_COLORS.find(([,hex]) => hex === selectedHex)?.[0];
+  const currentStage = (parent?.depth ?? 0) / 2 + 1;
+  const selectedContained = parent ? tileHasHex(parent, selectedHex) : true;
+  const wheelColor = gamutMappedHex({ l: 0.72, c: 0.16, h: selected.h });
 
   return (
-    <section className="pfx-c-explore pfx-v2__page" aria-label="Explore colors">
-      <div className="pfx-v2__page-heading">
-        <div><span className="pfx-v2__eyebrow">COLOR DISCOVERY / 16.7 MILLION SHADES</span>
-          <h1>Explore color.</h1>
-          <p>Browse the entire sRGB space, filter by hue and character, or find any exact HEX.</p></div>
-        <div className="pfx-v2__mode" role="group" aria-label="Explore mode">
-          <button type="button" className={mode === "named" ? "pfx-is-active" : ""}
-            aria-pressed={mode === "named"} onClick={() => { setMode("named"); setPage(0); }}>Named colors</button>
-          <button type="button" className={mode === "rgb" ? "pfx-is-active" : ""}
-            aria-pressed={mode === "rgb"} onClick={() => {
-              setMode("rgb");
-              setPage(filtered ? 0 : Math.floor(colorIndex(selectedHex, rgbOrder) / RGB_PAGE_SIZE));
-            }}>All RGB</button>
+    <section className="pfx-explore pfx-v2__page" aria-label="Explore colors">
+      <header className="pfx-explore__hero">
+        <div className="pfx-explore__hero-title">
+          <span className="pfx-explore__eyebrow"><span className="pfx-explore__pulse" /> COLOR ATLAS / 24-BIT SRGB</span>
+          <h1>Explore color<span className="pfx-explore__period">.</span></h1>
+          <p>A continuous way to discover color. Start with the spectrum, refine the shade, or reach any exact RGB value.</p>
         </div>
-      </div>
+        <div className="pfx-explore__metric">
+          <strong>16,777,216</strong>
+          <span>EXACT RGB COLORS</span>
+          <small>Generated as you explore. Never stored as a catalog.</small>
+        </div>
+      </header>
 
-      <div className="pfx-v2__toolbar">
-        <form className="pfx-v2__search" onSubmit={event => { event.preventDefault(); find(); }}>
-          <label htmlFor="pfx-explore-search">Search by name or exact HEX</label>
-          <input id="pfx-explore-search" type="search" value={query}
-            placeholder="Color name or #RRGGBB" onChange={event => { setQuery(event.target.value); if (mode === "named") setPage(0); }} />
-          <button type="submit">Find</button>
+      <div className="pfx-explore__searchbar">
+        <form className="pfx-explore__searchform" onSubmit={event => { event.preventDefault(); search(); }}>
+          <label htmlFor="pfx-color-search"><span className="pfx-explore__sr-only">Search a named color or exact HEX</span></label>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4" stroke="currentColor" strokeWidth="1.7"/><path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.7"/></svg>
+          <input id="pfx-color-search" type="search" autoComplete="off" value={query}
+            onChange={event => { setQuery(event.target.value); setShowNames(true); }}
+            placeholder="Search a color name or enter #RRGGBB" />
+          <button type="submit">Locate color <span aria-hidden="true">↗</span></button>
         </form>
-        <div className="pfx-explore__order">
-          <label htmlFor="pfx-explore-sort">Sort colors</label>
-          {mode === "named" ? <select id="pfx-explore-sort" aria-label="Sort named colors" value={namedOrder}
-            onChange={event => { setNamedOrder(event.target.value as typeof namedOrder); setPage(0); }}>
-            <option value="name">Name A–Z</option><option value="hue">Hue</option>
-            <option value="lightness">Lightness</option><option value="saturation">Saturation</option>
-          </select> : <select id="pfx-explore-sort" aria-label="RGB browsing order" value={rgbOrder}
-            onChange={event => switchOrder(event.target.value as RgbOrder)}>
-            <option value="spectrum">Color neighborhoods</option>
-            <option value="hex">HEX ascending</option><option value="reverse">HEX descending</option>
-          </select>}
-        </div>
+        {showNames && namedResults.length > 0 && (
+          <div className="pfx-explore__search-matches" aria-label="Matching named colors">
+            {namedResults.map(([name, hex]) => (
+              <button key={name} type="button" onClick={() => jumpTo(hex)}>
+                <span style={{ background: hex }} /> <strong>{name}</strong> <code>{hex.toUpperCase()}</code>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="pfx-explore__filters">
-        <div className="pfx-explore__filters-title"><strong>Find your range</strong>
-          <button type="button" onClick={clearFilters} disabled={!filtered}>Reset filters</button></div>
-        <div className="pfx-explore__families" role="group" aria-label="Filter by color family">
-          {FAMILIES.map(family => <button type="button" key={family}
-            aria-pressed={filters.family === family}
-            onClick={() => setFamilyOrFilter({ family })}>
-            {family !== "all" && <span style={{ background: FAMILY_ANCHORS[family] }}/>}
-            {family === "all" ? "All colors" : family[0].toUpperCase() + family.slice(1)}
-          </button>)}
-        </div>
-        <div className="pfx-explore__advanced">
-          <label className="pfx-explore__temperature">Temperature
-            <select aria-label="Color temperature" value={filters.temperature}
-              onChange={event => setFamilyOrFilter({ temperature: event.target.value as ExploreFilters["temperature"] })}>
-              <option value="any">All temperatures</option><option value="warm">Warm</option>
-              <option value="cool">Cool</option><option value="neutral">Neutral</option>
-            </select>
-          </label>
-          <div className="pfx-explore__range">
-            <strong>Lightness (HSL)</strong>
-            <label>Min <span>{filters.minLightness}%</span>
-              <input type="range" min="0" max="100" value={filters.minLightness}
-                aria-label="Minimum lightness filter"
-                onChange={event => setFamilyOrFilter({ minLightness: Math.min(filters.maxLightness, Number(event.target.value)) })}/></label>
-            <label>Max <span>{filters.maxLightness}%</span>
-              <input type="range" min="0" max="100" value={filters.maxLightness}
-                aria-label="Maximum lightness filter"
-                onChange={event => setFamilyOrFilter({ maxLightness: Math.max(filters.minLightness, Number(event.target.value)) })}/></label>
-          </div>
-          <div className="pfx-explore__range">
-            <strong>Saturation (HSL)</strong>
-            <label>Min <span>{filters.minSaturation}%</span>
-              <input type="range" min="0" max="100" value={filters.minSaturation}
-                aria-label="Minimum saturation filter"
-                onChange={event => setFamilyOrFilter({ minSaturation: Math.min(filters.maxSaturation, Number(event.target.value)) })}/></label>
-            <label>Max <span>{filters.maxSaturation}%</span>
-              <input type="range" min="0" max="100" value={filters.maxSaturation}
-                aria-label="Maximum saturation filter"
-                onChange={event => setFamilyOrFilter({ maxSaturation: Math.max(filters.minSaturation, Number(event.target.value)) })}/></label>
-          </div>
-        </div>
-      </div>
+      <div className="pfx-explore__workbench">
+        <div className="pfx-explore__main">
+          <section className="pfx-explore__spectrum pfx-explore__panel" aria-labelledby="pfx-spectrum-title">
+            <div className="pfx-explore__section-head">
+              <div><span className="pfx-explore__section-index">01 / DISCOVERY</span><h2 id="pfx-spectrum-title">The spectrum</h2>
+                <p>Move through hue continuously, or jump to a color family.</p></div>
+              <span className="pfx-explore__scientific">PERCEPTUAL HUE · OKLCH</span>
+            </div>
+            <div className="pfx-explore__spectrum-body">
+              <div className="pfx-explore__wheel-wrap">
+                <button type="button" className="pfx-explore__wheel"
+                  aria-label={"Hue " + Math.round(selected.h) + " degrees. Use arrow keys to adjust."}
+                  onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); updateFromWheel(event); }}
+                  onPointerMove={event => { if (event.buttons) updateFromWheel(event); }}
+                  onKeyDown={wheelKey}>
+                  <span className="pfx-explore__wheel-inner" style={{ background: wheelColor }}>
+                    <span>HUE</span><strong>{Math.round(selected.h)}°</strong>
+                  </span>
+                  <span className="pfx-explore__wheel-indicator" style={{ transform: "rotate(" + selected.h + "deg)" }}><i /></span>
+                </button>
+              </div>
+              <div className="pfx-explore__spectrum-controls">
+                <div className="pfx-explore__family-label">COLOR REGIONS <span>SELECT A STARTING POINT</span></div>
+                <div className="pfx-explore__families">
+                  {FAMILIES.map(family => (
+                    <button type="button" key={family.label}
+                      className={hueDistance(selected.h, family.hue) < 14 && selected.c > 0.025 ? "is-active" : ""}
+                      onClick={() => updateLch(selected.l || .7, Math.max(selected.c, .13), family.hue)}>
+                      <span style={{ background: gamutMappedHex({ l: .7, c: .14, h: family.hue }) }}/>{family.label}
+                    </button>
+                  ))}
+                  <button type="button" className={selected.c < 0.025 ? "is-active" : ""}
+                    onClick={() => updateLch(selected.l, 0, selected.h)}>
+                    <span className="pfx-explore__neutral-dot" />Neutral
+                  </button>
+                </div>
+                <div className="pfx-explore__hue-track">
+                  <label htmlFor="pfx-hue-control">Hue <output>{Math.round(selected.h)}°</output></label>
+                  <input id="pfx-hue-control" type="range" min="0" max="359" step="1" value={Math.round(selected.h)}
+                    onChange={event => updateLch(selected.l, selected.c, Number(event.target.value))} />
+                </div>
+              </div>
+            </div>
+          </section>
 
-      <div className="pfx-explore__results">
-        <div className="pfx-explore__listing">
-          <div className="pfx-explore__summary">
-            <div><strong>{mode === "named" ? intFormat.format(named.length) + " CSS named colors" :
-              intFormat.format(RGB_TOTAL) + " addressable RGB colors"}</strong>
-              <span>{mode === "rgb" && filtered ?
-                scan.searching ? "Scanning color space · " + (scan.progress * 100).toFixed(1) + "%" :
-                  scan.end ? "End of matches reached" : "Filtered RGB results · exact on-demand scan" :
-                mode === "rgb" ? "Complete, exact 24-bit catalog" : "Including CSS spelling aliases"}</span>
+          <section className="pfx-explore__depth pfx-explore__panel" aria-labelledby="pfx-depth-title">
+            <div className="pfx-explore__section-head">
+              <div><span className="pfx-explore__section-index">02 / REFINEMENT</span><h2 id="pfx-depth-title">Color depth</h2>
+                <p>Explore lightness and chroma. Transparent regions fall outside the sRGB gamut.</p></div>
+              <span className="pfx-explore__scientific">OKLCH · GAMUT AWARE</span>
             </div>
-            <div className="pfx-v2__pager">
-              <button type="button" disabled={previousDisabled} onClick={() => setPage(p => Math.max(0, p - 1))}>Previous</button>
-              {mode === "rgb" && !filtered ? <label>Page
-                <input type="number" min={1} max={LAST_PAGE + 1} value={page + 1}
-                  aria-label="RGB page number"
-                  onChange={event => { const value=Number(event.target.value); if(Number.isInteger(value)&&value>=1&&value<=LAST_PAGE+1)setPage(value-1);}}/>
-                <span> / {intFormat.format(LAST_PAGE+1)}</span></label> :
-                <span>Page {intFormat.format(page + 1)}{mode === "named" ? " / " + totalNamedPages : ""}</span>}
-              <button type="button" disabled={nextDisabled} onClick={() => setPage(p => p+1)}>Next</button>
+            <div className="pfx-explore__depth-layout">
+              <div className="pfx-explore__depth-surface">
+                <div className="pfx-explore__depth-vertical"><span>LIGHTER</span><span>DARKER</span></div>
+                <div className="pfx-explore__depth-map">
+                  <canvas ref={canvasRef} role="img" aria-label="Oklch lightness and chroma map. Use the sliders alongside for keyboard access."
+                    onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); updateFromDepth(event); }}
+                    onPointerMove={event => { if (event.buttons) updateFromDepth(event); }} />
+                  <span className="pfx-explore__depth-cursor" aria-hidden="true"
+                    style={{ left: (selected.c / MAX_CHROMA * 100) + "%", top: ((1 - selected.l) * 100) + "%" }} />
+                </div>
+                <div className="pfx-explore__depth-axis"><span>LESS CHROMA</span><span>MORE CHROMA</span></div>
+              </div>
+              <div className="pfx-explore__depth-controls">
+                <div className="pfx-explore__control-head"><span>PRECISE ADJUSTMENT</span><strong>OKLCH</strong></div>
+                <label>Lightness <output>{Math.round(selected.l * 100)}%</output>
+                  <input type="range" min="0" max="100" step="1" value={Math.round(selected.l * 100)}
+                    onChange={event => updateLch(Number(event.target.value) / 100, selected.c, selected.h)} />
+                </label>
+                <label>Chroma <output>{selected.c.toFixed(3)}</output>
+                  <input type="range" min="0" max={MAX_CHROMA} step="0.002" value={selected.c}
+                    onChange={event => updateLch(selected.l, Number(event.target.value), selected.h)} />
+                </label>
+                <button type="button" className="pfx-explore__reset-tone"
+                  onClick={() => updateLch(.7, .14, selected.h)}>Reset tone <span aria-hidden="true">↗</span></button>
+                <div className="pfx-explore__gamut-note"><span /> Out-of-gamut choices are mapped to the nearest chroma boundary at the chosen hue and lightness.</div>
+              </div>
             </div>
-          </div>
-          <div className="pfx-v2__swatches" aria-label="Color swatches">
-            {cards.map(({ name, hex }) => <article key={name + hex}
-              className={"pfx-v2__swatch" + (selectedHex === hex ? " pfx-is-selected" : "")}>
-              <button className="pfx-v2__swatch-color" type="button" style={{ backgroundColor: hex }}
-                onClick={() => choose(hex)} aria-label={"Select " + (name || hex)}>
-                <span className="pfx-v2__swatch-marker">{selectedHex === hex ? "✓" : ""}</span></button>
-              <div className="pfx-v2__swatch-info">
-                {name && <strong title={name}>{name}</strong>}
-                <span>{hex.toUpperCase()}</span>
+            <div className="pfx-explore__related">
+              <div className="pfx-explore__related-label"><strong>Nearby shades</strong><span>Perceptually related · select or copy</span></div>
+              <div className="pfx-explore__related-grid">
+                {related.map(hex => (
+                  <div className="pfx-explore__related-item" key={hex}>
+                    <button type="button" aria-label={"Select " + hex} style={{ background: hex }} onClick={() => choose(hex)} />
+                    <button type="button" className="pfx-explore__related-code" onClick={() => void copy(hex)} title={"Copy " + hex}>{hex.slice(1).toUpperCase()}</button>
+                  </div>
+                ))}
               </div>
-              <div className="pfx-v2__swatch-actions">
-                <button type="button" onClick={() => void copy(hex.toUpperCase(), "HEX")}>Copy</button>
-                <button type="button" aria-label={(favorites.includes(hex) ? "Remove favorite " : "Save favorite ") + hex}
-                  aria-pressed={favorites.includes(hex)} onClick={() => toggleFavorite(hex)}>
-                  {favorites.includes(hex) ? "★" : "☆"}</button>
+            </div>
+          </section>
+
+          <section className="pfx-explore__atlas pfx-explore__panel" aria-labelledby="pfx-atlas-title">
+            <div className="pfx-explore__section-head">
+              <div><span className="pfx-explore__section-index">03 / EXACT RGB SPACE</span><h2 id="pfx-atlas-title">The complete atlas</h2>
+                <p>Every tile contains a precise range. Open it to subdivide all the way to individual colors.</p></div>
+              <span className="pfx-explore__scientific">64-WAY SUBDIVISION · NO PAGINATION</span>
+            </div>
+            <div className="pfx-explore__atlas-tools">
+              <div className="pfx-explore__crumbs" aria-label="Atlas depth">
+                <button type="button" onClick={() => setStack([])} aria-current={stack.length === 0 ? "step" : undefined}>All RGB</button>
+                {stack.map((tile, i) => (
+                  <span key={tile.depth}><span aria-hidden="true">/</span>
+                    <button type="button" aria-current={i === stack.length - 1 ? "step" : undefined}
+                      onClick={() => setStack(stack.slice(0, i + 1))}>Level {i + 1}</button></span>
+                ))}
               </div>
-            </article>)}
-          </div>
-          {cards.length === 0 && <div className="pfx-v2__empty" role="status">
-            {scan.searching && mode === "rgb" ? "Searching the RGB space for matching colors…" :
-              "No colors found for these filters. Adjust the range or reset filters."}
-          </div>}
+              <div className="pfx-explore__atlas-actions">
+                <label>Arrange <select value={sort} onChange={event => setSort(event.target.value as Sort)}>
+                  <option value="perceptual">Nearest first</option><option value="lightness">Lightness</option><option value="rgb">RGB order</option>
+                </select></label>
+                <button type="button" disabled={stack.length === 0} onClick={() => setStack(v => v.slice(0, -1))}>← Back</button>
+              </div>
+            </div>
+            <div className="pfx-explore__atlas-meta">
+              <span><strong>LEVEL {String(currentStage).padStart(2, "0")} / 04</strong> · {format.format(tiles.length)} ranges</span>
+              <span>{format.format(tileCount(tiles[0]))} {currentStage === 4 ? "exact color per tile" : "colors per range"}</span>
+            </div>
+            <div className="pfx-explore__atlas-grid" aria-label="RGB atlas regions">
+              {tiles.map(tile => {
+                const hex = rgbToHex(tileRepresentative(tile));
+                const count = tileCount(tile);
+                const isCurrent = tileHasHex(tile, selectedHex);
+                const range = tileRange(tile);
+                const foreground = contrastRatio(hex, "#ffffff") > contrastRatio(hex, "#000000") ? "#fff" : "#111";
+                return <article key={[tile.depth, tile.r, tile.g, tile.b].join("-")} className={"pfx-explore__atlas-tile" + (isCurrent && selectedContained ? " is-current" : "")}
+                  style={{ backgroundColor: hex, color: foreground }}>
+                  <button type="button" className="pfx-explore__atlas-open"
+                    title={count === 1 ? "Select " + range.min : "Open range " + range.min + " to " + range.max}
+                    aria-label={count === 1 ? "Select exact color " + range.min : "Open RGB range from " + range.min + " to " + range.max}
+                    onClick={() => count === 1 ? choose(hex) : setStack(v => [...v, tile])}>
+                    <span className="pfx-explore__atlas-tile-top">{count === 1 ? "EXACT" : format.format(count) + " COLORS"} {isCurrent ? "●" : ""}</span>
+                    <span className="pfx-explore__atlas-tile-code">{hex.toUpperCase()}</span>
+                  </button>
+                  <button type="button" className="pfx-explore__atlas-copy" aria-label={"Copy representative " + hex}
+                    title={"Copy " + hex} onClick={() => void copy(hex)}>↗</button>
+                </article>;
+              })}
+            </div>
+            <footer className="pfx-explore__atlas-foot"><span>All 16,777,216 sRGB values remain reachable through 4 levels.</span>
+              <button type="button" onClick={() => jumpTo(selectedHex)}>Locate selected color ↗</button></footer>
+          </section>
         </div>
-        <aside className="pfx-explore__inspector" aria-label="Selected color details">
-          <div className="pfx-explore__inspector-head"><span>SELECTED COLOR</span>
-            <button type="button" aria-label={favorites.includes(selectedHex) ? "Remove selected favorite" : "Save selected favorite"}
-              aria-pressed={favorites.includes(selectedHex)} onClick={() => toggleFavorite(selectedHex)}>
+
+        <aside className="pfx-explore__inspector" aria-label="Selected color inspector">
+          <div className="pfx-explore__inspector-head"><span>COLOR INSPECTOR</span>
+            <button type="button" aria-pressed={favorites.includes(selectedHex)} onClick={() => save(selectedHex)}>
               {favorites.includes(selectedHex) ? "★ Saved" : "☆ Save"}</button></div>
-          <div className="pfx-explore__preview" style={{ background: selectedHex }}/>
-          <div className="pfx-explore__details">
-            {hexName && <span className="pfx-explore__color-name">{hexName}</span>}
-            <strong>{selectedHex.toUpperCase()}</strong>
-            <p>{stats.family[0].toUpperCase() + stats.family.slice(1)} · {Math.round(stats.lightness)}% lightness · {Math.round(stats.saturation)}% saturation</p>
+          <div className="pfx-explore__inspector-color" style={{ backgroundColor: selectedHex }} />
+          <div className="pfx-explore__inspector-ident">
+            <span>{activeName ?? "SELECTED COLOR"}</span>
+            <button type="button" onClick={() => void copy(selectedHex)} title="Copy HEX">{hexUpper(selectedHex)} <span>↗</span></button>
+            <small>Click the color code to copy</small>
           </div>
-          <div className="pfx-explore__values">
-            <div><span>HEX</span><code>{selectedHex.toUpperCase()}</code>
-              <button type="button" onClick={() => void copy(selectedHex.toUpperCase(), "HEX")}>Copy</button></div>
-            <div><span>RGB</span><code>{rgb.join(", ")}</code>
-              <button type="button" onClick={() => void copy("rgb(" + rgb.join(" ") + ")", "RGB")}>Copy</button></div>
-            <div><span>HSL</span><code>{Math.round(stats.hue)}°, {Math.round(stats.saturation)}%, {Math.round(stats.lightness)}%</code>
-              <button type="button" onClick={() => void copy("hsl(" + Math.round(stats.hue) + " " + Number(stats.saturation.toFixed(2)) + "% " + Number(stats.lightness.toFixed(2)) + "%)", "HSL")}>Copy</button></div>
+          <div className="pfx-explore__inspector-values">
+            <div><span>RGB</span><code>{selectedRgb.join(", ")}</code><button type="button" onClick={() => void copy(selectedHex)}>Copy HEX</button></div>
+            <div><span>HSL</span><code>{Math.round(selected.h)}° hue*</code><button type="button" onClick={() => updateLch(selected.l, selected.c, selected.h + 15)}>+15°</button></div>
+            <div><span>OKLCH</span><code>{selected.l.toFixed(3)} · {selected.c.toFixed(3)} · {Math.round(selected.h)}°</code></div>
           </div>
-          <div className="pfx-explore__inspector-actions">
-            <button type="button" onClick={() => openPicker(selectedHex)}>Open Picker</button>
-            <button type="button" onClick={() => openTones(selectedHex)}>Create Tones →</button>
+          <p className="pfx-explore__inspector-footnote">*Hue shown above is OKLCH, not HSL.</p>
+          <div className="pfx-explore__contrast">
+            <div className="pfx-explore__contrast-top"><strong>Text contrast</strong><span>{ratio.toFixed(2)}:1</span></div>
+            <div className="pfx-explore__contrast-preview" style={{ color: selectedHex, backgroundColor: background === "white" ? "#fff" : "#000" }}>
+              <strong>Color in context</strong><span>Readable text matters.</span>
+            </div>
+            <div className="pfx-explore__contrast-bottom">
+              <div role="group" aria-label="Contrast background">
+                <button type="button" aria-pressed={background === "white"} onClick={() => setBackground("white")}>White</button>
+                <button type="button" aria-pressed={background === "black"} onClick={() => setBackground("black")}>Black</button>
+              </div>
+              <span>{ratio >= 4.5 ? "AA normal text" : ratio >= 3 ? "AA large text only" : "Below AA text"}</span>
+            </div>
           </div>
-          <div className="pfx-explore__compare">
-            <div><strong>Color comparison</strong>
-              <button type="button" onClick={() => setComparison(selectedHex)}>Set reference</button></div>
-            {comparison ? <div className="pfx-explore__compare-result">
-              <span style={{ background: comparison }} title={comparison}/>
-              <span style={{ background: selectedHex }} title={selectedHex}/>
-              <output>{pairContrast(comparison, selectedHex).toFixed(2)}:1 contrast</output>
-            </div> : <p>Select a reference, then choose another color to compare.</p>}
+          <div className="pfx-explore__inspector-links">
+            <button type="button" onClick={() => openPicker(selectedHex)}>Open Picker <span>↗</span></button>
+            <button type="button" onClick={() => openTones(selectedHex)}>Create Tones <span>↗</span></button>
           </div>
-          <div className="pfx-explore__similar">
-            <strong>Nearby shades</strong>
-            <div>{similarColors(selectedHex).map(hex => <button key={hex} type="button"
-              aria-label={"Select nearby " + hex} style={{ background: hex }}
-              title={hex.toUpperCase()} onClick={() => choose(hex)}/>)}</div>
-          </div>
+          <div className="pfx-explore__inspector-note">The canvas is a perceptual guide. The RGB atlas below it is an exact, exhaustive digital index.</div>
         </aside>
       </div>
-      <p className="pfx-explore__status" role="status" aria-live="polite">{status}</p>
+      <p role="status" aria-live="polite" className="pfx-explore__status">{status}</p>
     </section>
   );
 }
