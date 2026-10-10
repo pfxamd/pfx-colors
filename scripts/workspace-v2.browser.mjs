@@ -82,6 +82,9 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.notDeepEqual(generatedPalette, initialPalette, "Generate produces a fresh palette");
         const expectedHomeHex = generatedPalette[0].toLowerCase();
         await quickPalette.locator(".pfx-home__swatch").first().click();
+        await page.waitForFunction(expected =>
+          document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === expected,
+          expectedHomeHex);
         assert.equal((await navColor.inputValue()).toLowerCase(), expectedHomeHex,
           "Choosing a swatch updates the navbar");
         await page.locator(".pfx-home__code").first().click();
