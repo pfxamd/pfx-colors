@@ -11,7 +11,8 @@ function HexField({ label, value, onChange, current }: {
   const [invalid, setInvalid] = useState(false);
   useEffect(() => { setDraft(value.toUpperCase()); setInvalid(false); }, [value]);
   const commit = () => {
-    const hex = normalizeHex(draft.startsWith("#") ? draft : "#" + draft);
+    const candidate = draft.startsWith("#") ? draft : "#" + draft;
+    const hex = /^#[a-f0-9]{6}$/i.test(candidate) ? normalizeHex(candidate) : null;
     if (!hex) { setInvalid(true); return; }
     setInvalid(false); onChange(hex); setDraft(hex.toUpperCase());
   };

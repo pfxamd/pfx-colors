@@ -6,8 +6,10 @@ export type ContrastCriterion = { label: string; threshold: number; passes: bool
 export function contrastCriteria(text: string, background: string): {
   ratio: number; criteria: ContrastCriterion[];
 } {
+  if (!/^#[a-f0-9]{6}$/i.test(text) || !/^#[a-f0-9]{6}$/i.test(background))
+    throw new RangeError("Provide two opaque six-digit HEX colors");
   const fg = normalizeHex(text), bg = normalizeHex(background);
-  if (!fg || !bg) throw new RangeError("Provide two opaque six-digit HEX colors");
+  if (!fg || !bg) throw new RangeError("Invalid HEX colors");
   const ratio = pairContrast(fg, bg);
   return {
     ratio,
