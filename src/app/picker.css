@@ -380,7 +380,7 @@
 
 /* Short laptop viewports: keep both tools visible without needless page scrolling. */
 @media (min-width: 961px) and (max-height: 820px) {
-  .pfx-v2 .pfx-picker.pfx-c-workbench--picker { --pfx-picker-gutter: 12px 16px; padding: 12px 16px; }
+  .pfx-v2 .pfx-picker.pfx-c-workbench--picker { --pfx-picker-gutter: 16px; padding: 12px 16px; }
   .pfx-picker__tone-strip { margin: -12px -16px 14px; }
   .pfx-v2 .pfx-c-color-field.pfx-picker__field { aspect-ratio: 2.18; }
   .pfx-picker__hue-panel { padding: 10px 13px 12px; gap: 9px; }
