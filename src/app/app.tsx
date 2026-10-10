@@ -10,7 +10,6 @@ import { readGradientDraft, saveGradientDraft, clearGradientDraft } from "./grad
 import { Home } from "./home";
 import { Explore } from "./explore";
 import { Collections } from "./collections";
-import { Tones } from "./tones";
 import { Picker } from "./picker";
 import { Harmony } from "./harmony";
 import { Gradient } from "./gradient";
@@ -52,8 +51,13 @@ export function App({ workspaceFactory, engine = "legacy" }: {
   const { workspace, state, sync } = useWorkspace(workspaceFactory);
   const [activeTool, setActiveTool] = useStoredState<ToolId>(
     "pfx-colors.active-tool.v2", "home", validTool);
-  const [tonesRequest, setTonesRequest] = useState<string | null>(null);
   const [gradientRequest, setGradientRequest] = useState(0);
+  useEffect(() => {
+    // Migrate users who last visited the now-merged Tones page.
+    try {
+      if (localStorage.getItem("pfx-colors.active-tool.v2") === "tones") setActiveTool("picker");
+    } catch { /* Storage may be unavailable */ }
+  }, [setActiveTool]);
   const { theme, preference, setPreference } = useTheme();
   const library = useColorLibrary();
 
@@ -89,7 +93,6 @@ export function App({ workspaceFactory, engine = "legacy" }: {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [sync, workspace, setActiveTool]);
 
-  const clearTonesRequest = useCallback(() => setTonesRequest(null), []);
   const clearGradientRequest = useCallback(() => setGradientRequest(0), []);
   const openGradientFromTool = () => {
     setGradientRequest(value => value + 1);
@@ -119,8 +122,7 @@ export function App({ workspaceFactory, engine = "legacy" }: {
   };
   const openTones = (hex: string) => {
     commitColor(hex);
-    setTonesRequest(hex);
-    setActiveTool("tones");
+    setActiveTool("picker");
   };
 
   return (
@@ -156,15 +158,10 @@ export function App({ workspaceFactory, engine = "legacy" }: {
         <Explore activeHex={state.color.hex} select={commitColor} />
       )}
       {activeTool === "picker" && (
-        <Picker state={state} commitColor={commitColor} openTones={openTones}
+        <Picker state={state} workspace={workspace} sync={sync}
+          commitColor={commitColor} openGradient={openGradientFromTool}
           favorite={library.favorites.includes(state.color.hex.toLowerCase())}
           toggleFavorite={library.toggleFavorite} />
-      )}
-      {activeTool === "tones" && (
-        <Tones state={state} workspace={workspace} sync={sync}
-          requestedSeed={tonesRequest} onRequestApplied={clearTonesRequest}
-          commitColor={commitColor}
-          openGradient={openGradientFromTool} />
       )}
       {activeTool === "harmony" && (
         <Harmony state={state} workspace={workspace} sync={sync}
