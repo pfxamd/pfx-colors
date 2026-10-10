@@ -3,7 +3,6 @@ import type { ColorInput, WorkspaceState } from "@pfx/color-core";
 import { useColorFieldControl } from "../interaction/use-color-field-control";
 import { useHorizontalTrackDrag } from "../interaction/use-horizontal-track-drag";
 import { copyColorText } from "./clipboard";
-import { textContrast } from "./tones-model";
 import { alphaHex, clampChannel, cssHsl, cssOklch, cssRgb, paintHslField, rgbFromHex } from "./picker-model";
 
 type Props = {
@@ -73,6 +72,16 @@ function HueRail({ value, update }: { value: number; update: (value: number) => 
   );
 }
 
+function ChannelSlider({ label, value, onChange }: {
+  label: string; value: number; onChange: (next: number) => void;
+}) {
+  return <label className="pfx-picker__channel-slider">
+    <span>{label}<strong>{Math.round(value)}%</strong></span>
+    <input type="range" min={0} max={100} step={1} value={Math.round(value)}
+      aria-label={label} onChange={event => onChange(Number(event.target.value))} />
+  </label>;
+}
+
 export function Picker({ state, commitColor, openTones, favorite, toggleFavorite }: Props) {
   const hsl = state.color.values.hsl?.coordinates;
   const oklch = state.color.values.oklch?.coordinates;
@@ -86,15 +95,17 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [active, setActive] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
-  const [format, setFormat] = useState<"rgb" | "hsl">("hsl");
-  const [mobilePanel, setMobilePanel] = useState<"field" | "values">("field");
+  const [format, setFormat] = useState<"hex" | "rgb" | "hsl" | "oklch">("hex");
+  const [draft, setDraft] = useState(state.color.hex.toUpperCase());
+  const [editing, setEditing] = useState(false);
+  const [valueError, setValueError] = useState("");
+  const ignoreBlur = useRef(false);
 
   const setHsl = (h: number, s: number, l: number, a = alpha) =>
     commitColor(cssHsl(h, s, l, a));
   const setRgb = (index: number, value: number) =>
     commitColor(cssRgb(rgb.map((channel, i) => index === i ? value : channel), alpha));
-  const copy = async (value: string, label: string) =>
-    setCopyStatus(await copyColorText(value) ? label + " copied" : "Clipboard unavailable");
+
 
   useColorFieldControl(fieldRef, {
     value: { x: saturation / 100, y: 1 - lightness / 100 },
@@ -117,7 +128,40 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
     hsl: cssHsl(hue, saturation, lightness, alpha),
     oklch: cssOklch(Number(oklch?.[0] ?? 0), Number(oklch?.[1] ?? 0), Number(oklch?.[2] ?? 0), alpha),
   };
-  const readable = textContrast(state.color.hex);
+  const shownValue = formats[format];
+  useEffect(() => { if (!editing) setDraft(shownValue); }, [shownValue, editing]);
+  const setOklch = (l: number, c: number, h: number) =>
+    commitColor(cssOklch(l, c, h, alpha));
+  const switchFormat = (next: "hex" | "rgb" | "hsl" | "oklch") => {
+    setEditing(false);
+    setValueError("");
+    setFormat(next);
+    setDraft(formats[next]);
+  };
+  const restoreDraft = () => {
+    setDraft(formats[format]);
+    setEditing(false);
+    setValueError("");
+  };
+  const applyDraft = () => {
+    const candidate = draft.trim();
+    const valid = format === "hex"
+      ? /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/i.test(candidate)
+      : candidate.toLowerCase().startsWith(format + "(") && candidate.endsWith(")");
+    if (!valid) { setValueError("Invalid " + format.toUpperCase() + " color"); return false; }
+    try {
+      commitColor(candidate);
+      setEditing(false);
+      setValueError("");
+      return true;
+    } catch {
+      setValueError("Color could not be applied");
+      return false;
+    }
+  };
+  const copySelected = async () =>
+    setCopyStatus(await copyColorText(shownValue) ? format.toUpperCase() + " copied" : "Clipboard unavailable");
+
   const fieldStyle = { "--pfx-hue": String(hue) } as CSSProperties;
   const accentInput = { "--pfx-picked-color": state.color.hex } as CSSProperties;
 
@@ -134,13 +178,42 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
             onClick={() => openTones(state.color.hex)}>Create Tones →</button>
         </div>
       </div>
-      <div className="pfx-picker__views" role="group" aria-label="Picker panels">
-        <button type="button" aria-pressed={mobilePanel === "field"} onClick={() => setMobilePanel("field")}>Color field</button>
-        <button type="button" aria-pressed={mobilePanel === "values"} onClick={() => setMobilePanel("values")}>Values &amp; channels</button>
-      </div>
-      <div className="pfx-picker__layout" data-panel={mobilePanel}>
+      <div className="pfx-picker__layout">
         <div className="pfx-picker__canvas-card">
-          <div className="pfx-picker__card-caption"><strong>Color field</strong><span>Drag · Arrow keys for precision</span></div>
+          <div className="pfx-picker__card-caption">
+            <span className="pfx-picker__swatch" style={{ backgroundColor: state.color.hex, opacity: alpha }}
+              title={state.color.gamut.srgb ? "sRGB color" : "Outside sRGB"} aria-hidden="true" />
+            <input className="pfx-picker__value-input" type="text" spellCheck={false} autoComplete="off"
+              aria-label="Selected color value" aria-invalid={Boolean(valueError)}
+              value={draft} onFocus={() => { setEditing(true); setValueError(""); }}
+              onChange={event => setDraft(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  if (applyDraft()) { ignoreBlur.current = true; event.currentTarget.blur(); }
+                }
+                if (event.key === "Escape") {
+                  ignoreBlur.current = true;
+                  restoreDraft();
+                  event.currentTarget.blur();
+                }
+              }}
+              onBlur={() => {
+                if (ignoreBlur.current) { ignoreBlur.current = false; return; }
+                if (editing && !applyDraft()) restoreDraft();
+              }}
+              style={{ width: format === "hex" ? 112 : format === "oklch" ? 230 : 192 }} />
+            <select className="pfx-picker__format" aria-label="Color format" value={format}
+              onChange={event => switchFormat(event.target.value as typeof format)}>
+              <option value="hex">HEX</option>
+              <option value="rgb">RGB</option>
+              <option value="hsl">HSL</option>
+              <option value="oklch">OKLCH</option>
+            </select>
+            <button className="pfx-picker__copy" type="button" onClick={() => void copySelected()}
+              aria-label={"Copy " + format.toUpperCase()} title="Copy current format">Copy</button>
+          </div>
+          {valueError && <p className="pfx-picker__error" role="alert">{valueError}</p>}
           <div className="pfx-c-picker-main pfx-picker__surface">
             <div ref={fieldRef} className={"pfx-c-color-field pfx-picker__field" + (active ? " pfx-is-active" : "")}
               style={fieldStyle} tabIndex={0} role="slider"
@@ -157,61 +230,51 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
                   <small>S {Math.round(saturation)} · L {Math.round(lightness)}</small></output>
               </div>
             </div>
-            <div className="pfx-picker__hue-panel"><HueRail value={hue} update={next => setHsl(next, saturation, lightness)} /></div>
-          </div>
-        </div>
-        <aside className="pfx-picker__inspector" aria-label="Color inspector">
-          <div className="pfx-picker__preview">
-            <div className="pfx-picker__preview-checker" aria-hidden="true">
-              <span className="pfx-picker__preview-chip"
-                style={{ backgroundColor: state.color.hex, opacity: alpha }} />
-            </div>
-            <div className="pfx-picker__preview-label">
-              <span>Selected color</span>
-              <strong>{hex}</strong>
-              <small>{state.color.gamut.srgb ? "sRGB ✓" : "Outside sRGB"} · {state.color.gamut.p3 ? "P3 ✓" : "Outside P3"}</small>
+            <div className="pfx-picker__hue-panel">
+              <HueRail value={hue} update={next => setHsl(next, saturation, lightness)} />
+              <label className="pfx-picker__alpha">
+                <span>Opacity <strong>{Math.round(alpha * 100)}%</strong></span>
+                <input type="range" min={0} max={100} step={1}
+                  aria-label="Opacity" value={Math.round(alpha * 100)}
+                  onChange={event => setHsl(hue, saturation, lightness, Number(event.target.value) / 100)} />
+              </label>
             </div>
           </div>
-          <div className="pfx-picker__copies">
-            {(["hex", "rgb", "hsl", "oklch"] as const).map(key => (
-              <div className="pfx-picker__copy-row" key={key}>
-                <span>{key.toUpperCase()}</span><code title={formats[key]}>{formats[key]}</code>
-                <button type="button" aria-label={"Copy " + key.toUpperCase()}
-                  onClick={() => void copy(formats[key], key.toUpperCase())}>Copy</button>
-              </div>
-            ))}
-          </div>
-          <details className="pfx-picker__advanced">
+          <details className="pfx-picker__advanced" open>
             <summary>Channels</summary>
             <div className="pfx-picker__edit">
-            <div className="pfx-picker__edit-head"><strong>Channel editor</strong>
-              <div role="group" aria-label="Channel mode">
-                <button type="button" aria-pressed={format === "hsl"} onClick={() => setFormat("hsl")}>HSL</button>
-                <button type="button" aria-pressed={format === "rgb"} onClick={() => setFormat("rgb")}>RGB</button>
-              </div>
-            </div>
-            <div className="pfx-picker__numerics">
-              {format === "hsl" ? <>
+              <ChannelSlider label="Saturation" value={saturation}
+                onChange={value => setHsl(hue, value, lightness)} />
+              <ChannelSlider label="Lightness" value={lightness}
+                onChange={value => setHsl(hue, saturation, value)} />
+              {format === "rgb" && <div className="pfx-picker__numerics">
+                {(["Red", "Green", "Blue"] as const).map((label, i) =>
+                  <NumericChannel key={label} label={label} value={rgb[i]} min={0} max={255}
+                    onCommit={v => setRgb(i, v)} />)}
+              </div>}
+              {format === "hsl" && <div className="pfx-picker__numerics">
                 <NumericChannel label="Hue" value={Math.round(hue)} min={0} max={360}
                   onCommit={v => setHsl(v, saturation, lightness)} />
                 <NumericChannel label="Saturation" value={Math.round(saturation)} min={0} max={100}
                   onCommit={v => setHsl(hue, v, lightness)} />
                 <NumericChannel label="Lightness" value={Math.round(lightness)} min={0} max={100}
                   onCommit={v => setHsl(hue, saturation, v)} />
-              </> : <>
-                {(["Red", "Green", "Blue"] as const).map((label, i) =>
-                  <NumericChannel key={label} label={label} value={rgb[i]} min={0} max={255}
-                    onCommit={v => setRgb(i, v)} />)}
-              </>}
+              </div>}
+              {format === "oklch" && <div className="pfx-picker__numerics">
+                <NumericChannel label="Oklch Lightness" value={Number(oklch?.[0] ?? 0)}
+                  min={0} max={1} step={0.001}
+                  onCommit={v => setOklch(v, Number(oklch?.[1] ?? 0), Number(oklch?.[2] ?? 0))} />
+                <NumericChannel label="Chroma" value={Number(oklch?.[1] ?? 0)}
+                  min={0} max={0.6} step={0.001}
+                  onCommit={v => setOklch(Number(oklch?.[0] ?? 0), v, Number(oklch?.[2] ?? 0))} />
+                <NumericChannel label="Oklch Hue" value={Number(oklch?.[2] ?? 0)}
+                  min={0} max={360} step={0.1}
+                  onCommit={v => setOklch(Number(oklch?.[0] ?? 0), Number(oklch?.[1] ?? 0), v)} />
+              </div>}
             </div>
-            <label className="pfx-picker__alpha"><span>Opacity <strong>{Math.round(alpha * 100)}%</strong></span>
-              <input type="range" min={0} max={100} step={1}
-                aria-label="Opacity" value={Math.round(alpha * 100)}
-                onChange={event => setHsl(hue, saturation, lightness, Number(event.target.value) / 100)} /></label>
-          </div>
           </details>
           <p className="pfx-picker__status" role="status" aria-live="polite">{copyStatus}</p>
-        </aside>
+        </div>
       </div>
     </section>
   );
