@@ -309,20 +309,6 @@
 .pfx-explore .pfx-explore__browse-cell-foot button { min-width:19px; min-height:19px; padding:1px; border:0; border-radius:4px;
   color:var(--pfx-muted); background:transparent; font-size:13px; font-weight:700; }
 .pfx-explore .pfx-explore__browse-cell-foot button:hover { color:var(--pfx-accent); background:var(--ex-soft); }
-.pfx-explore__browse-bottom { position:sticky; bottom:0; z-index:2; display:flex; align-items:center; justify-content:space-between;
-  gap:12px; margin:15px -8px -8px; padding:10px 12px; border:1px solid var(--pfx-line-strong);
-  background:var(--ex-surface); box-shadow:0 -5px 20px rgba(0,0,0,.05); border-radius:11px; }
-.pfx-explore__browse-picked { display:flex; align-items:center; gap:10px; min-width:0; }
-.pfx-explore__browse-picked > span { display:block; height:38px; width:46px; flex:0 0 46px;
-  border-radius:8px; border:1px solid rgba(0,0,0,.12); }
-.pfx-explore__browse-picked > div { display:grid; gap:4px; }
-.pfx-explore__browse-picked small { color:var(--pfx-muted); font:700 9px var(--ex-mono); }
-.pfx-explore__browse-picked strong { font:750 16px var(--ex-mono); color:var(--pfx-text); }
-.pfx-explore__browse-actions { display:flex; gap:7px; }
-.pfx-explore .pfx-explore__browse-actions button { border:1px solid var(--ex-border); background:var(--ex-soft);
-  color:var(--pfx-text); font-size:11px; font-weight:700; border-radius:8px; padding:10px 12px; }
-.pfx-explore .pfx-explore__browse-actions button:first-child { background:var(--pfx-accent); color:var(--pfx-bg); border-color:var(--pfx-accent); }
-.pfx-explore .pfx-explore__browse-actions button[aria-pressed="true"] { border-color:var(--pfx-accent); color:var(--pfx-accent); }
 .pfx-explore__refine, .pfx-explore__advanced { display:grid; min-width:0; gap:12px; }
 .pfx-explore__refine > summary, .pfx-explore__advanced > summary {
   display:flex; justify-content:space-between; align-items:center; gap:12px; list-style:none; cursor:pointer;
@@ -359,11 +345,6 @@
   .pfx-explore__browse-cell-foot { padding:3px 3px 3px 4px; }
   .pfx-explore__browse-cell-foot code { font-size:8px; }
   .pfx-explore .pfx-explore__browse-color { height:54px; }
-  .pfx-explore__browse-bottom { margin:12px -7px -7px; padding:9px; }
-  .pfx-explore__browse-picked > span { width:31px; height:34px; flex-basis:31px; }
-  .pfx-explore__browse-picked strong { font-size:13px; }
-  .pfx-explore__browse-actions { gap:5px; }
-  .pfx-explore .pfx-explore__browse-actions button { padding:10px 7px; font-size:10px; }
   .pfx-explore__browse-legend { font-size:8px; }
   .pfx-explore__metric { display:none; }
   .pfx-explore__hero { gap:8px; padding:3px 0 15px; }
@@ -373,7 +354,6 @@
 @media (max-width:370px) {
   .pfx-explore__browse-grid { grid-template-columns:repeat(5,minmax(0,1fr)); }
   .pfx-explore .pfx-explore__browse-families button { font-size:10px; }
-  .pfx-explore__browse-picked strong { font-size:12px; }
 }
 @media (prefers-reduced-motion:reduce) {
   .pfx-explore__browse-color,.pfx-explore__summary-chevron { transition:none; }

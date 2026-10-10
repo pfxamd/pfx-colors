@@ -263,18 +263,6 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
                 </article>
               ))}
             </div>
-            <div className="pfx-explore__browse-bottom">
-              <div className="pfx-explore__browse-picked">
-                <span style={{ backgroundColor: selectedHex }} />
-                <div><small>SELECTED COLOR</small><strong>{selectedHex.toUpperCase()}</strong></div>
-              </div>
-              <div className="pfx-explore__browse-actions">
-                <button type="button" onClick={() => void copy(selectedHex)}>Copy HEX</button>
-                <button type="button" onClick={() => save(selectedHex)} aria-pressed={favorites.includes(selectedHex)}>
-                  {favorites.includes(selectedHex) ? "Saved ★" : "Save ☆"}
-                </button>
-              </div>
-            </div>
           </section>
 
           <details className="pfx-explore__refine" id="explore-refine">
