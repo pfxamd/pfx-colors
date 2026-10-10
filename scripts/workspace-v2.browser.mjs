@@ -118,6 +118,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
 
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
         await page.locator(".pfx-explore").waitFor();
+        assert.equal(await page.locator(".pfx-explore__browse-cell").count(), 96);
+        await page.locator("#explore-rgb-atlas > summary").click();
         assert.equal(await page.locator(".pfx-explore__atlas-tile").count(), 64,
           "An exhaustive level starts with 64 RGB regions");
         assert.equal(await page.locator(".pfx-explore__wheel").count(), 1, "Perceptual spectrum available");
@@ -136,6 +138,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator(".pfx-explore__atlas-tile").count(), 64,
           "Exact HEX location opens the final atlas subdivision");
         assert.match(await page.locator(".pfx-explore__atlas-meta").innerText(), /LEVEL 04/);
+        await page.locator("#explore-refine > summary").click();
         const hueControl = page.getByRole("slider", { name: /Hue/ }).first();
         await hueControl.focus();
         await hueControl.press("ArrowRight");
@@ -148,7 +151,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("button", { name: /Locate color/ }).click();
         assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(),
           "#010101", "Exact near-black remains deliberately selectable");
-        await page.getByRole("button", { name: "Blue", exact: true }).click();
+        await page.getByRole("group", { name: "Browse color families" }).getByRole("button", { name: "Blue" }).click();
         const vibrantColor = (await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase();
         assert.notEqual(vibrantColor, "#010101", "Blue family should lift near-black exploration");
         assert.ok(Math.max(...[1, 3, 5].map(i => parseInt(vibrantColor.slice(i, i + 2), 16))) > 130,
