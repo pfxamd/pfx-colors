@@ -172,6 +172,24 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.ok(fitTones.overflow <= 2, "No horizontal overflow");
         assert.equal(await pickerPanel.locator(".pfx-c-palette-ribbon button").count(), 9,
           "Initial live tones are visible next to Picker");
+        assert.equal(await pickerPanel.locator(".pfx-c-tones__preview").count(), 0,
+          "Removed the oversized black contrast preview");
+        assert.equal(await pickerPanel.locator(".pfx-c-tones__spectrum button span").count(), 0,
+          "Spectrum contains no HEX codes or counter labels");
+        assert.equal(await pickerPanel.locator(".pfx-c-tones__ribbon button[data-base='true']").count(), 1,
+          "The exact active Picker color anchors the tones");
+        const spectrumGeometry = await pickerPanel.locator(".pfx-c-tones__ribbon").evaluate(el => {
+          const buttons = [...el.querySelectorAll("button")];
+          const a = buttons[0].getBoundingClientRect();
+          const last = buttons[buttons.length - 1].getBoundingClientRect();
+          return { height: a.height, gap: last.left - a.right - a.width * (buttons.length - 2),
+            firstColor: getComputedStyle(buttons[0]).backgroundColor,
+            lastColor: getComputedStyle(buttons[buttons.length - 1]).backgroundColor };
+        });
+        assert.ok(spectrumGeometry.height >= 60 && spectrumGeometry.height <= 85,
+          "Compact pure-color spectrum is a single horizontal row");
+        assert.ok(Math.abs(spectrumGeometry.gap) < 5,
+          "Tone samples touch each other without card gaps");
         assert.equal(await pickerPanel.locator(".pfx-picker__inspector").count(), 0);
         assert.ok(await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Opacity", exact: true }).isVisible());
         assert.ok(await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Saturation", exact: true }).isVisible());
@@ -323,7 +341,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           "Tone count responds to user input");
         await page.getByRole("button", { name: "Darks", exact: true }).click();
         await page.locator('input[aria-label="Lock base color in scale"]').check();
-        assert.equal(await page.locator('[aria-label="Base locked"]').count(), 1,
+        assert.equal(await page.locator('.pfx-c-tones__ribbon button[data-locked="true"]').count(), 1,
           "Original base color remains locked in the scale");
         await page.locator('input[aria-label="Lock base color in scale"]').uncheck();
         const currentBeforePreview = await page.locator('input[aria-label="Current color"]').inputValue();
@@ -334,7 +352,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         const editor = page.locator('input[aria-label="Selected tone lightness"]');
         await editor.focus();
         await editor.press("ArrowRight");
-        assert.equal(await page.locator('[aria-label="Manually edited"]').count(), 1,
+        assert.equal(await page.locator('.pfx-c-tones__ribbon button[data-edited="true"]').count(), 1,
           "Individual tone edit is reflected in the scale");
         await page.getByRole("button", { name: "Export", exact: false }).click();
         const cssDownload = page.waitForEvent("download");
