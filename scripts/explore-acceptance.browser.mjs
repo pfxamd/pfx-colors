@@ -108,8 +108,12 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           const initialGrid = await grid.locator(".pfx-explore__browse-cell-foot code").allTextContents();
           const chosen = (await first.locator(".pfx-explore__browse-cell-foot code").innerText()).toLowerCase();
           await first.locator(".pfx-explore__browse-color").click();
-          await waitHex(page, chosen);
+          await page.waitForTimeout(200);
           const selected = await getHex(page);
+          console.log("BROWSE_SELECTION", browserName, viewport.width,
+            "cell", chosen, "navbar", selected,
+            "inspector", await page.locator(".pfx-explore__inspector-ident button").innerText());
+          assert.equal(selected, chosen, "Clicking a displayed shade must select that exact HEX");
           assert.match(selected, /^#[0-9a-f]{6}$/);
           assert.deepEqual(await grid.locator(".pfx-explore__browse-cell-foot code").allTextContents(), initialGrid,
             "Selecting a shade must not shuffle the grid");
