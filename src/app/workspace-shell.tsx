@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { copyColorText } from "./clipboard";
 import type { ThemePreference, ResolvedTheme } from "./theme";
 
-export type ToolId = "home" | "explore" | "picker" | "tones" | "harmony" | "gradient" | "collections";
+export type ToolId = "home" | "explore" | "picker" | "tones" | "harmony" | "gradient" | "image" | "contrast" | "collections";
 export const TOOLS: ReadonlyArray<{ id: ToolId; label: string; key: string }> = [
   { id: "home", label: "Home", key: "0" },
   { id: "explore", label: "Explore", key: "5" },
@@ -10,6 +10,8 @@ export const TOOLS: ReadonlyArray<{ id: ToolId; label: string; key: string }> = 
   { id: "tones", label: "Tones", key: "2" },
   { id: "harmony", label: "Harmony", key: "3" },
   { id: "gradient", label: "Gradient", key: "4" },
+  { id: "image", label: "Image", key: "7" },
+  { id: "contrast", label: "Contrast", key: "8" },
   { id: "collections", label: "Collections", key: "6" },
 ];
 

@@ -14,6 +14,8 @@ import { Tones } from "./tones";
 import { Picker } from "./picker";
 import { Harmony } from "./harmony";
 import { Gradient } from "./gradient";
+import { ImagePalette } from "./image-palette";
+import { Contrast } from "./contrast";
 
 const validTool = (value: unknown): value is ToolId =>
   typeof value === "string" && TOOLS.some(tool => tool.id === value);
@@ -93,6 +95,18 @@ export function App({ workspaceFactory, engine = "legacy" }: {
     setGradientRequest(value => value + 1);
     setActiveTool("gradient");
   };
+  const openGradientFromImage = (colors: readonly string[]) => {
+    if (colors.length < 2) return;
+    const stops = colors.map((hex, index) => ({
+      color: hex, position: index / (colors.length - 1),
+    }));
+    sync(workspace.createGradient(stops, {
+      type: "linear", angle: 90, centerX: 0.5, centerY: 0.5,
+      interpolationSpace: "oklch", hue: "shorter",
+    }));
+    setGradientRequest(value => value + 1);
+    setActiveTool("gradient");
+  };
   const openSavedGradient = (saved: SavedGradient) => {
     const draft = saved.gradient;
     sync(workspace.createGradient(draft.stops, {
@@ -168,6 +182,13 @@ export function App({ workspaceFactory, engine = "legacy" }: {
           commitColor={commitColor} saveSet={library.saveSet}
           saveGradient={library.saveGradient}
           requestVersion={gradientRequest} onRequestApplied={clearGradientRequest} />
+      )}
+      {activeTool === "image" && (
+        <ImagePalette select={commitColor} saveSet={library.saveSet}
+          openGradient={openGradientFromImage} />
+      )}
+      {activeTool === "contrast" && (
+        <Contrast currentHex={state.color.hex} />
       )}
       {activeTool === "collections" && (
         <Collections currentHex={state.color.hex} favorites={library.favorites}
