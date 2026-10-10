@@ -6,7 +6,7 @@ import { WorkspaceShell, TOOLS, type ToolId } from "./workspace-shell";
 import { useTheme } from "./use-theme";
 import { useColorLibrary } from "./use-color-library";
 import { useStoredState } from "./workspace-state";
-import { readGradientDraft } from "./gradient-session";
+import { readGradientDraft, saveGradientDraft, clearGradientDraft } from "./gradient-session";
 import { Home } from "./home";
 import { Explore } from "./explore";
 import { Collections } from "./collections";
@@ -54,6 +54,11 @@ export function App({ workspaceFactory, engine = "legacy" }: {
   const [gradientRequest, setGradientRequest] = useState(0);
   const { theme, preference, setPreference } = useTheme();
   const library = useColorLibrary();
+
+  useEffect(() => {
+    if (state.gradient) saveGradientDraft(state.gradient);
+    else clearGradientDraft();
+  }, [state.gradient]);
 
   const commitColor = useCallback((input: ColorInput) => {
     const next = workspace.setColor(input);
@@ -151,6 +156,7 @@ export function App({ workspaceFactory, engine = "legacy" }: {
       {activeTool === "gradient" && (
         <Gradient state={state} workspace={workspace} sync={sync}
           commitColor={commitColor} saveSet={library.saveSet}
+          saveGradient={library.saveGradient}
           requestVersion={gradientRequest} onRequestApplied={clearGradientRequest} />
       )}
       {activeTool === "collections" && (

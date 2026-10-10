@@ -9,7 +9,7 @@ import { useAngleHandleDrag, useNormalizedHandleDrag } from "../interaction/use-
 import { colorEngine, createGradient, generateHarmony, gradientToCss, sampleGradient, isRustEngine, recordRustGradientRaster } from "../rust/operations";
 import { copyColorText } from "./clipboard";
 import { useStoredState, numberBetween, oneOf } from "./workspace-state";
-import { saveGradientDraft } from "./gradient-session";
+import type { SavedGradientDraft } from "./gradient-session";
 import { gradientExport, gradientCssExport, compactGradientCss } from "./gradient-export";
 import { generateRandomGradient } from "./gradient-random";
 
@@ -380,6 +380,7 @@ export function Gradient({
   sync,
   commitColor,
   saveSet,
+  saveGradient,
   requestVersion,
   onRequestApplied,
 }: {
@@ -388,25 +389,34 @@ export function Gradient({
   sync: (next?: WorkspaceState) => void;
   commitColor: (input: ColorInput) => void;
   saveSet: (name: string, colors: readonly string[]) => void;
+  saveGradient: (name: string, gradient: SavedGradientDraft) => void;
   requestVersion: number;
   onRequestApplied: () => void;
 }) {
-  const [type, setType] = useStoredState<GradientType>(
+  // The workspace is the single source of truth for gradient geometry. Local settings
+  // only describe the initial preview before the first committed gradient.
+  const [initialType] = useStoredState<GradientType>(
     "pfx-colors.gradient.type.v2", state.gradient?.type ?? "linear",
     oneOf(["linear", "radial", "conic"] as const));
-  const [angle, setAngle] = useStoredState(
+  const [initialAngle] = useStoredState(
     "pfx-colors.gradient.angle.v2", state.gradient?.angle ?? 90,
     numberBetween(0, 360));
-  const [space, setSpace] = useStoredState<string>(
+  const [initialSpace] = useStoredState<string>(
     "pfx-colors.gradient.space.v2", state.gradient?.interpolationSpace ?? "oklch",
     oneOf(["oklch", "oklab", "srgb"] as const));
   const [selectedStop, setSelectedStop] = useStoredState(
     "pfx-colors.gradient.selected-stop.v2", 0, numberBetween(0, 15));
   const [status, setStatus] = useState("");
   const [showExport, setShowExport] = useState(false);
-  const [center, setCenter] = useStoredState(
+  const [initialCenter] = useStoredState(
     "pfx-colors.gradient.center.v2",
     { x: state.gradient?.centerX ?? 0.5, y: state.gradient?.centerY ?? 0.5 }, validCenter);
+  const type = state.gradient?.type ?? initialType;
+  const angle = state.gradient?.angle ?? initialAngle;
+  const space = state.gradient?.interpolationSpace ?? initialSpace;
+  const center = state.gradient
+    ? { x: state.gradient.centerX, y: state.gradient.centerY }
+    : initialCenter;
   const railRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const rustCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -463,15 +473,9 @@ export function Gradient({
 
   useEffect(() => {
     if (requestVersion === 0 || !state.gradient) return;
-    setType(state.gradient.type);
-    setAngle(state.gradient.angle);
-    setSpace(state.gradient.interpolationSpace);
-    setCenter({ x: state.gradient.centerX, y: state.gradient.centerY });
     setSelectedStop(0);
     onRequestApplied();
-  }, [requestVersion, onRequestApplied]);
-
-  useEffect(() => saveGradientDraft(gradient), [gradient]);
+  }, [requestVersion, onRequestApplied, state.gradient]);
 
   useEffect(() => {
     setSelectedStop((current) =>
@@ -614,36 +618,45 @@ export function Gradient({
     saveSet("Gradient · " + type, gradient.stops.map(stop => stop.hex));
     setStatus("Gradient colors saved to Collections");
   };
+  const saveCurrentGradient = () => {
+    saveGradient("Gradient · " + type, {
+      type, angle, centerX: center.x, centerY: center.y,
+      interpolationSpace: space,
+      stops: gradient.stops.map(stop => ({
+        position: stop.position,
+        color: asInput(stop.source),
+      })),
+    });
+    setStatus("Editable gradient saved to Collections");
+  };
+
+  const commitGradient = (
+    stops: readonly GradientStopInput[],
+    changes: Partial<{ type: GradientType; angle: number; centerX: number;
+      centerY: number; interpolationSpace: string }> = {},
+  ) => {
+    sync(workspace.createGradient(stops, {
+      type, angle, centerX: center.x, centerY: center.y,
+      interpolationSpace: space, hue: "shorter", ...changes,
+    }));
+  };
+  const updateGeometry = (changes: Parameters<typeof commitGradient>[1]) => {
+    commitGradient(gradient.stops.map(stop => ({
+      color: asInput(stop.source), position: stop.position,
+    })), changes);
+  };
 
   const randomizeGradient = () => {
     const next = generateRandomGradient(gradient.stops.map(stop => stop.hex));
-    setType(next.type);
-    setAngle(next.angle);
-    setCenter(next.center);
     setSelectedStop(0);
-    sync(workspace.createGradient(next.stops, {
-      type: next.type,
-      angle: next.angle,
-      centerX: next.center.x,
-      centerY: next.center.y,
-      interpolationSpace: space,
-      hue: "shorter",
-    }));
+    commitGradient(next.stops, {
+      type: next.type, angle: next.angle,
+      centerX: next.center.x, centerY: next.center.y,
+    });
     setStatus("New random gradient");
   };
 
-  const commitStops = (stops: GradientStopInput[]) => {
-    sync(
-      workspace.createGradient(stops, {
-        type,
-        angle,
-        centerX: center.x,
-        centerY: center.y,
-        interpolationSpace: space,
-        hue: "shorter",
-      }),
-    );
-  };
+  const commitStops = (stops: GradientStopInput[]) => commitGradient(stops);
 
   const updateStopPosition = (index: number, position: number) => {
     commitStops(
@@ -758,6 +771,7 @@ export function Gradient({
           </button>
           <button type="button" onClick={() => void copy(css, "Gradient CSS")}>Copy CSS</button>
           <button type="button" onClick={saveGradientSet}>Save colors</button>
+          <button type="button" onClick={saveCurrentGradient}>Save gradient</button>
           <button type="button" className="pfx-gradient__primary"
             aria-expanded={showExport} onClick={() => setShowExport(value => !value)}>
             Export {showExport ? "−" : "↓"}
@@ -805,8 +819,8 @@ export function Gradient({
               type={type}
               angle={angle}
               center={center}
-              onAngleChange={setAngle}
-              onCenterChange={setCenter}
+              onAngleChange={(value) => updateGeometry({ angle: value })}
+              onCenterChange={(point) => updateGeometry({ centerX: point.x, centerY: point.y })}
             />
 
             {type !== "radial" && (
@@ -864,7 +878,7 @@ export function Gradient({
                 key={item}
                 type="button"
                 className={item === type ? "pfx-is-current" : ""}
-                onClick={() => setType(item)}
+                onClick={() => updateGeometry({ type: item })}
                 aria-label={item + " gradient"}
                 aria-pressed={item === type}
                 title={item}
@@ -878,7 +892,7 @@ export function Gradient({
             <div><label htmlFor="pfx-gradient-angle">Rotation</label><output>{Math.round(angle)}°</output></div>
             <input id="pfx-gradient-angle" type="range" min="0" max="359" step="1"
               aria-label="Gradient angle" value={Math.round(angle)}
-              disabled={type === "radial"} onChange={event => setAngle(Number(event.target.value))} />
+              disabled={type === "radial"} onChange={event => updateGeometry({ angle: Number(event.target.value) })} />
           </div>
           <div className="pfx-gradient__editor-heading">
             <strong>SELECTED STOP</strong><span>{selectedStop + 1} / {gradient.stops.length}</span>
@@ -953,7 +967,7 @@ export function Gradient({
                 key={value}
                 type="button"
                 className={space === value ? "pfx-is-current" : ""}
-                onClick={() => setSpace(value)}
+                onClick={() => updateGeometry({ interpolationSpace: value })}
                 aria-pressed={space === value}
               >
                 {label}

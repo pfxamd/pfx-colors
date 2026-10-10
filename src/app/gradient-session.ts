@@ -9,28 +9,31 @@ export type SavedGradientDraft = {
   centerY: number;
   interpolationSpace: string;
 };
+export function toGradientDraft(gradient: GradientDefinition): SavedGradientDraft {
+  return {
+    type: gradient.type, angle: gradient.angle,
+    centerX: gradient.centerX, centerY: gradient.centerY,
+    interpolationSpace: gradient.interpolationSpace,
+    stops: gradient.stops.map(stop => ({
+      position: stop.position,
+      color: { space: stop.source.space,
+        coordinates: stop.source.coordinates.map(value => value ?? 0), alpha: stop.source.alpha },
+    })),
+  };
+}
+export function clearGradientDraft(): void {
+  try { window.localStorage.removeItem(GRADIENT_DRAFT_KEY); }
+  catch { /* Storage may be unavailable. */ }
+}
 export function saveGradientDraft(gradient: GradientDefinition): void {
   try {
-    const data: SavedGradientDraft = {
-      type: gradient.type, angle: gradient.angle,
-      centerX: gradient.centerX, centerY: gradient.centerY,
-      interpolationSpace: gradient.interpolationSpace,
-      stops: gradient.stops.map(stop => ({
-        position: stop.position,
-        color: { space: stop.source.space,
-          coordinates: stop.source.coordinates.map(value => value ?? 0), alpha: stop.source.alpha },
-      })),
-    };
-    window.localStorage.setItem(GRADIENT_DRAFT_KEY, JSON.stringify(data));
+    window.localStorage.setItem(GRADIENT_DRAFT_KEY, JSON.stringify(toGradientDraft(gradient)));
   } catch { /* Storage may be unavailable. */ }
 }
 const finite = (x: unknown, min: number, max: number): x is number =>
   typeof x === "number" && Number.isFinite(x) && x >= min && x <= max;
-export function readGradientDraft(storage: Pick<Storage, "getItem"> | null): SavedGradientDraft | null {
+export function parseGradientDraft(value: unknown): SavedGradientDraft | null {
   try {
-    const raw = storage?.getItem(GRADIENT_DRAFT_KEY);
-    if (!raw) return null;
-    const value: unknown = JSON.parse(raw);
     if (!value || typeof value !== "object") return null;
     const data = value as Record<string, unknown>;
     if (!["linear", "radial", "conic"].includes(data.type as string) ||
@@ -56,5 +59,12 @@ export function readGradientDraft(storage: Pick<Storage, "getItem"> | null): Sav
       interpolationSpace: data.interpolationSpace as string,
       stops,
     };
+  } catch { return null; }
+}
+
+export function readGradientDraft(storage: Pick<Storage, "getItem"> | null): SavedGradientDraft | null {
+  try {
+    const raw = storage?.getItem(GRADIENT_DRAFT_KEY);
+    return raw ? parseGradientDraft(JSON.parse(raw)) : null;
   } catch { return null; }
 }
