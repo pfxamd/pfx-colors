@@ -117,11 +117,13 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           assert.match(selected, /^#[0-9a-f]{6}$/);
           assert.deepEqual(await grid.locator(".pfx-explore__browse-cell-foot code").allTextContents(), initialGrid,
             "Selecting a shade must not shuffle the grid");
+          assert.equal(await page.locator(".pfx-explore__browse-bottom").count(), 0,
+            "Explore must not render a duplicate bottom color bar");
           assert.equal(await colorOf(page, ".pfx-explore__inspector-color"),
-            await colorOf(page, ".pfx-explore__browse-picked > span"), "Inspector and selection bar stay in sync");
+            await colorOf(page, ".pfx-v2__color-chip"), "Inspector and navbar stay in sync");
           await first.locator(".pfx-explore__browse-cell-foot button").click();
           assert.equal(await page.evaluate(() => window.__PFX_COPIED__), selected.toUpperCase());
-          await page.locator(".pfx-explore__browse-actions").getByRole("button", {name:"Copy HEX"}).click();
+          await page.locator(".pfx-explore__inspector-ident button").click();
           assert.equal(await page.evaluate(() => window.__PFX_COPIED__), selected.toUpperCase());
         });
 
