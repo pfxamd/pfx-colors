@@ -308,7 +308,8 @@
   color:var(--pfx-muted); font:650 9px var(--ex-mono); }
 .pfx-explore .pfx-explore__browse-cell-foot button { min-width:19px; min-height:19px; padding:1px; border:0; border-radius:4px;
   color:var(--pfx-muted); background:transparent; font-size:13px; font-weight:700; }
-.pfx-explore .pfx-explore__browse-cell-foot button:hover { color:var(--pfx-accent); background:var(--ex-soft); }.pfx-explore__refine, .pfx-explore__advanced { display:grid; min-width:0; gap:12px; }
+.pfx-explore .pfx-explore__browse-cell-foot button:hover { color:var(--pfx-accent); background:var(--ex-soft); }
+.pfx-explore__refine, .pfx-explore__advanced { display:grid; min-width:0; gap:12px; }
 .pfx-explore__refine > summary, .pfx-explore__advanced > summary {
   display:flex; justify-content:space-between; align-items:center; gap:12px; list-style:none; cursor:pointer;
   border-radius:13px; border:1px solid var(--ex-border); padding:15px 19px; background:var(--ex-surface);
