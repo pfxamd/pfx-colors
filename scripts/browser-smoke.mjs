@@ -23,12 +23,12 @@ try {
     assert.equal(response?.status(), 200, "Page must return HTTP 200");
 
     await page.locator(".pfx-home").waitFor();
-    assert.equal(await page.locator(".pfx-home__study-swatches button").count(), 10, "Home must generate 10 swatches");
+    assert.equal(await page.locator(".pfx-home__swatch").count(), 5, "Home must generate five swatches");
     assert.equal(await page.locator(".pfx-c-brand strong").innerText(), "PFx Colors");
     await page.screenshot({ path: "browser-evidence/" + viewport.name + "-home.png", animations: "disabled" });
 
     const initial = await page.locator('input[aria-label="Current color"]').inputValue();
-    await page.locator(".pfx-home__study-swatches button").first().click();
+    await page.locator(".pfx-home__swatch").first().click();
     const selected = await page.locator('input[aria-label="Current color"]').inputValue();
     assert.match(selected, /^#[0-9a-f]{6}$/i);
     assert.ok(initial !== selected || selected.length === 7);
