@@ -16,8 +16,10 @@ concurrency:
 
 jobs:
   test-and-deploy:
+    # Publish through an automated Pages environment: the previous github-pages
+    # environment unexpectedly began requiring a reviewer before any job starts.
     environment:
-      name: github-pages
+      name: github-pages-automatic
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
 
