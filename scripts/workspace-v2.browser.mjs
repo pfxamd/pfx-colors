@@ -70,18 +70,35 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-navbar.png`, animations: "disabled" });
 
         await page.locator(".pfx-home").waitFor();
-        assert.ok(await page.locator(".pfx-home__study-swatches button").count() >= 6,
-          "Home has a functioning color-study generator");
-        const homeLightness = page.getByRole("slider", { name: "Study Lightness" });
-        await homeLightness.focus();
-        await homeLightness.press("ArrowRight");
-        assert.equal(await homeLightness.inputValue(), "59");
-        await page.getByRole("button", { name: "Generate new" }).click();
-        assert.match(await page.locator(".pfx-home__study-bar").innerText(), /STUDY 02/);
+        const quickPalette = page.locator(".pfx-home__palette");
+        assert.equal(await quickPalette.locator(".pfx-home__swatch").count(), 5,
+          "Home presents exactly five selectable colors");
+        assert.equal(await page.locator(".pfx-home__generator").count(), 1);
+        assert.equal(await page.locator(".pfx-home__controls, .pfx-home__extras, .pfx-home__routes").count(), 0,
+          "Home has no old dashboard sections");
+        const initialPalette = await page.locator(".pfx-home__code").allTextContents();
+        await page.getByRole("button", { name: "Generate", exact: true }).click();
+        const generatedPalette = await page.locator(".pfx-home__code").allTextContents();
+        assert.notDeepEqual(generatedPalette, initialPalette, "Generate produces a fresh palette");
+        const expectedHomeHex = generatedPalette[0].toLowerCase();
+        await quickPalette.locator(".pfx-home__swatch").first().click();
+        assert.equal((await navColor.inputValue()).toLowerCase(), expectedHomeHex,
+          "Choosing a swatch updates the navbar");
+        await page.locator(".pfx-home__code").first().click();
+        assert.equal(await page.evaluate(() => window.__PFX_COPIED__), expectedHomeHex.toUpperCase(),
+          "Color HEX copies from the quick palette");
+        if (viewport.width >= 1200) {
+          const homeMetrics = await page.locator(".pfx-home").evaluate(el => ({
+            scroll: el.scrollHeight - el.clientHeight,
+            card: el.querySelector(".pfx-home__generator").getBoundingClientRect().width,
+          }));
+          assert.ok(homeMetrics.scroll <= 1, "Desktop Home does not scroll");
+          assert.ok(homeMetrics.card <= 650, "Quick Palette leaves space for future tools");
+        }
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
-        assert.equal(await page.getByRole("slider", { name: "Study Lightness" }).inputValue(), "59",
-          "Home generator settings survive tool navigation");
+        assert.deepEqual(await page.locator(".pfx-home__code").allTextContents(), generatedPalette,
+          "Quick Palette survives tool navigation");
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-home.png`, animations: "disabled" });
 
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Picker" }).click();
@@ -324,8 +341,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           .getAttribute("aria-pressed"), "true", "Harmony scheme survives tool navigation");
         await page.reload({ waitUntil: "networkidle" });
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
-        assert.equal(await page.getByRole("slider", { name: "Study Lightness" }).inputValue(), "59",
-          "Home preferences survive reload");
+        assert.deepEqual(await page.locator(".pfx-home__code").allTextContents(), generatedPalette,
+          "Quick Palette survives reload");
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
         assert.equal(await page.locator(".pfx-explore__wheel").count(), 1,
           "Explore spectrum survives reload");

@@ -150,9 +150,7 @@ export function App({ workspaceFactory, engine = "legacy" }: {
       }}
     >
       {activeTool === "home" && (
-        <Home state={state} commitColor={commitColor} navigate={setActiveTool}
-          favorites={library.favorites} recent={library.recent}
-          toggleFavorite={library.toggleFavorite} />
+        <Home state={state} commitColor={commitColor} />
       )}
       {activeTool === "explore" && (
         <Explore activeHex={state.color.hex} select={commitColor}
