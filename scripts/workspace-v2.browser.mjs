@@ -187,6 +187,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           const content = stage?.getBoundingClientRect();
           const panel = controls?.getBoundingClientRect();
           return { barWidth: bar?.width, stageWidth: content?.width,
+            visibleWidth: el.clientWidth,
             barLeft: bar?.left, stageLeft: content?.left,
             offsetFromNav: slot && nav ? slot.top - nav.bottom : null,
             panelBelowStrip: panel && slot ? panel.top - slot.bottom : null,
@@ -194,8 +195,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           };
         });
         assert.ok(stripPosition.correctlyPortaled, "Original tone strip is relocated, not duplicated");
-        assert.ok(Math.abs(stripPosition.barWidth - stripPosition.stageWidth) <= 3,
-          "Tones strip fills the entire available page width");
+        assert.ok(Math.abs(stripPosition.barWidth - stripPosition.visibleWidth) <= 3,
+          "Tones strip fills all visible page width: " + JSON.stringify(stripPosition));
         assert.ok(Math.abs(stripPosition.barLeft - stripPosition.stageLeft) <= 3,
           "Tones strip aligns flush with the page edge");
         assert.ok(Math.abs(stripPosition.offsetFromNav) <= 3,
