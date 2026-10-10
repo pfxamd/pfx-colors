@@ -73,17 +73,6 @@ function HueRail({ value, update }: { value: number; update: (value: number) => 
   );
 }
 
-function ChannelSlider({
-  label, value, onChange, max = 100,
-}: { label: string; value: number; max?: number; onChange: (value: number) => void }) {
-  return <label className="pfx-picker__slider">
-    <span>{label} <strong>{Math.round(value)}{max === 100 ? "%" : "°"}</strong></span>
-    <input type="range" min={0} max={max} step={1}
-      aria-label={label} value={Math.round(value)}
-      onChange={event => onChange(Number(event.target.value))} />
-  </label>;
-}
-
 export function Picker({ state, commitColor, openTones, favorite, toggleFavorite }: Props) {
   const hsl = state.color.values.hsl?.coordinates;
   const oklch = state.color.values.oklch?.coordinates;
@@ -135,13 +124,12 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
   return (
     <section className="pfx-c-workbench--picker pfx-picker pfx-v2__page" aria-label="Color picker workstation">
       <div className="pfx-v2__page-heading pfx-picker__heading">
-        <div><span className="pfx-v2__eyebrow">PRECISE COLOR CONTROL</span><h1>Picker.</h1>
-          <p>Find an exact color, fine-tune its channels and copy it in the format you need.</p></div>
+        <h1>Picker</h1>
         <div className="pfx-picker__top-actions">
-          <button type="button" onClick={() => void copy(formats.hex, "HEX")}>Copy HEX</button>
           <button type="button" aria-pressed={favorite}
             onClick={() => toggleFavorite(state.color.hex)}>
-            {favorite ? "★ Saved" : "☆ Save color"}</button>
+            {favorite ? "★ Saved" : "☆ Save color"}
+          </button>
           <button type="button" className="pfx-picker__primary"
             onClick={() => openTones(state.color.hex)}>Create Tones →</button>
         </div>
@@ -152,7 +140,7 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
       </div>
       <div className="pfx-picker__layout" data-panel={mobilePanel}>
         <div className="pfx-picker__canvas-card">
-          <div className="pfx-picker__card-caption"><strong>Color field</strong><span>Drag or use arrow keys · Shift for fine steps</span></div>
+          <div className="pfx-picker__card-caption"><strong>Color field</strong><span>Drag · Arrow keys for precision</span></div>
           <div className="pfx-c-picker-main pfx-picker__surface">
             <div ref={fieldRef} className={"pfx-c-color-field pfx-picker__field" + (active ? " pfx-is-active" : "")}
               style={fieldStyle} tabIndex={0} role="slider"
@@ -171,21 +159,18 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
             </div>
             <div className="pfx-picker__hue-panel"><HueRail value={hue} update={next => setHsl(next, saturation, lightness)} /></div>
           </div>
-          <div className="pfx-picker__spectrum-settings pfx-c-console">
-            <ChannelSlider label="Saturation" value={saturation}
-              onChange={value => setHsl(hue, value, lightness)} />
-            <ChannelSlider label="Lightness" value={lightness}
-              onChange={value => setHsl(hue, saturation, value)} />
-          </div>
         </div>
         <aside className="pfx-picker__inspector" aria-label="Color inspector">
           <div className="pfx-picker__preview">
-            <div className="pfx-picker__preview-checker">
-              <div style={{ backgroundColor: state.color.hex, opacity: alpha, color: readable.color }}>
-                <span>ACTIVE COLOR</span><strong>{hex}</strong></div>
+            <div className="pfx-picker__preview-checker" aria-hidden="true">
+              <span className="pfx-picker__preview-chip"
+                style={{ backgroundColor: state.color.hex, opacity: alpha }} />
             </div>
-            <div className="pfx-picker__preview-caption"><strong>Selected color</strong>
-              <span>{state.color.gamut.srgb ? "sRGB ✓" : "Outside sRGB"} · {state.color.gamut.p3 ? "P3 ✓" : "Outside P3"}</span></div>
+            <div className="pfx-picker__preview-label">
+              <span>Selected color</span>
+              <strong>{hex}</strong>
+              <small>{state.color.gamut.srgb ? "sRGB ✓" : "Outside sRGB"} · {state.color.gamut.p3 ? "P3 ✓" : "Outside P3"}</small>
+            </div>
           </div>
           <div className="pfx-picker__copies">
             {(["hex", "rgb", "hsl", "oklch"] as const).map(key => (
@@ -196,7 +181,9 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
               </div>
             ))}
           </div>
-          <div className="pfx-picker__edit">
+          <details className="pfx-picker__advanced">
+            <summary>Channels</summary>
+            <div className="pfx-picker__edit">
             <div className="pfx-picker__edit-head"><strong>Channel editor</strong>
               <div role="group" aria-label="Channel mode">
                 <button type="button" aria-pressed={format === "hsl"} onClick={() => setFormat("hsl")}>HSL</button>
@@ -222,6 +209,7 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
                 aria-label="Opacity" value={Math.round(alpha * 100)}
                 onChange={event => setHsl(hue, saturation, lightness, Number(event.target.value) / 100)} /></label>
           </div>
+          </details>
           <p className="pfx-picker__status" role="status" aria-live="polite">{copyStatus}</p>
         </aside>
       </div>
