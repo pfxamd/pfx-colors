@@ -23,14 +23,32 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         const response = await page.goto(base, { waitUntil: "networkidle" });
         assert.equal(response?.status(), 200);
 
-        await page.getByRole("button", { name: "light theme" }).click();
+        const themeToggle = page.locator(".pfx-v2__theme-toggle");
+        assert.equal(await themeToggle.count(), 1, "Navbar has one theme control");
+        assert.equal(await page.locator(".pfx-v2__theme button").count(), 0,
+          "Old three-button appearance switch has been removed");
+        const initialTheme = await page.locator(".pfx-v2").getAttribute("data-theme");
+        assert.ok(initialTheme === "dark" || initialTheme === "light");
+        const opposite = initialTheme === "dark" ? "light" : "dark";
+        assert.equal(await themeToggle.getAttribute("aria-label"), "Switch to " + opposite + " theme");
+        assert.equal(await themeToggle.locator("svg").getAttribute("data-theme-icon"),
+          initialTheme === "dark" ? "moon" : "sun", "Icon represents current mode");
+        await themeToggle.click();
+        assert.equal(await page.locator(".pfx-v2").getAttribute("data-theme"), opposite);
+        assert.equal(await themeToggle.locator("svg").getAttribute("data-theme-icon"),
+          opposite === "dark" ? "moon" : "sun", "Icon updates when mode changes");
+        await themeToggle.click();
+        assert.equal(await page.locator(".pfx-v2").getAttribute("data-theme"), initialTheme);
+        if (initialTheme !== "light") await themeToggle.click();
         assert.equal(await page.locator(".pfx-v2").getAttribute("data-theme"), "light");
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-light.png`, animations: "disabled" });
 
-        await page.getByRole("button", { name: "dark theme" }).click();
+        await page.getByRole("button", { name: "Switch to dark theme" }).click();
         assert.equal(await page.locator(".pfx-v2").getAttribute("data-theme"), "dark");
         await page.reload({ waitUntil: "networkidle" });
         assert.equal(await page.locator(".pfx-v2").getAttribute("data-theme"), "dark", "Appearance persisted");
+        assert.equal(await page.locator(".pfx-v2__theme-toggle svg").getAttribute("data-theme-icon"),
+          "moon", "The icon persists with the stored theme");
 
         assert.equal(await page.locator(".pfx-c-dock").count(), 0,
           "Legacy fixed bottom dock was removed");
