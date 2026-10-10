@@ -85,6 +85,10 @@ jobs:
         run: node scripts/workspace-v2.browser.mjs
         env:
           PFX_COLORS_URL: http://127.0.0.1:4173/pfx-colors/
+      - name: Comprehensive Explore acceptance in Chromium and Firefox
+        run: node scripts/explore-acceptance.browser.mjs
+        env:
+          PFX_COLORS_URL: http://127.0.0.1:4173/pfx-colors/
       - name: Test image extraction, contrast, and color-set integration
         run: node scripts/color-tools.browser.mjs
         env:

@@ -259,3 +259,8 @@
   .pfx-explore__searchform button span { font-size:16px; }
 }
 @media (prefers-reduced-motion:reduce) { .pfx-explore__atlas-tile { transition:none; } }
+
+/* Match the compact inspector preview on small screens too. */
+@media (max-width:960px) {
+  .pfx-explore__inspector-color { min-height:112px; }
+}
