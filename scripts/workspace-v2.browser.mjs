@@ -304,6 +304,20 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Gradient" }).click();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 2,
           "Gradient stop geometry survives reload");
+        const randomGradientButton = page.getByRole("button", { name: "Random gradient" });
+        const beforeRandom = await page.locator(".pfx-gradient__css code").textContent();
+        await randomGradientButton.click();
+        const firstRandom = await page.locator(".pfx-gradient__css code").textContent();
+        assert.notEqual(firstRandom, beforeRandom, "Random gradient changes the preview and CSS");
+        await randomGradientButton.click();
+        const secondRandom = await page.locator(".pfx-gradient__css code").textContent();
+        assert.notEqual(secondRandom, firstRandom, "Each click generates a different gradient");
+        const randomStopCount = await page.locator(".pfx-c-gradient-stop-handle").count();
+        assert.ok(randomStopCount >= 2 && randomStopCount <= 4, "Randomized stops remain editable");
+        await page.reload({ waitUntil: "networkidle" });
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Gradient" }).click();
+        assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), randomStopCount,
+          "Random gradient survives reload");
 
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "No horizontal page overflow");
         assert.deepEqual(errors, [], browserName + " runtime errors");

@@ -11,6 +11,17 @@
   border-radius:9px; background:var(--pfx-panel); color:var(--pfx-text);
   font-size:12px; font-weight:600; cursor:pointer;
 }
+.pfx-v2 .pfx-gradient__top-actions .pfx-gradient__randomize {
+  background:var(--pfx-accent-soft); color:var(--pfx-accent);
+  border-color:var(--pfx-accent); display:inline-flex; align-items:center; gap:7px;
+}
+.pfx-v2 .pfx-gradient__top-actions .pfx-gradient__randomize:hover {
+  background:var(--pfx-accent); color:var(--pfx-bg);
+}
+.pfx-v2 .pfx-gradient__top-actions .pfx-gradient__randomize:focus-visible {
+  outline:2px solid var(--pfx-accent); outline-offset:3px;
+}
+.pfx-v2 .pfx-gradient__top-actions .pfx-gradient__randomize span { font-size:17px; line-height:.7; }
 .pfx-v2 .pfx-gradient__top-actions .pfx-gradient__primary {
   background:var(--pfx-accent); border-color:var(--pfx-accent); color:var(--pfx-bg);
 }

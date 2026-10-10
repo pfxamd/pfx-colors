@@ -11,6 +11,7 @@ import { copyColorText } from "./clipboard";
 import { useStoredState, numberBetween, oneOf } from "./workspace-state";
 import { saveGradientDraft } from "./gradient-session";
 import { gradientExport, gradientCssExport, compactGradientCss } from "./gradient-export";
+import { generateRandomGradient } from "./gradient-random";
 
 function validCenter(value: unknown): value is { x: number; y: number } {
   if (!value || typeof value !== "object") return false;
@@ -614,6 +615,23 @@ export function Gradient({
     setStatus("Gradient colors saved to Collections");
   };
 
+  const randomizeGradient = () => {
+    const next = generateRandomGradient(gradient.stops.map(stop => stop.hex));
+    setType(next.type);
+    setAngle(next.angle);
+    setCenter(next.center);
+    setSelectedStop(0);
+    sync(workspace.createGradient(next.stops, {
+      type: next.type,
+      angle: next.angle,
+      centerX: next.center.x,
+      centerY: next.center.y,
+      interpolationSpace: space,
+      hue: "shorter",
+    }));
+    setStatus("New random gradient");
+  };
+
   const commitStops = (stops: GradientStopInput[]) => {
     sync(
       workspace.createGradient(stops, {
@@ -734,6 +752,10 @@ export function Gradient({
           <p>Compose, adjust, preview and export polished gradients with exact controls.</p>
         </div>
         <div className="pfx-gradient__top-actions">
+          <button type="button" className="pfx-gradient__randomize" onClick={randomizeGradient}
+            title="Generate a new random gradient">
+            <span aria-hidden="true">↻</span> Random gradient
+          </button>
           <button type="button" onClick={() => void copy(css, "Gradient CSS")}>Copy CSS</button>
           <button type="button" onClick={saveGradientSet}>Save colors</button>
           <button type="button" className="pfx-gradient__primary"
