@@ -6,6 +6,17 @@ import {
 } from "../src/app/explore-model";
 
 describe("Explore catalog", () => {
+  it("keeps the standard keyword list unique and its spelling aliases intact", () => {
+    const canonical = NAMED_COLORS.map(([name]) => name.replaceAll(" ", "").toLowerCase());
+    expect(new Set(canonical).size).toBe(148);
+    expect(NAMED_COLORS.every(([, hex]) => /^#[0-9a-f]{6}$/.test(hex))).toBe(true);
+    const byName = new Map(NAMED_COLORS.map(([name, hex]) => [name.toLowerCase().replaceAll(" ", ""), hex]));
+    expect(byName.get("gray")).toBe(byName.get("grey"));
+    expect(byName.get("aqua")).toBe(byName.get("cyan"));
+    expect(byName.get("fuchsia")).toBe(byName.get("magenta"));
+    expect(byName.get("rebeccapurple")).toBe("#663399");
+  });
+
   it("includes all 148 CSS named colors and spelling aliases", () => {
     expect(NAMED_COLORS).toHaveLength(148);
     expect(namedMatches("rebecca", DEFAULT_FILTERS, "name")[0].hex).toBe("#663399");
