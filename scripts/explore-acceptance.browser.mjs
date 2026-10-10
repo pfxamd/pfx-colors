@@ -40,6 +40,8 @@ async function setRange(range, value) {
     setter.call(element, String(next));
     element.dispatchEvent(new Event("input", { bubbles: true }));
     element.dispatchEvent(new Event("change", { bubbles: true }));
+    // A user release commits the continuous preview to shared color history.
+    element.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
   }, value);
 }
 
