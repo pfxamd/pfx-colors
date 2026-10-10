@@ -129,6 +129,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
               layoutWidth: layout.width,
               layoutLeft: layout.left - page.left,
               fieldWidth: field.width,
+              fieldVisible: getComputedStyle(el.querySelector(".pfx-picker__canvas-card")).display !== "none",
               inspectorWidth: inspector.getBoundingClientRect().width,
               inspectorVisible: getComputedStyle(inspector).display !== "none",
             };
@@ -142,10 +143,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
             label + " heading must span the page, not sit in a legacy grid column");
           assert.ok(fit.layoutWidth >= fit.pageWidth - 90 && fit.layoutLeft <= 55,
             label + " content must span the page, not collapse into a side column");
-          if (fit.inspectorVisible || label === "Picker color field") {
-            assert.ok(fit.fieldWidth >= 250 || !fit.inspectorVisible && fit.fieldWidth === 0,
-              label + " usable color field width");
-          }
+          if (fit.fieldVisible) assert.ok(fit.fieldWidth >= 250,
+            label + " color field must have usable width");
           if (fit.inspectorVisible) assert.ok(fit.inspectorWidth >= 290,
             label + " inspector must retain a usable width");
         };
