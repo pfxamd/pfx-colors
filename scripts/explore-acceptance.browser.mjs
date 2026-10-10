@@ -133,7 +133,9 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await check("The interface works in dark and light themes", async () => {
           await search.fill("");
           for (const theme of ["dark", "light"]) {
-            await page.getByRole("button", { name: theme + " theme" }).click();
+            if (await page.locator(".pfx-v2").getAttribute("data-theme") !== theme) {
+              await page.locator(".pfx-v2__theme-toggle").click();
+            }
             assert.equal(await page.locator(".pfx-v2").getAttribute("data-theme"), theme);
             assert.ok(await select("Royal Blue", "#4169e1").isVisible());
             await page.screenshot({
