@@ -166,6 +166,43 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.locator(".pfx-picker__field").click({ position: { x: 80, y: 100 } });
         await page.waitForFunction(previous =>
           document.querySelector('input[aria-label="Current color"]')?.value !== previous, beforePicker);
+        assert.equal(await pickerPanel.locator(".pfx-c-color-cursor__readout").count(), 0,
+          "Picker must not show the redundant floating HEX/S/L readout");
+        assert.equal(await pickerPanel.locator(".pfx-picker__precision-cursor").count(), 1,
+          "Picker has exactly one small selector");
+        const cursor = await page.locator(".pfx-picker__field").evaluate(field => {
+          const marker = field.querySelector(".pfx-picker__precision-cursor");
+          const markerStyle = getComputedStyle(marker);
+          const fieldRect = field.getBoundingClientRect();
+          const markerRect = marker.getBoundingClientRect();
+          const style = marker.style;
+          const x = parseFloat(style.left) / 100;
+          const y = parseFloat(style.top) / 100;
+          return {
+            width: markerRect.width, height: markerRect.height,
+            pointerEvents: markerStyle.pointerEvents,
+            color: markerStyle.backgroundColor,
+            dot: getComputedStyle(marker, "::after").content,
+            deltaX: Math.abs(markerRect.left + markerRect.width / 2 -
+              (fieldRect.left + x * fieldRect.width)),
+            deltaY: Math.abs(markerRect.top + markerRect.height / 2 -
+              (fieldRect.top + y * fieldRect.height)),
+          };
+        });
+        assert.ok(cursor.width >= 17 && cursor.width <= 20, "Selector stays small");
+        assert.ok(cursor.height >= 17 && cursor.height <= 20, "Selector is circular");
+        assert.equal(cursor.pointerEvents, "none", "Selector must not consume pointer events");
+        assert.ok(cursor.dot !== "none", "Selector has a precise center dot");
+        assert.ok(cursor.deltaX <= 1 && cursor.deltaY <= 1,
+          "Selector center matches the selected coordinates without offset");
+        const fieldSlider = page.locator(".pfx-picker__field");
+        await fieldSlider.focus();
+        const previousCursorPosition = await pickerPanel.locator(".pfx-picker__precision-cursor")
+          .getAttribute("style");
+        await fieldSlider.press("ArrowRight");
+        await page.waitForFunction(previous =>
+          document.querySelector(".pfx-picker__precision-cursor")?.getAttribute("style") !== previous,
+          previousCursorPosition);
         await format.selectOption("rgb");
         await page.getByRole("button", { name: "Copy RGB" }).click();
         assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^rgb\(/,
