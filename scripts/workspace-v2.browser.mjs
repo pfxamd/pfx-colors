@@ -149,6 +149,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         // Regression: very dark colors must become visible when users explore hue.
         await search.fill("#010101");
         await page.getByRole("button", { name: /Locate color/ }).click();
+        await page.waitForFunction(() =>
+          document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#010101");
         assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(),
           "#010101", "Exact near-black remains deliberately selectable");
         await page.getByRole("group", { name: "Browse color families" }).getByRole("button", { name: "Blue" }).click();
@@ -172,6 +174,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           "#000000", "Keyboard hue change from black becomes visible");
         await search.fill("#010101");
         await page.getByRole("button", { name: /Locate color/ }).click();
+        await page.waitForFunction(() =>
+          document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#010101");
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
         assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(),
