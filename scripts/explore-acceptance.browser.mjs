@@ -106,7 +106,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           assert.equal(await page.locator("#explore-rgb-atlas").getAttribute("open"), null);
           const first = grid.locator(".pfx-explore__browse-cell").first();
           const initialGrid = await grid.locator(".pfx-explore__browse-cell-foot code").allTextContents();
-          const chosen = "#" + (await first.locator(".pfx-explore__browse-cell-foot code").innerText()).toLowerCase();
+          const chosen = (await first.locator(".pfx-explore__browse-cell-foot code").innerText()).toLowerCase();
           await first.locator(".pfx-explore__browse-color").click();
           await waitHex(page, chosen);
           const selected = await getHex(page);
