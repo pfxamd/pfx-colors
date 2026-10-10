@@ -107,95 +107,80 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Picker" }).click();
         await page.locator(".pfx-picker__field").waitFor();
         const pickerPanel = page.locator(".pfx-picker");
-        const mobilePicker = viewport.width < 1011;
-        const checkPickerFit = async label => {
-          const fit = await pickerPanel.evaluate(el => {
-            const tab = el.querySelector(".pfx-picker__layout");
-            const shown = [...tab.children].filter(child => getComputedStyle(child).display !== "none");
-            const last = shown[0];
-            const page = el.getBoundingClientRect();
-            const heading = el.querySelector(".pfx-picker__heading").getBoundingClientRect();
-            const layout = tab.getBoundingClientRect();
-            const field = el.querySelector(".pfx-picker__field").getBoundingClientRect();
-            const inspector = el.querySelector(".pfx-picker__inspector");
-            return {
-              scroll: el.scrollHeight - el.clientHeight,
-              contentBottom: last?.getBoundingClientRect().bottom ?? 0,
-              availableBottom: page.bottom,
-              horizontal: el.scrollWidth - el.clientWidth,
-              pageWidth: page.width,
-              headingWidth: heading.width,
-              headingTop: heading.top - page.top,
-              layoutWidth: layout.width,
-              layoutLeft: layout.left - page.left,
-              fieldWidth: field.width,
-              fieldVisible: getComputedStyle(el.querySelector(".pfx-picker__canvas-card")).display !== "none",
-              inspectorWidth: inspector.getBoundingClientRect().width,
-              inspectorVisible: getComputedStyle(inspector).display !== "none",
-            };
-          });
-          assert.ok(fit.scroll <= 2, label + " does not vertically scroll");
-          assert.ok(fit.horizontal <= 2, label + " does not horizontally scroll");
-          assert.ok(fit.contentBottom <= fit.availableBottom + 2, label + " is not clipped");
-          assert.ok(fit.headingTop >= -1 && fit.headingTop <= 55,
-            label + " heading must be at top, not vertically centered");
-          assert.ok(fit.headingWidth >= fit.pageWidth - 90,
-            label + " heading must span the page, not sit in a legacy grid column");
-          assert.ok(fit.layoutWidth >= fit.pageWidth - 90 && fit.layoutLeft <= 55,
-            label + " workspace retains full-width room for future tools");
-          if (fit.pageWidth >= 1200) {
-            assert.ok(fit.fieldWidth <= 560, label + " field stays compact");
-            assert.ok(fit.inspectorWidth <= 330, label + " values stay compact");
-            assert.ok(fit.pageWidth - fit.fieldWidth - fit.inspectorWidth >= 280,
-              label + " leaves room for future tools");
-          }
-          if (fit.fieldVisible) assert.ok(fit.fieldWidth >= 250,
-            label + " color field must have usable width");
-          if (fit.inspectorVisible) assert.ok(fit.inspectorWidth >= 290,
-            label + " inspector must retain a usable width");
-        };
-        await checkPickerFit("Picker color field");
-        if (mobilePicker) {
-          assert.ok(await page.getByRole("button", { name: "Color field", exact: true }).isVisible());
-          assert.ok(await page.locator(".pfx-picker__field").isVisible());
-          await page.getByRole("button", { name: "Values & channels" }).click();
-          await checkPickerFit("Picker values");
-          await page.locator(".pfx-picker__advanced > summary").click();
-          assert.ok(await page.getByRole("slider", { name: "Opacity" }).isVisible());
-          await page.getByRole("button", { name: "Color field", exact: true }).click();
-        } else {
-          assert.ok(await page.locator(".pfx-picker__inspector").isVisible());
-        }
+        const format = page.getByRole("combobox", { name: "Color format" });
+        const valueField = page.getByRole("textbox", { name: "Selected color value" });
         const currentInput = page.locator('input[aria-label="Current color"]');
+        const fit = await pickerPanel.evaluate(el => {
+          const page = el.getBoundingClientRect();
+          const card = el.querySelector(".pfx-picker__canvas-card").getBoundingClientRect();
+          const value = el.querySelector(".pfx-picker__value-input").getBoundingClientRect();
+          const chooser = el.querySelector(".pfx-picker__format").getBoundingClientRect();
+          const copy = el.querySelector(".pfx-picker__copy").getBoundingClientRect();
+          const field = el.querySelector(".pfx-picker__field").getBoundingClientRect();
+          return { pageWidth: page.width, pageLeft: page.left, cardWidth: card.width,
+            cardLeft: card.left, fieldWidth: field.width, valueWidth: value.width,
+            valueRight: value.right, formatLeft: chooser.left, formatRight: chooser.right,
+            copyLeft: copy.left, copyRight: copy.right,
+            overflowX: el.scrollWidth-el.clientWidth };
+        });
+        assert.ok(fit.overflowX <= 2, "Picker has no horizontal overflow");
+        assert.ok(fit.cardWidth <= 524 && fit.cardWidth >= 285, "One compact picker card");
+        assert.ok(fit.fieldWidth >= 250, "Picker field is usable");
+        assert.ok(fit.valueWidth >= 90 && fit.valueWidth <= 240,
+          "Color value is content-sized, not stretched");
+        assert.ok(fit.formatLeft - fit.valueRight <= 14 &&
+          fit.copyLeft - fit.formatRight <= 14, "Format and copy stay beside the value");
+        assert.ok(fit.cardLeft-fit.pageLeft <= 32, "Card is left-anchored");
+        if (viewport.width >= 1200) assert.ok(fit.pageWidth-fit.cardWidth >= 500,
+          "Space is reserved for later instruments");
+        assert.equal(await pickerPanel.locator(".pfx-picker__canvas-card").count(), 1);
+        assert.equal(await pickerPanel.locator(".pfx-picker__inspector").count(), 0);
+        assert.ok(await page.getByRole("slider", { name: "Opacity" }).isVisible());
+        assert.ok(await page.getByRole("slider", { name: "Saturation" }).isVisible());
+        assert.ok(await page.getByRole("slider", { name: "Lightness" }).isVisible());
+        assert.equal(await format.inputValue(), "hex");
+        assert.equal((await valueField.inputValue()).toLowerCase(), (await currentInput.inputValue()).toLowerCase());
         const beforePicker = await currentInput.inputValue();
         await page.locator(".pfx-picker__field").click({ position: { x: 80, y: 100 } });
-        await page.waitForFunction(before =>
-          document.querySelector('input[aria-label="Current color"]')?.value !== before,
-          beforePicker);
-        if (mobilePicker) await page.getByRole("button", { name: "Values & channels" }).click();
+        await page.waitForFunction(previous =>
+          document.querySelector('input[aria-label="Current color"]')?.value !== previous, beforePicker);
+        await format.selectOption("rgb");
         await page.getByRole("button", { name: "Copy RGB" }).click();
         assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^rgb\(/,
-          "Picker copied an actual RGB declaration");
-        if (!mobilePicker) await page.locator(".pfx-picker__advanced > summary").click();
-        await page.getByRole("button", { name: "RGB", exact: true }).click();
+          "RGB format copies live color");
         const red = page.getByRole("spinbutton", { name: "Red channel" });
         await red.fill("120");
         await red.press("Enter");
         await page.waitForFunction(() =>
           document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase().slice(1,3) === "78",
           null, { timeout: 5000 });
-        const pickedAfterRgb = await currentInput.inputValue();
-        assert.equal(pickedAfterRgb.toLowerCase().slice(1,3), "78", "Numeric RGB editing works");
-        if (mobilePicker) await page.getByRole("button", { name: "Color field", exact: true }).click();
+        await format.selectOption("hex");
+        await valueField.fill("#336699");
+        await valueField.press("Enter");
+        await page.waitForFunction(() =>
+          document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#336699");
+        await valueField.fill("#gggggg");
+        await valueField.press("Enter");
+        assert.equal(await valueField.getAttribute("aria-invalid"), "true",
+          "Invalid color is rejected");
+        await valueField.press("Escape");
+        assert.equal(await valueField.getAttribute("aria-invalid"), "false");
+        assert.equal((await currentInput.inputValue()).toLowerCase(), "#336699");
+        await format.selectOption("hsl");
+        assert.match(await valueField.inputValue(), /^hsl\(/);
+        await format.selectOption("oklch");
+        assert.match(await valueField.inputValue(), /^oklch\(/);
+        await page.getByRole("button", { name: "Copy OKLCH" }).click();
+        assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^oklch\(/);
+        await format.selectOption("hex");
         const hueRail = page.getByRole("slider", { name: "Hue", exact: true });
         await hueRail.focus();
         await hueRail.press("ArrowRight");
-        if (mobilePicker) await page.getByRole("button", { name: "Values & channels" }).click();
         await page.getByRole("slider", { name: "Opacity" }).focus();
         await page.getByRole("slider", { name: "Opacity" }).press("Home");
-        await page.getByRole("button", { name: "Copy HEX", exact: true }).last().click();
+        await page.getByRole("button", { name: "Copy HEX" }).click();
         assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^#[0-9A-F]{8}$/,
-          "Transparent colors retain their alpha channel in HEX copies");
+          "Transparent colors retain alpha channel");
         await page.getByRole("slider", { name: "Opacity" }).press("End");
         await page.getByRole("button", { name: "Save color" }).click();
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-picker.png`, animations: "disabled" });
