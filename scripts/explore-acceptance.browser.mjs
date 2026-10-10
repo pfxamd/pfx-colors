@@ -34,6 +34,14 @@ async function locate(page, hex) {
   await waitHex(page, hex);
 }
 const colorOf = (page, selector) => page.locator(selector).evaluate(el => getComputedStyle(el).backgroundColor);
+async function setRange(range, value) {
+  await range.evaluate((element, next) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(element, String(next));
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+  }, value);
+}
 
 for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firefox]]) {
   const browser = await launcher.launch({ headless: true });
@@ -146,10 +154,10 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           const first = await getHex(page);
           const sliders = page.locator(".pfx-explore__depth-controls input[type=range]");
           assert.equal(await sliders.count(), 2);
-          await sliders.nth(0).fill("80");
+          await setRange(sliders.nth(0), 80);
           const lighter = await getHex(page);
           assert.notEqual(lighter, first);
-          await sliders.nth(1).fill("0.08");
+          await setRange(sliders.nth(1), 0.08);
           const lessChroma = await getHex(page);
           assert.notEqual(lessChroma, lighter);
           const canvas = page.locator(".pfx-explore__depth-map canvas");
@@ -164,11 +172,13 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           await locate(page, "#397cbb");
           const items = page.locator(".pfx-explore__related-item");
           assert.ok(await items.count() >= 8);
+          const proposed = "#" + (await items.first().locator(".pfx-explore__related-code").innerText()).toLowerCase();
+          await items.first().locator(".pfx-explore__related-code").click();
+          assert.equal((await page.evaluate(() => window.__PFX_COPIED__)), proposed.toUpperCase());
           await items.first().locator("button").first().click();
           const hex = await getHex(page);
+          assert.equal(hex, proposed);
           assert.match(hex, /^#[0-9a-f]{6}$/);
-          await items.first().locator("button").last().click();
-          assert.equal((await page.evaluate(() => window.__PFX_COPIED__)), hex.toUpperCase());
         });
 
         await check("All four atlas levels drill to one exact RGB color", async () => {
