@@ -162,7 +162,6 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("button", { name: "Set reference" }).click();
         await search.fill("#ff8800");
         await page.getByRole("button", { name: /Locate color/ }).click();
-        await page.waitForFunction(() => document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#010101");
         await page.waitForFunction(() => document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#ff8800");
         assert.equal(await page.locator(".pfx-explore__comparison-swatches > div").count(), 2);
         assert.match(await page.locator(".pfx-explore__comparison-result").innerText(), /:1/,
@@ -180,7 +179,6 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("button", { name: /Locate color/ }).click();
         await page.waitForFunction(() =>
           document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#010101");
-        await page.waitForFunction(() => document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#010101");
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
         await page.waitForFunction(() => document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#4778d6");
