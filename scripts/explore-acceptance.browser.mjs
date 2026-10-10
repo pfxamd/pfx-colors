@@ -24,7 +24,7 @@ async function openTool(page, name) {
 }
 async function explore(page) {
   await openTool(page, "Explore");
-  await page.locator(".pfx-explore__wheel").waitFor();
+  await page.locator(".pfx-explore__browse-grid").waitFor();
 }
 async function locate(page, hex) {
   await explore(page);
@@ -40,6 +40,8 @@ async function setRange(range, value) {
     setter.call(element, String(next));
     element.dispatchEvent(new Event("input", { bubbles: true }));
     element.dispatchEvent(new Event("change", { bubbles: true }));
+    // A user release commits the continuous preview to shared color history.
+    element.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
   }, value);
 }
 
@@ -96,6 +98,47 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           assert.ok(await inspector.isVisible());
         });
 
+        await check("Primary color grid renders without opening advanced controls", async () => {
+          await explore(page);
+          const grid = page.locator(".pfx-explore__browse-grid");
+          assert.equal(await grid.locator(".pfx-explore__browse-cell").count(), 96);
+          assert.equal(await page.locator("#explore-refine").getAttribute("open"), null);
+          assert.equal(await page.locator("#explore-rgb-atlas").getAttribute("open"), null);
+          const first = grid.locator(".pfx-explore__browse-cell").first();
+          const initialGrid = await grid.locator(".pfx-explore__browse-cell-foot code").allTextContents();
+          const chosen = (await first.locator(".pfx-explore__browse-cell-foot code").innerText()).toLowerCase();
+          await first.locator(".pfx-explore__browse-color").click();
+          await page.waitForTimeout(200);
+          const selected = await getHex(page);
+          console.log("BROWSE_SELECTION", browserName, viewport.width,
+            "cell", chosen, "navbar", selected,
+            "inspector", await page.locator(".pfx-explore__inspector-ident button").innerText());
+          assert.equal(selected, chosen, "Clicking a displayed shade must select that exact HEX");
+          assert.match(selected, /^#[0-9a-f]{6}$/);
+          assert.deepEqual(await grid.locator(".pfx-explore__browse-cell-foot code").allTextContents(), initialGrid,
+            "Selecting a shade must not shuffle the grid");
+          assert.equal(await colorOf(page, ".pfx-explore__inspector-color"),
+            await colorOf(page, ".pfx-explore__browse-picked > span"), "Inspector and selection bar stay in sync");
+          await first.locator(".pfx-explore__browse-cell-foot button").click();
+          assert.equal(await page.evaluate(() => window.__PFX_COPIED__), selected.toUpperCase());
+          await page.locator(".pfx-explore__browse-actions").getByRole("button", {name:"Copy HEX"}).click();
+          assert.equal(await page.evaluate(() => window.__PFX_COPIED__), selected.toUpperCase());
+        });
+
+        await check("Browse family changes swatches without opening tuning controls", async () => {
+          await explore(page);
+          const before = await page.locator(".pfx-explore__browse-cell-foot code").first().innerText();
+          await page.getByRole("group", {name:"Browse color families"}).getByRole("button", {name:"Red"}).click();
+          const after = await page.locator(".pfx-explore__browse-cell-foot code").first().innerText();
+          assert.notEqual(after,before);
+          assert.equal(await page.getByRole("group", {name:"Browse color families"})
+            .getByRole("button", {name:"Red"}).getAttribute("aria-pressed"),"true");
+          await page.getByRole("group", {name:"Browse color families"}).getByRole("button", {name:"Neutral"}).click();
+          assert.equal(await page.locator(".pfx-explore__browse-cell").count(),8);
+          await page.getByRole("group", {name:"Browse color families"}).getByRole("button", {name:"Blue"}).click();
+          assert.equal(await page.locator(".pfx-explore__browse-cell").count(),96);
+        });
+
         await check("Exact black and white are selectable with accurate inspector values", async () => {
           await locate(page, "#000000");
           assert.equal(await colorOf(page, ".pfx-explore__inspector-color"), "rgb(0, 0, 0)");
@@ -131,8 +174,10 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         });
 
         await check("Color families and hue keyboard input recover from black", async () => {
+          await explore(page);
+          await page.locator("#explore-refine > summary").click();
           await locate(page, "#000000");
-          await page.getByRole("button", { name: "Blue", exact: true }).click();
+          await page.getByRole("group", { name: "Browse color families" }).getByRole("button", { name: "Blue" }).click();
           const blue = await getHex(page);
           assert.notEqual(blue, "#000000");
           assert.ok(parseInt(blue.slice(5), 16) > 130);
@@ -150,25 +195,34 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         });
 
         await check("Depth controls and surface actually update selected RGB", async () => {
+          await explore(page);
+          if ((await page.locator("#explore-refine").getAttribute("open")) === null) await page.locator("#explore-refine > summary").click();
           await locate(page, "#3478bc");
           const first = await getHex(page);
           const sliders = page.locator(".pfx-explore__depth-controls input[type=range]");
           assert.equal(await sliders.count(), 2);
-          await setRange(sliders.nth(0), 80);
+          await sliders.nth(0).focus();
+          await sliders.nth(0).press("ArrowRight");
+          await page.waitForFunction(previous =>
+            document.querySelector('input[aria-label="Current color"]')?.value?.toLowerCase() !== previous, first);
           const lighter = await getHex(page);
-          assert.notEqual(lighter, first);
-          await setRange(sliders.nth(1), 0.08);
+          await sliders.nth(1).focus();
+          await sliders.nth(1).press("ArrowRight");
+          await page.waitForFunction(previous =>
+            document.querySelector('input[aria-label="Current color"]')?.value?.toLowerCase() !== previous, lighter);
           const lessChroma = await getHex(page);
-          assert.notEqual(lessChroma, lighter);
           const canvas = page.locator(".pfx-explore__depth-map canvas");
           const dims = await canvas.boundingBox();
           assert.ok(dims && dims.width > 150);
           await canvas.click({ position: { x: dims.width * .22, y: dims.height * .35 } });
+          await page.waitForFunction(previous => document.querySelector('input[aria-label="Current color"]')?.value?.toLowerCase() !== previous, lessChroma);
           assert.notEqual(await getHex(page), lessChroma);
           assert.match(await page.locator(".pfx-explore__depth-controls").innerText(), /Lightness/);
         });
 
         await check("Nearby shades select and copy actual color codes", async () => {
+          await explore(page);
+          if ((await page.locator("#explore-refine").getAttribute("open")) === null) await page.locator("#explore-refine > summary").click();
           await locate(page, "#397cbb");
           const items = page.locator(".pfx-explore__related-item");
           assert.ok(await items.count() >= 8);
@@ -176,12 +230,15 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           await items.first().locator(".pfx-explore__related-code").click();
           assert.equal((await page.evaluate(() => window.__PFX_COPIED__)), proposed.toUpperCase());
           await items.first().locator("button").first().click();
+          await waitHex(page, proposed);
           const hex = await getHex(page);
           assert.equal(hex, proposed);
           assert.match(hex, /^#[0-9a-f]{6}$/);
         });
 
         await check("All four atlas levels drill to one exact RGB color", async () => {
+          await explore(page);
+          if ((await page.locator("#explore-rgb-atlas").getAttribute("open")) === null) await page.locator("#explore-rgb-atlas > summary").click();
           await explore(page);
           await page.getByRole("button", { name: "All RGB", exact: true }).click();
           assert.equal(await page.locator(".pfx-explore__atlas-tile").count(), 64);
@@ -202,6 +259,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         });
 
         await check("Atlas can locate a requested value inside its exact final tile", async () => {
+          await explore(page);
+          if ((await page.locator("#explore-rgb-atlas").getAttribute("open")) === null) await page.locator("#explore-rgb-atlas > summary").click();
           await locate(page, "#c57d2a");
           assert.match(await page.locator(".pfx-explore__atlas-meta").innerText(), /LEVEL 04/);
           const exact = page.locator(".pfx-explore__atlas-open[aria-label='Select exact color #c57d2a']");

@@ -118,6 +118,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
 
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
         await page.locator(".pfx-explore").waitFor();
+        assert.equal(await page.locator(".pfx-explore__browse-cell").count(), 96);
+        await page.locator("#explore-rgb-atlas > summary").click();
         assert.equal(await page.locator(".pfx-explore__atlas-tile").count(), 64,
           "An exhaustive level starts with 64 RGB regions");
         assert.equal(await page.locator(".pfx-explore__wheel").count(), 1, "Perceptual spectrum available");
@@ -136,6 +138,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator(".pfx-explore__atlas-tile").count(), 64,
           "Exact HEX location opens the final atlas subdivision");
         assert.match(await page.locator(".pfx-explore__atlas-meta").innerText(), /LEVEL 04/);
+        await page.locator("#explore-refine > summary").click();
         const hueControl = page.getByRole("slider", { name: /Hue/ }).first();
         await hueControl.focus();
         await hueControl.press("ArrowRight");
@@ -146,9 +149,12 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         // Regression: very dark colors must become visible when users explore hue.
         await search.fill("#010101");
         await page.getByRole("button", { name: /Locate color/ }).click();
+        await page.waitForFunction(() =>
+          document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#010101");
         assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(),
           "#010101", "Exact near-black remains deliberately selectable");
-        await page.getByRole("button", { name: "Blue", exact: true }).click();
+        await page.getByRole("group", { name: "Browse color families" }).getByRole("button", { name: "Blue" }).click();
+        await page.waitForFunction(() => document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() !== "#010101");
         const vibrantColor = (await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase();
         assert.notEqual(vibrantColor, "#010101", "Blue family should lift near-black exploration");
         assert.ok(Math.max(...[1, 3, 5].map(i => parseInt(vibrantColor.slice(i, i + 2), 16))) > 130,
@@ -156,20 +162,26 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("button", { name: "Set reference" }).click();
         await search.fill("#ff8800");
         await page.getByRole("button", { name: /Locate color/ }).click();
+        await page.waitForFunction(() => document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#ff8800");
         assert.equal(await page.locator(".pfx-explore__comparison-swatches > div").count(), 2);
         assert.match(await page.locator(".pfx-explore__comparison-result").innerText(), /:1/,
           "Pinned reference compares with the live selected color");
         await search.fill("#000000");
         await page.getByRole("button", { name: /Locate color/ }).click();
+        await page.waitForFunction(() => document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#000000");
         assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(),
           "#000000", "Black remains a valid explicit selection");
         await page.getByRole("slider", { name: /Hue/ }).first().press("ArrowRight");
+        await page.waitForFunction(() => document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() !== "#000000");
         assert.notEqual((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(),
           "#000000", "Keyboard hue change from black becomes visible");
         await search.fill("#010101");
         await page.getByRole("button", { name: /Locate color/ }).click();
+        await page.waitForFunction(() =>
+          document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#010101");
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
+        await page.waitForFunction(() => document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#4778d6");
         assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(),
           "#4778d6", "Entering Explore from near-black starts with a visible discovery color");
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-explore.png`, animations: "disabled" });
@@ -296,7 +308,12 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-collections.png`, animations: "disabled" });
 
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
-        await page.getByRole("button", { name: "Blue", exact: true }).click();
+        await page.getByRole("group", { name: "Browse color families" }).getByRole("button", { name: "Blue" }).click();
+        await page.waitForFunction(() => {
+          const current = document.querySelector('input[aria-label="Current color"]')?.value?.toLowerCase();
+          const inspected = document.querySelector('.pfx-explore__inspector-ident button')?.textContent?.match(/#[0-9a-f]{6}/i)?.[0]?.toLowerCase();
+          return Boolean(current && inspected && current === inspected);
+        });
         const savedExploreColor = (await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase();
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();

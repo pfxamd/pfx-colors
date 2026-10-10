@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent, type KeyboardE
 import { copyColorText } from "./clipboard";
 import { normalizeHex, NAMED_COLORS } from "./color-library";
 import { statsFromRgb } from "./explore-model";
+import { browseCells } from "./explore-browse";
 import {
   MAX_CHROMA, FAMILIES, atlasChildren, atlasPath, contrastRatio, discoverHue, gamutMappedHex, initialExploreColor,
   hexToRgb, oklchToRgb, perceptualDistance, relatedShades, rgbToOklch,
@@ -34,12 +35,16 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
   const [comparison, setComparison] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [showNames, setShowNames] = useState(false);
+  const [browseHue, setBrowseHue] = useState(() => rgbToOklch(hexToRgb(initialExploreColor(activeHex))).h);
+  const [neutralBrowse, setNeutralBrowse] = useState(false);
+  const dragHex = useRef<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const selected = useMemo(() => rgbToOklch(hexToRgb(selectedHex)), [selectedHex]);
   const selectedRgb = useMemo(() => hexToRgb(selectedHex), [selectedHex]);
   const hslStats = statsFromRgb(...selectedRgb);
   const hsl = "hsl(" + Math.round(hslStats.hue) + " " + Math.round(hslStats.saturation) + "% " + Math.round(hslStats.lightness) + "%)";
   const rgbText = "rgb(" + selectedRgb.join(" ") + ")";
+  const browseGrid = useMemo(() => browseCells(browseHue, neutralBrowse), [browseHue, neutralBrowse]);
   const parent = stack.at(-1) ?? null;
   const tiles = useMemo(() => {
     const children = atlasChildren(parent);
@@ -79,8 +84,24 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
 
   const choose = (hex: string) => {
     const normalized = hex.toLowerCase();
+    dragHex.current = null;
     setSelectedHex(normalized);
-    select(normalized);
+    if (normalized !== activeHex.toLowerCase()) select(normalized);
+  };
+  // Update preview continuously during a drag, but commit to shared undo history only on release.
+  const preview = (hex: string) => {
+    dragHex.current = hex.toLowerCase();
+    setSelectedHex(hex.toLowerCase());
+  };
+  const commitPreview = () => {
+    const hex = dragHex.current;
+    dragHex.current = null;
+    if (hex && hex !== activeHex.toLowerCase()) select(hex);
+  };
+  const chooseFamily = (hue: number) => {
+    setNeutralBrowse(false);
+    setBrowseHue(hue);
+    choose(discoverHue(selectedHex, hue));
   };
   const updateLch = (l: number, c: number, h: number) => {
     choose(gamutMappedHex({ l: Math.max(0, Math.min(1, l)), c: Math.max(0, Math.min(MAX_CHROMA, c)), h: ((h % 360) + 360) % 360 }));
@@ -88,9 +109,11 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
   const jumpTo = (hex: string) => {
     choose(hex);
     setStack(atlasPath(hex).slice(0, 3));
+    const lch = rgbToOklch(hexToRgb(hex));
+    if (lch.c > 0.012) { setBrowseHue(lch.h); setNeutralBrowse(false); }
     setQuery(hex.toUpperCase());
     setShowNames(false);
-    setStatus("Exact RGB location opened in the atlas.");
+    setStatus("Exact color selected. Its position is ready in the advanced RGB atlas.");
   };
   const search = () => {
     const exact = normalizeHex(query);
@@ -120,7 +143,7 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
       const l = 1 - y / (h - 1);
       for (let x = 0; x < w; x++) {
         const c = x / (w - 1) * MAX_CHROMA;
-        const rgb = oklchToRgb({ l, c, h: selected.h });
+        const rgb = oklchToRgb({ l, c, h: browseHue });
         const index = (y * w + x) * 4;
         if (rgb) {
           image.data[index] = rgb[0];
@@ -131,30 +154,35 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
       }
     }
     ctx.putImageData(image, 0, 0);
-  }, [Math.round(selected.h * 10) / 10]);
+  }, [Math.round(browseHue * 10) / 10]);
 
   const updateFromDepth = (event: PointerEvent<HTMLCanvasElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
     const y = Math.max(0, Math.min(1, (event.clientY - box.top) / box.height));
-    updateLch(1 - y, x * MAX_CHROMA, selected.h);
+    preview(gamutMappedHex({ l: 1 - y, c: x * MAX_CHROMA, h: browseHue }));
   };
   const updateFromWheel = (event: PointerEvent<HTMLButtonElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - box.left - box.width / 2;
     const y = event.clientY - box.top - box.height / 2;
     const h = (Math.atan2(y, x) * 180 / Math.PI + 90 + 360) % 360;
-    choose(discoverHue(selectedHex, h));
+    setBrowseHue(h);
+    setNeutralBrowse(false);
+    preview(discoverHue(selectedHex, h));
   };
   const wheelKey = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(event.key)) return;
     event.preventDefault();
     const delta = event.key === "ArrowRight" || event.key === "ArrowUp" ? 3 : -3;
-    choose(discoverHue(selectedHex, selected.h + delta));
+    const hue = (browseHue + delta + 360) % 360;
+    setBrowseHue(hue);
+    choose(discoverHue(selectedHex, hue));
   };
   const currentStage = (parent?.depth ?? 0) / 2 + 1;
   const selectedContained = parent ? tileHasHex(parent, selectedHex) : true;
-  const wheelColor = gamutMappedHex({ l: 0.72, c: 0.16, h: selected.h });
+  const wheelColor = gamutMappedHex({ l: 0.72, c: 0.16, h: browseHue });
+  const browseLabel = neutralBrowse ? "Neutral colors" : (FAMILIES.find(f => hueDistance(browseHue, f.hue) < 14)?.label ?? "Custom hue") + " colors";
 
   return (
     <section className="pfx-explore pfx-v2__page" aria-label="Explore colors">
@@ -162,7 +190,7 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
         <div className="pfx-explore__hero-title">
           <span className="pfx-explore__eyebrow"><span className="pfx-explore__pulse" /> COLOR ATLAS / 24-BIT SRGB</span>
           <h1>Explore color<span className="pfx-explore__period">.</span></h1>
-          <p>A continuous way to discover color. Start with the spectrum, refine the shade, or reach any exact RGB value.</p>
+          <p>Find a color, explore its shades, and keep what works.</p>
         </div>
         <div className="pfx-explore__metric">
           <strong>16,777,216</strong>
@@ -193,6 +221,64 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
 
       <div className="pfx-explore__workbench">
         <div className="pfx-explore__main">
+
+          <section className="pfx-explore__browse pfx-explore__panel" aria-labelledby="pfx-browse-heading">
+            <div className="pfx-explore__browse-intro">
+              <div>
+                <span className="pfx-explore__section-index">COLOR LIBRARY</span>
+                <h2 id="pfx-browse-heading">{browseLabel}</h2>
+                <p>Choose a shade to inspect it. The grid stays in place while you compare colors.</p>
+              </div>
+              <span className="pfx-explore__browse-count">{browseGrid.length} SHADES</span>
+            </div>
+            <div className="pfx-explore__browse-families" role="group" aria-label="Browse color families">
+              {FAMILIES.map(family => (
+                <button type="button" key={family.label}
+                  aria-pressed={!neutralBrowse && hueDistance(browseHue, family.hue) < 14}
+                  onClick={() => chooseFamily(family.hue)}>
+                  <span style={{ background: gamutMappedHex({ l: .72, c: .16, h: family.hue }) }} />{family.label}
+                </button>
+              ))}
+              <button type="button" aria-pressed={neutralBrowse}
+                onClick={() => { setNeutralBrowse(true); choose(gamutMappedHex({ l: .65, c: 0, h: browseHue })); }}>
+                <span className="pfx-explore__neutral-dot" />Neutral
+              </button>
+            </div>
+            <div className="pfx-explore__browse-legend">
+              <span>LIGHTER ↑</span><span>SUBTLE ← CHROMA → VIVID</span>
+            </div>
+            <div className={"pfx-explore__browse-grid" + (neutralBrowse ? " is-neutral" : "")} aria-label="Explore color shades">
+              {browseGrid.map(cell => (
+                <article key={cell.row + "-" + cell.column} className={"pfx-explore__browse-cell" + (cell.hex === selectedHex ? " is-current" : "")}>
+                  <button className="pfx-explore__browse-color" type="button"
+                    aria-label={"Select shade " + cell.hex} aria-pressed={cell.hex === selectedHex}
+                    style={{ backgroundColor: cell.hex }} onClick={() => choose(cell.hex)}>
+                    {cell.hex === selectedHex && <span className="pfx-explore__browse-current" aria-hidden="true">✓</span>}
+                  </button>
+                  <div className="pfx-explore__browse-cell-foot">
+                    <code>{cell.hex.toUpperCase()}</code>
+                    <button type="button" title={"Copy " + cell.hex} aria-label={"Copy shade " + cell.hex}
+                      onClick={() => void copy(cell.hex)}><span aria-hidden="true">↗</span></button>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="pfx-explore__browse-bottom">
+              <div className="pfx-explore__browse-picked">
+                <span style={{ backgroundColor: selectedHex }} />
+                <div><small>SELECTED COLOR</small><strong>{selectedHex.toUpperCase()}</strong></div>
+              </div>
+              <div className="pfx-explore__browse-actions">
+                <button type="button" onClick={() => void copy(selectedHex)}>Copy HEX</button>
+                <button type="button" onClick={() => save(selectedHex)} aria-pressed={favorites.includes(selectedHex)}>
+                  {favorites.includes(selectedHex) ? "Saved ★" : "Save ☆"}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <details className="pfx-explore__refine" id="explore-refine">
+            <summary><span><strong>Fine-tune a color</strong><small>Spectrum, lightness, chroma and nearby shades</small></span><span className="pfx-explore__summary-chevron" aria-hidden="true">⌄</span></summary>
           <section className="pfx-explore__spectrum pfx-explore__panel" aria-labelledby="pfx-spectrum-title">
             <div className="pfx-explore__section-head">
               <div><span className="pfx-explore__section-index">01 / DISCOVERY</span><h2 id="pfx-spectrum-title">The spectrum</h2>
@@ -202,14 +288,15 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
             <div className="pfx-explore__spectrum-body">
               <div className="pfx-explore__wheel-wrap">
                 <button type="button" className="pfx-explore__wheel"
-                  aria-label={"Hue " + Math.round(selected.h) + " degrees. Use arrow keys to adjust."}
+                  aria-label={"Hue " + Math.round(browseHue) + " degrees. Use arrow keys to adjust."}
                   onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); updateFromWheel(event); }}
                   onPointerMove={event => { if (event.buttons) updateFromWheel(event); }}
+                  onPointerUp={commitPreview} onPointerCancel={commitPreview}
                   onKeyDown={wheelKey}>
                   <span className="pfx-explore__wheel-inner" style={{ background: wheelColor }}>
                     <span>HUE</span><strong>{Math.round(selected.h)}°</strong>
                   </span>
-                  <span className="pfx-explore__wheel-indicator" style={{ transform: "rotate(" + selected.h + "deg)" }}><i /></span>
+                  <span className="pfx-explore__wheel-indicator" style={{ transform: "rotate(" + browseHue + "deg)" }}><i /></span>
                 </button>
               </div>
               <div className="pfx-explore__spectrum-controls">
@@ -218,19 +305,20 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
                   {FAMILIES.map(family => (
                     <button type="button" key={family.label}
                       className={hueDistance(selected.h, family.hue) < 14 && selected.c > 0.025 ? "is-active" : ""}
-                      onClick={() => choose(discoverHue(selectedHex, family.hue))}>
+                      onClick={() => chooseFamily(family.hue)}>
                       <span style={{ background: gamutMappedHex({ l: .7, c: .14, h: family.hue }) }}/>{family.label}
                     </button>
                   ))}
                   <button type="button" className={selected.c < 0.025 ? "is-active" : ""}
-                    onClick={() => updateLch(selected.l, 0, selected.h)}>
+                    onClick={() => { setNeutralBrowse(true); choose(gamutMappedHex({ l: selected.l, c: 0, h: browseHue })); }}>
                     <span className="pfx-explore__neutral-dot" />Neutral
                   </button>
                 </div>
                 <div className="pfx-explore__hue-track">
-                  <label htmlFor="pfx-hue-control">Hue <output>{Math.round(selected.h)}°</output></label>
-                  <input id="pfx-hue-control" type="range" min="0" max="359" step="1" value={Math.round(selected.h)}
-                    onChange={event => choose(discoverHue(selectedHex, Number(event.target.value)))} />
+                  <label htmlFor="pfx-hue-control">Hue <output>{Math.round(browseHue)}°</output></label>
+                  <input id="pfx-hue-control" type="range" min="0" max="359" step="1" value={Math.round(browseHue)}
+                    onChange={event => { const hue = Number(event.target.value); setBrowseHue(hue); setNeutralBrowse(false); preview(discoverHue(selectedHex, hue)); }}
+                    onPointerUp={commitPreview} onKeyUp={commitPreview} onBlur={commitPreview} />
                 </div>
               </div>
             </div>
@@ -248,7 +336,8 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
                 <div className="pfx-explore__depth-map">
                   <canvas ref={canvasRef} role="img" aria-label="Oklch lightness and chroma map. Use the sliders alongside for keyboard access."
                     onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); updateFromDepth(event); }}
-                    onPointerMove={event => { if (event.buttons) updateFromDepth(event); }} />
+                    onPointerMove={event => { if (event.buttons) updateFromDepth(event); }}
+                    onPointerUp={commitPreview} onPointerCancel={commitPreview} />
                   <span className="pfx-explore__depth-cursor" aria-hidden="true"
                     style={{ left: (selected.c / MAX_CHROMA * 100) + "%", top: ((1 - selected.l) * 100) + "%" }} />
                 </div>
@@ -258,11 +347,13 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
                 <div className="pfx-explore__control-head"><span>PRECISE ADJUSTMENT</span><strong>OKLCH</strong></div>
                 <label>Lightness <output>{Math.round(selected.l * 100)}%</output>
                   <input type="range" min="0" max="100" step="1" value={Math.round(selected.l * 100)}
-                    onChange={event => updateLch(Number(event.target.value) / 100, selected.c, selected.h)} />
+                    onChange={event => preview(gamutMappedHex({ l: Number(event.target.value) / 100, c: selected.c, h: selected.h }))}
+                    onPointerUp={commitPreview} onKeyUp={commitPreview} onBlur={commitPreview} />
                 </label>
                 <label>Chroma <output>{selected.c.toFixed(3)}</output>
                   <input type="range" min="0" max={MAX_CHROMA} step="0.002" value={selected.c}
-                    onChange={event => updateLch(selected.l, Number(event.target.value), selected.h)} />
+                    onChange={event => preview(gamutMappedHex({ l: selected.l, c: Number(event.target.value), h: selected.h }))}
+                    onPointerUp={commitPreview} onKeyUp={commitPreview} onBlur={commitPreview} />
                 </label>
                 <button type="button" className="pfx-explore__reset-tone"
                   onClick={() => updateLch(.7, .14, selected.h)}>Reset tone <span aria-hidden="true">↗</span></button>
@@ -282,6 +373,9 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
             </div>
           </section>
 
+          </details>
+          <details className="pfx-explore__advanced" id="explore-rgb-atlas">
+            <summary><span><strong>Full RGB atlas</strong><small>Explore all 16,777,216 exact colors · Advanced</small></span><span className="pfx-explore__summary-chevron" aria-hidden="true">⌄</span></summary>
           <section className="pfx-explore__atlas pfx-explore__panel" aria-labelledby="pfx-atlas-title">
             <div className="pfx-explore__section-head">
               <div><span className="pfx-explore__section-index">03 / EXACT RGB SPACE</span><h2 id="pfx-atlas-title">The complete atlas</h2>
@@ -332,6 +426,7 @@ export function Explore({ activeHex, select, openPicker, openTones, favorites, t
             <footer className="pfx-explore__atlas-foot"><span>All 16,777,216 sRGB values remain reachable through 4 levels.</span>
               <button type="button" onClick={() => jumpTo(selectedHex)}>Locate selected color ↗</button></footer>
           </section>
+          </details>
         </div>
 
         <aside className="pfx-explore__inspector" aria-label="Selected color inspector">
