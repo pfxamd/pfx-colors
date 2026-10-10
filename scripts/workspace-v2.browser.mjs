@@ -106,12 +106,42 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
 
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Picker" }).click();
         await page.locator(".pfx-picker__field").waitFor();
+        const pickerPanel = page.locator(".pfx-picker");
+        const mobilePicker = viewport.width < 1011;
+        const checkPickerFit = async label => {
+          const fit = await pickerPanel.evaluate(el => {
+            const tab = el.querySelector(".pfx-picker__layout");
+            const shown = [...tab.children].filter(child => getComputedStyle(child).display !== "none");
+            const last = shown[0];
+            return {
+              scroll: el.scrollHeight - el.clientHeight,
+              contentBottom: last?.getBoundingClientRect().bottom ?? 0,
+              availableBottom: el.getBoundingClientRect().bottom,
+              horizontal: el.scrollWidth - el.clientWidth,
+            };
+          });
+          assert.ok(fit.scroll <= 2, label + " does not vertically scroll");
+          assert.ok(fit.horizontal <= 2, label + " does not horizontally scroll");
+          assert.ok(fit.contentBottom <= fit.availableBottom + 2, label + " is not clipped");
+        };
+        await checkPickerFit("Picker color field");
+        if (mobilePicker) {
+          assert.ok(await page.getByRole("button", { name: "Color field", exact: true }).isVisible());
+          assert.ok(await page.locator(".pfx-picker__field").isVisible());
+          await page.getByRole("button", { name: "Values & channels" }).click();
+          await checkPickerFit("Picker values");
+          assert.ok(await page.getByRole("slider", { name: "Opacity" }).isVisible());
+          await page.getByRole("button", { name: "Color field", exact: true }).click();
+        } else {
+          assert.ok(await page.locator(".pfx-picker__inspector").isVisible());
+        }
         const currentInput = page.locator('input[aria-label="Current color"]');
         const beforePicker = await currentInput.inputValue();
         await page.locator(".pfx-picker__field").click({ position: { x: 80, y: 100 } });
         await page.waitForFunction(before =>
           document.querySelector('input[aria-label="Current color"]')?.value !== before,
           beforePicker);
+        if (mobilePicker) await page.getByRole("button", { name: "Values & channels" }).click();
         await page.getByRole("button", { name: "Copy RGB" }).click();
         assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^rgb\(/,
           "Picker copied an actual RGB declaration");
@@ -124,9 +154,11 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           null, { timeout: 5000 });
         const pickedAfterRgb = await currentInput.inputValue();
         assert.equal(pickedAfterRgb.toLowerCase().slice(1,3), "78", "Numeric RGB editing works");
+        if (mobilePicker) await page.getByRole("button", { name: "Color field", exact: true }).click();
         const hueRail = page.getByRole("slider", { name: "Hue", exact: true });
         await hueRail.focus();
         await hueRail.press("ArrowRight");
+        if (mobilePicker) await page.getByRole("button", { name: "Values & channels" }).click();
         await page.getByRole("slider", { name: "Opacity" }).focus();
         await page.getByRole("slider", { name: "Opacity" }).press("Home");
         await page.getByRole("button", { name: "Copy HEX", exact: true }).last().click();

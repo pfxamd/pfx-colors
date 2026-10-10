@@ -128,3 +128,147 @@
   .pfx-picker__copy-row { grid-template-columns:50px minmax(0,1fr) auto; }
   .pfx-picker__numerics { gap:5px; }
 }
+
+
+/* Fit the Picker workstation within the available stage without page scrolling. */
+.pfx-v2 .pfx-picker.pfx-c-workbench--picker {
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr);
+  gap:clamp(10px,1.5vh,16px);
+  overflow:hidden;
+  padding:clamp(14px,1.8vw,28px);
+}
+.pfx-picker__heading {
+  min-width:0;
+  margin:0;
+  align-items:center;
+  gap:16px;
+}
+.pfx-picker__heading h1 {
+  font-size:clamp(29px,2.7vw,39px);
+  margin:5px 0;
+}
+.pfx-picker__heading p { font-size:12px; }
+.pfx-picker__top-actions { flex:0 0 auto; }
+.pfx-v2 .pfx-picker__top-actions button { padding:9px 11px; }
+.pfx-picker__views { display:none; }
+.pfx-picker__layout {
+  height:100%;
+  min-height:0;
+  overflow:hidden;
+  align-items:stretch;
+  grid-template-columns:minmax(0,1.3fr) minmax(325px,.7fr);
+  gap:clamp(10px,1.25vw,16px);
+}
+.pfx-picker__canvas-card {
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  min-height:0;
+}
+.pfx-picker__card-caption { padding:11px 16px; gap:6px; }
+.pfx-v2 .pfx-c-picker-main.pfx-picker__surface {
+  min-height:0;
+  height:100%;
+  grid-template-rows:minmax(100px,1fr) auto;
+  overflow:hidden;
+}
+.pfx-v2 .pfx-c-color-field.pfx-picker__field { min-height:0; }
+.pfx-picker__hue-panel { padding:12px 17px 14px; }
+.pfx-picker__hue-row { gap:10px; }
+.pfx-v2 .pfx-c-console.pfx-picker__spectrum-settings {
+  gap:16px;
+  padding:12px 17px 9px;
+}
+.pfx-picker__slider { gap:6px; }
+.pfx-picker__inspector {
+  min-height:0;
+  height:100%;
+  padding:clamp(10px,1.1vw,15px);
+  gap:clamp(7px,1.1vh,11px);
+  align-content:start;
+  grid-template-rows:auto auto auto auto;
+}
+.pfx-picker__preview-checker > div { min-height:clamp(80px,14vh,120px); padding:12px; gap:12px; }
+.pfx-picker__preview-caption { padding:9px 12px; }
+.pfx-picker__copies { gap:4px; }
+.pfx-picker__copy-row { padding:4px 8px; }
+.pfx-v2 .pfx-picker__copy-row button { padding:6px 8px; }
+.pfx-picker__edit { padding-top:10px; gap:11px; }
+.pfx-picker__edit-head button { padding:7px 9px; }
+.pfx-picker__numeric { gap:5px; }
+.pfx-v2 .pfx-picker__numeric input { padding:8px 7px; }
+.pfx-picker__alpha { gap:5px; }
+.pfx-picker__status { min-height:13px; }
+
+/* On constrained screens, two compact workspaces prevent either panel
+   being pushed below the viewport. All original controls stay available. */
+@media (max-width:1010px), (max-height:760px) {
+  .pfx-v2 .pfx-picker.pfx-c-workbench--picker {
+    grid-template-rows:auto auto minmax(0,1fr);
+  }
+  .pfx-picker__views {
+    display:flex;
+    flex:0 0 auto;
+    align-items:center;
+    gap:4px;
+    align-self:start;
+    width:max-content;
+    max-width:100%;
+    padding:3px;
+    border:1px solid var(--pfx-line);
+    border-radius:10px;
+    background:var(--pfx-panel);
+  }
+  .pfx-v2 .pfx-picker__views button {
+    border:0;
+    border-radius:7px;
+    padding:8px 13px;
+    font-size:12px;
+    font-weight:620;
+    background:transparent;
+    color:var(--pfx-muted);
+  }
+  .pfx-v2 .pfx-picker__views button[aria-pressed="true"] {
+    color:var(--pfx-accent);
+    background:var(--pfx-accent-soft);
+  }
+  .pfx-picker__layout { grid-template-columns:minmax(0,1fr); }
+  .pfx-picker__layout[data-panel="field"] .pfx-picker__inspector,
+  .pfx-picker__layout[data-panel="values"] .pfx-picker__canvas-card { display:none; }
+  .pfx-picker__canvas-card, .pfx-picker__inspector { height:100%; }
+  .pfx-picker__inspector { align-content:start; }
+}
+@media (max-width:580px) {
+  .pfx-v2 .pfx-picker.pfx-c-workbench--picker { padding:10px 12px 12px; gap:8px; }
+  .pfx-picker__heading { gap:8px; }
+  .pfx-picker__heading h1 { font-size:27px; margin:2px 0; }
+  .pfx-picker__heading p { display:none; }
+  .pfx-picker__heading .pfx-v2__eyebrow { display:none; }
+  .pfx-picker__top-actions { justify-content:flex-start; gap:5px; }
+  .pfx-v2 .pfx-picker__top-actions button { padding:7px 9px; font-size:10px; }
+  .pfx-v2 .pfx-picker__views button { font-size:11px; padding:7px 12px; }
+  .pfx-picker__card-caption { padding:9px 12px; }
+  .pfx-picker__card-caption span { font-size:10px; }
+  .pfx-picker__hue-panel { padding:10px 13px 13px; }
+  .pfx-v2 .pfx-c-console.pfx-picker__spectrum-settings { padding:9px 13px 5px; gap:12px; }
+  .pfx-picker__inspector { padding:10px; gap:7px; }
+  .pfx-picker__preview-checker > div { min-height:75px; padding:10px 12px; gap:7px; }
+  .pfx-picker__preview-checker strong { font-size:21px; }
+  .pfx-picker__preview-caption { padding:8px 10px; }
+  .pfx-picker__edit { padding-top:8px; gap:8px; }
+  .pfx-picker__alpha { gap:4px; }
+  .pfx-picker__copy-row { gap:6px; }
+}
+@media (max-height:670px) {
+  .pfx-v2 .pfx-picker.pfx-c-workbench--picker { gap:6px; padding-block:8px; }
+  .pfx-picker__heading h1 { font-size:28px; }
+  .pfx-picker__heading p { display:none; }
+  .pfx-picker__inspector { gap:5px; }
+  .pfx-picker__preview-checker > div { min-height:58px; padding:7px 11px; gap:4px; }
+  .pfx-picker__preview-caption { padding:5px 10px; }
+  .pfx-picker__copy-row { padding-block:2px; }
+  .pfx-picker__edit { padding-top:6px; gap:6px; }
+  .pfx-picker__card-caption { padding-block:7px; }
+  .pfx-picker__hue-panel { padding-block:8px 11px; }
+  .pfx-v2 .pfx-c-console.pfx-picker__spectrum-settings { padding-block:7px; }
+}
