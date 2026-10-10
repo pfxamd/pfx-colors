@@ -250,14 +250,8 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
               aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(saturation)}
               aria-valuetext={"Saturation " + Math.round(saturation) + "%, Lightness " + Math.round(lightness) + "%"}>
               <canvas ref={canvasRef} width={256} height={160} aria-hidden="true" className="pfx-picker__plane" />
-              <div className={"pfx-c-color-cursor" + (saturation > 82 ? " pfx-is-right-edge" : "")
-                + (saturation < 18 ? " pfx-is-left-edge" : "") + (lightness > 82 ? " pfx-is-top-edge" : "")}
-                style={{ left: saturation + "%", top: 100 - lightness + "%", ...accentInput }}>
-                <span className="pfx-c-color-cursor__swatch" />
-                <span className="pfx-c-color-cursor__crosshair" />
-                <output className="pfx-c-color-cursor__readout"><strong>{state.color.hex.toUpperCase()}</strong>
-                  <small>S {Math.round(saturation)} · L {Math.round(lightness)}</small></output>
-              </div>
+              <div className="pfx-picker__precision-cursor" aria-hidden="true"
+                style={{ left: saturation + "%", top: 100 - lightness + "%", ...accentInput }} />
             </div>
             <div className="pfx-picker__hue-panel">
               <HueRail value={hue} update={next => setHsl(next, saturation, lightness)} />
