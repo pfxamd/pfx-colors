@@ -142,7 +142,13 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           assert.ok(fit.headingWidth >= fit.pageWidth - 90,
             label + " heading must span the page, not sit in a legacy grid column");
           assert.ok(fit.layoutWidth >= fit.pageWidth - 90 && fit.layoutLeft <= 55,
-            label + " content must span the page, not collapse into a side column");
+            label + " workspace retains full-width room for future tools");
+          if (fit.pageWidth >= 1200) {
+            assert.ok(fit.fieldWidth <= 560, label + " field stays compact");
+            assert.ok(fit.inspectorWidth <= 330, label + " values stay compact");
+            assert.ok(fit.pageWidth - fit.fieldWidth - fit.inspectorWidth >= 280,
+              label + " leaves room for future tools");
+          }
           if (fit.fieldVisible) assert.ok(fit.fieldWidth >= 250,
             label + " color field must have usable width");
           if (fit.inspectorVisible) assert.ok(fit.inspectorWidth >= 290,
@@ -154,6 +160,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           assert.ok(await page.locator(".pfx-picker__field").isVisible());
           await page.getByRole("button", { name: "Values & channels" }).click();
           await checkPickerFit("Picker values");
+          await page.locator(".pfx-picker__advanced > summary").click();
           assert.ok(await page.getByRole("slider", { name: "Opacity" }).isVisible());
           await page.getByRole("button", { name: "Color field", exact: true }).click();
         } else {
@@ -169,6 +176,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("button", { name: "Copy RGB" }).click();
         assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^rgb\(/,
           "Picker copied an actual RGB declaration");
+        if (!mobilePicker) await page.locator(".pfx-picker__advanced > summary").click();
         await page.getByRole("button", { name: "RGB", exact: true }).click();
         const red = page.getByRole("spinbutton", { name: "Red channel" });
         await red.fill("120");
