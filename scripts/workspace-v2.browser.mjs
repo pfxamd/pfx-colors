@@ -152,10 +152,30 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         if (viewport.width >= 1200) assert.ok(fit.pageWidth-fit.cardWidth >= 500,
           "Space is reserved for later instruments");
         assert.equal(await pickerPanel.locator(".pfx-picker__canvas-card").count(), 1);
+        assert.equal(await pickerPanel.locator(".pfx-tones-embedded").count(), 1,
+          "Tones is the companion instrument inside Picker");
+        assert.equal(await page.locator('nav[aria-label="Color tools"] button').filter({hasText:"Tones"}).count(), 0,
+          "Standalone Tones navigation is removed");
+        const fitTones = await pickerPanel.evaluate(el => {
+          const a = el.querySelector(".pfx-picker__canvas-card").getBoundingClientRect();
+          const b = el.querySelector(".pfx-tones-embedded").getBoundingClientRect();
+          return { width: b.width, gap: b.left - a.right, below: b.top - a.bottom,
+            overflow: el.scrollWidth - el.clientWidth,
+            scroll: el.scrollHeight - el.clientHeight };
+        });
+        assert.ok(fitTones.width >= 285 && fitTones.width <= 525,
+          "Tones card remains compact, not stretched");
+        if (viewport.width >= 1200) {
+          assert.ok(fitTones.gap >= 7 && fitTones.gap <= 24, "Side-by-side with precise gap");
+          assert.ok(fitTones.scroll <= 2, "Picker + Tones fit on standard desktop without vertical scrolling");
+        }
+        assert.ok(fitTones.overflow <= 2, "No horizontal overflow");
+        assert.equal(await pickerPanel.locator(".pfx-c-palette-ribbon button").count(), 9,
+          "Initial live tones are visible next to Picker");
         assert.equal(await pickerPanel.locator(".pfx-picker__inspector").count(), 0);
-        assert.ok(await page.getByRole("slider", { name: "Opacity" }).isVisible());
-        assert.ok(await page.getByRole("slider", { name: "Saturation" }).isVisible());
-        assert.ok(await page.getByRole("slider", { name: "Lightness" }).isVisible());
+        assert.ok(await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Opacity", exact: true }).isVisible());
+        assert.ok(await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Saturation", exact: true }).isVisible());
+        assert.ok(await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Lightness", exact: true }).isVisible());
         const sliderPaint = await page.locator(".pfx-picker__canvas-card").evaluate(card =>
           ["opacity", "saturation", "lightness"].map(kind => {
             const rail = card.querySelector(".pfx-picker__rail--" + kind);
@@ -181,9 +201,14 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await format.inputValue(), "hex");
         assert.equal((await valueField.inputValue()).toLowerCase(), (await currentInput.inputValue()).toLowerCase());
         const beforePicker = await currentInput.inputValue();
+        const previousSeed = await page.locator(".pfx-c-tones__seedbar code").innerText();
         await page.locator(".pfx-picker__field").click({ position: { x: 80, y: 100 } });
         await page.waitForFunction(previous =>
           document.querySelector('input[aria-label="Current color"]')?.value !== previous, beforePicker);
+        await page.waitForFunction(previous => document.querySelector(".pfx-c-tones__seedbar code")?.textContent !== previous,
+          previousSeed);
+        assert.equal((await page.locator(".pfx-c-tones__seedbar code").innerText()).toLowerCase(),
+          (await currentInput.inputValue()).toLowerCase(), "Tones follow the active Picker color");
         assert.equal(await pickerPanel.locator(".pfx-c-color-cursor__readout").count(), 0,
           "Picker must not show the redundant floating HEX/S/L readout");
         assert.equal(await pickerPanel.locator(".pfx-picker__precision-cursor").count(), 1,
@@ -259,9 +284,9 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           getComputedStyle(el).getPropertyValue("--pfx-rail-gradient").trim());
         assert.notEqual(saturationTrackAfter, saturationTrackBefore,
           "Saturation artwork follows Hue changes");
-        await page.getByRole("slider", { name: "Opacity" }).focus();
-        await page.getByRole("slider", { name: "Opacity" }).press("Home");
-        await page.getByRole("button", { name: "Copy HEX" }).click();
+        await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Opacity" }).focus();
+        await page.locator(".pfx-picker__canvas-card").getByRole("slider", { name: "Opacity" }).press("Home");
+        await page.locator(".pfx-picker__canvas-card").getByRole("button", { name: "Copy HEX" }).click();
         assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^#[0-9A-F]{8}$/,
           "Transparent colors retain alpha channel");
         await page.getByRole("slider", { name: "Opacity" }).press("End");
@@ -287,8 +312,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await search.fill("");
         assert.equal(await page.locator(".pfx-explore__chip").count(), 148);
         await page.screenshot({ path: "browser-evidence/workspace-v2/" + browserName + "-" + viewport.width + "-explore.png", animations: "disabled" });
-        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Tones" }).click();
-        await page.locator(".pfx-c-workbench--palette").waitFor();
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Picker" }).click();
+        await page.locator(".pfx-tones-embedded").waitFor();
         assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 9);
 
         const countControl = page.locator('input[aria-label="Number of tones"]');
@@ -301,7 +326,11 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator('[aria-label="Base locked"]').count(), 1,
           "Original base color remains locked in the scale");
         await page.locator('input[aria-label="Lock base color in scale"]').uncheck();
+        const currentBeforePreview = await page.locator('input[aria-label="Current color"]').inputValue();
         await page.locator(".pfx-c-palette-ribbon button").nth(1).click();
+        assert.equal(await page.locator('input[aria-label="Current color"]').inputValue(),
+          currentBeforePreview, "Previewing a tone does not replace the base color");
+        await page.locator(".pfx-c-tones__manual > summary").click();
         const editor = page.locator('input[aria-label="Selected tone lightness"]');
         await editor.focus();
         await editor.press("ArrowRight");
@@ -316,12 +345,12 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.match(await page.evaluate(() => window.__PFX_COPIED__ ?? ""),
           /--tone-01:/, "CSS variables copied to clipboard");
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
-        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Tones" }).click();
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Picker" }).click();
         assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 10,
           "Tone count survives navigation");
         assert.equal(await page.locator('[aria-label="Manually edited"]').count(), 1,
           "Independent tone edits survive navigation");
-        await page.getByRole("button", { name: "Send to Gradient" }).click();
+        await page.locator(".pfx-tones-embedded").getByRole("button", { name: "Gradient" }).click();
         await page.locator(".pfx-c-workbench--gradient").waitFor();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 10,
           "Tone scale transfers to Gradient without loss");

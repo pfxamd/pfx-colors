@@ -6,7 +6,7 @@ import { chromium, firefox } from "playwright";
 const base = process.env.PFX_COLORS_URL ?? "http://127.0.0.1:4173/pfx-colors/";
 const root = "browser-evidence/visual-qa";
 mkdirSync(root, { recursive: true });
-const toolNames = ["Home", "Explore", "Picker", "Tones", "Harmony", "Gradient", "Image", "Contrast", "Collections"];
+const toolNames = ["Home", "Explore", "Picker", "Harmony", "Gradient", "Image", "Contrast", "Collections"];
 const results = [];
 function luminance(css) {
   const channels = /^#[a-f\d]{6}$/i.test(css) ? [1,3,5].map(i => parseInt(css.slice(i,i+2),16)) : (css.match(/[\d.]+/g) ?? []).slice(0,3).map(Number);

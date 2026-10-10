@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import type { ColorInput, WorkspaceState } from "@pfx/color-core";
+import type { ColorInput, WorkspaceState, PfxColorsWorkspace } from "@pfx/color-core";
 import { useColorFieldControl } from "../interaction/use-color-field-control";
 import { useHorizontalTrackDrag } from "../interaction/use-horizontal-track-drag";
 import { copyColorText } from "./clipboard";
+import { Tones } from "./tones";
 import { alphaHex, clampChannel, cssHsl, cssOklch, cssRgb, paintHslField, rgbFromHex } from "./picker-model";
 
 type Props = {
   state: WorkspaceState;
+  workspace: PfxColorsWorkspace;
+  sync: (next?: WorkspaceState) => void;
   commitColor: (input: ColorInput) => void;
-  openTones: (hex: string) => void;
+  openGradient: () => void;
   favorite: boolean;
   toggleFavorite: (hex: string) => void;
 };
@@ -111,7 +114,7 @@ function ColorRail({ kind, value, hue, saturation, lightness, rgb, onChange }: {
   </label>;
 }
 
-export function Picker({ state, commitColor, openTones, favorite, toggleFavorite }: Props) {
+export function Picker({ state, workspace, sync, commitColor, openGradient, favorite, toggleFavorite }: Props) {
   const hsl = state.color.values.hsl?.coordinates;
   const oklch = state.color.values.oklch?.coordinates;
   const alpha = Number(state.color.alpha ?? 1);
@@ -203,8 +206,6 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
             onClick={() => toggleFavorite(state.color.hex)}>
             {favorite ? "★ Saved" : "☆ Save color"}
           </button>
-          <button type="button" className="pfx-picker__primary"
-            onClick={() => openTones(state.color.hex)}>Create Tones →</button>
         </div>
       </div>
       <div className="pfx-picker__layout">
@@ -297,6 +298,8 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
           </details>
           <p className="pfx-picker__status" role="status" aria-live="polite">{copyStatus}</p>
         </div>
+        <Tones state={state} workspace={workspace} sync={sync}
+          commitColor={commitColor} openGradient={openGradient} />
       </div>
     </section>
   );

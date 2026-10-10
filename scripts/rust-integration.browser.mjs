@@ -46,11 +46,15 @@ async function scenario(browser, browserName, viewport, engine) {
       picker);
     const afterPicker = await current.inputValue();
     await page.screenshot({ path: evidence + "/" + browserName + "-" + viewport.width + "-" + engine + "-picker.png", animations: "disabled" });
-    await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Tones" }).click();
-    await page.locator(".pfx-c-workbench--palette").waitFor();
+    await page.locator(".pfx-tones-embedded").waitFor();
+    assert.equal(await page.locator('nav[aria-label="Color tools"] button').filter({hasText:"Tones"}).count(), 0,
+      "Tones are integrated into Picker, not a standalone tab");
     assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 9);
     const paletteHexes = await page.locator(".pfx-c-palette-ribbon button span").allTextContents();
     await page.locator(".pfx-c-palette-ribbon button").nth(2).click();
+    assert.equal((await current.inputValue()).toLowerCase(), afterPicker.toLowerCase(),
+      "Previewing a tone must not change the active Picker color");
+    await page.getByRole("button", { name: "Use color" }).click();
     const selectedSwatch = paletteHexes[2].trim().toLowerCase();
     await page.waitForFunction(expected =>
       document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === expected,
