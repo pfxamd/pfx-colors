@@ -366,7 +366,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Picker" }).click();
         assert.equal(await page.locator(".pfx-c-palette-ribbon button").count(), 10,
           "Tone count survives navigation");
-        assert.equal(await page.locator('[aria-label="Manually edited"]').count(), 1,
+        assert.equal(await page.locator('.pfx-c-tones__ribbon button[data-edited="true"]').count(), 1,
           "Independent tone edits survive navigation");
         await page.locator(".pfx-tones-embedded").getByRole("button", { name: "Gradient" }).click();
         await page.locator(".pfx-c-workbench--gradient").waitFor();
