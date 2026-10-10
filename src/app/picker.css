@@ -8,6 +8,7 @@
   padding: var(--pfx-picker-gutter);
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-gutter: auto;
   background: var(--pfx-bg);
   color: var(--pfx-text);
 }
