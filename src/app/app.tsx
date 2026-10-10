@@ -4,7 +4,7 @@ import { PfxColorsWorkspace, type WorkspaceState } from "@pfx/color-core";
 import type { WorkspaceFactory } from "../rust/loader";
 import { WorkspaceShell, TOOLS, type ToolId } from "./workspace-shell";
 import { useTheme } from "./use-theme";
-import { useColorLibrary } from "./use-color-library";
+import { useColorLibrary, type SavedGradient } from "./use-color-library";
 import { useStoredState } from "./workspace-state";
 import { readGradientDraft, saveGradientDraft, clearGradientDraft } from "./gradient-session";
 import { Home } from "./home";
@@ -93,6 +93,16 @@ export function App({ workspaceFactory, engine = "legacy" }: {
     setGradientRequest(value => value + 1);
     setActiveTool("gradient");
   };
+  const openSavedGradient = (saved: SavedGradient) => {
+    const draft = saved.gradient;
+    sync(workspace.createGradient(draft.stops, {
+      type: draft.type, angle: draft.angle,
+      centerX: draft.centerX, centerY: draft.centerY,
+      interpolationSpace: draft.interpolationSpace, hue: "shorter",
+    }));
+    setGradientRequest(value => value + 1);
+    setActiveTool("gradient");
+  };
   const openTones = (hex: string) => {
     commitColor(hex);
     setTonesRequest(hex);
@@ -162,6 +172,8 @@ export function App({ workspaceFactory, engine = "legacy" }: {
       {activeTool === "collections" && (
         <Collections currentHex={state.color.hex} favorites={library.favorites}
           recent={library.recent} sets={library.sets} removeSet={library.removeSet}
+          gradients={library.gradients} removeGradient={library.removeGradient}
+          openGradient={openSavedGradient} restoreBackup={library.restoreBackup}
           select={commitColor} openTones={openTones}
           toggleFavorite={library.toggleFavorite} clearRecent={library.clearRecent} />
       )}
