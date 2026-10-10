@@ -58,18 +58,16 @@ export function Tones({ state, workspace, sync, commitColor, openGradient }: Pro
     if (!normalized || normalized.toLowerCase() === seed.toLowerCase()) return;
     setSeed(normalized);
     setOverrides({});
-    setSettings(previous => {
-      const next = previous.autoRange
-        ? { ...previous, ...toneBoundsForSeed(normalized) }
-        : previous.lockBase
-          ? { ...previous, min: Math.min(previous.min, Math.floor(baseToneLightness(normalized))),
-              max: Math.max(previous.max, Math.ceil(baseToneLightness(normalized))) }
-          : previous;
-      // Select the closest preview to the new base, never jump to the dark endpoint.
-      const newTones = buildTones(normalized, next);
-      setSelected(Math.max(0, newTones.findIndex(tone => tone.base)));
-      return next;
-    });
+    const nextSettings = settings.autoRange
+      ? { ...settings, ...toneBoundsForSeed(normalized) }
+      : settings.lockBase
+        ? { ...settings, min: Math.min(settings.min, Math.floor(baseToneLightness(normalized))),
+            max: Math.max(settings.max, Math.ceil(baseToneLightness(normalized))) }
+        : settings;
+    setSettings(nextSettings);
+    // Preview the seed's tonal neighbor, not the darkest endpoint.
+    const newTones = buildTones(normalized, nextSettings);
+    setSelected(Math.max(0, newTones.findIndex(tone => tone.base)));
   }, [state.color.hex, seed, setSeed, setOverrides, setSelected]);
   const seedLightness = useMemo(() => baseToneLightness(seed), [seed]);
   const tones = useMemo(() => buildTones(seed, settings, overrides), [seed, settings, overrides]);
@@ -96,10 +94,11 @@ export function Tones({ state, workspace, sync, commitColor, openGradient }: Pro
 
   const setLock = (lockBase: boolean) => {
     if (!lockBase) { updateSettings({ lockBase: false }); return; }
-    updateSettings({ lockBase: true,
+    if (settings.autoRange) { updateSettings({ lockBase: true }); return; }
+    updateSettings({
+      lockBase: true,
       min: Math.min(settings.min, Math.floor(seedLightness)),
       max: Math.max(settings.max, Math.ceil(seedLightness)),
-      autoRange: settings.autoRange,
     });
   };
 
