@@ -49,15 +49,16 @@ export function App({ workspaceFactory, engine = "legacy" }: {
   engine?: "legacy" | "rust";
 } = {}) {
   const { workspace, state, sync } = useWorkspace(workspaceFactory);
-  const [activeTool, setActiveTool] = useStoredState<ToolId>(
-    "pfx-colors.active-tool.v2", "home", validTool);
-  const [gradientRequest, setGradientRequest] = useState(0);
-  useEffect(() => {
-    // Migrate users who last visited the now-merged Tones page.
+  // Convert a previously saved standalone Tones route to Picker on the first render.
+  const initialTool: ToolId = (() => {
     try {
-      if (localStorage.getItem("pfx-colors.active-tool.v2") === "tones") setActiveTool("picker");
-    } catch { /* Storage may be unavailable */ }
-  }, [setActiveTool]);
+      return JSON.parse(localStorage.getItem("pfx-colors.active-tool.v2") ?? "null") === "tones"
+        ? "picker" : "home";
+    } catch { return "home"; }
+  })();
+  const [activeTool, setActiveTool] = useStoredState<ToolId>(
+    "pfx-colors.active-tool.v2", initialTool, validTool);
+  const [gradientRequest, setGradientRequest] = useState(0);
   const { theme, preference, setPreference } = useTheme();
   const library = useColorLibrary();
 
