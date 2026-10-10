@@ -168,9 +168,40 @@
 .pfx-explore__inspector-note { color:var(--pfx-muted); border-top:1px solid var(--ex-border); padding:13px 15px 17px; font-size:10px; line-height:1.6; }
 .pfx-explore__status { color:var(--pfx-accent); font-size:11px; padding:8px 2px; }
 .pfx-explore__status:empty { display:none; }
+/* Compact, informative inspector: reserve the visual emphasis for the atlas. */
+.pfx-explore__workbench { grid-template-columns:minmax(0,1fr) minmax(250px,278px); }
+.pfx-explore__inspector-head { padding:11px 13px 9px; }
+.pfx-explore__inspector-color {
+  display:flex; align-items:flex-end; justify-content:space-between; gap:7px;
+  min-height:112px; padding:12px; font:700 9px/1.3 var(--ex-mono); letter-spacing:.07em;
+}
+.pfx-explore__inspector-color span:last-child { letter-spacing:0; font-size:11px; }
+.pfx-explore__inspector-ident { padding:11px 14px 14px; gap:5px; }
+.pfx-explore .pfx-explore__inspector-ident button { font-size:clamp(22px,2vw,27px); }
+.pfx-explore__inspector-values { padding:6px 12px; }
+.pfx-explore__inspector-values > div { min-height:31px; }
+.pfx-explore__contrast { padding:12px; }
+.pfx-explore__contrast-preview { min-height:76px; margin:9px 0; padding:12px; }
+.pfx-explore__comparison { padding:13px 12px; border-top:1px solid var(--ex-border); }
+.pfx-explore__comparison-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.pfx-explore__comparison-head strong { font-size:12px; }
+.pfx-explore .pfx-explore__comparison-head button {
+  border:1px solid var(--ex-border); background:var(--ex-soft); color:var(--pfx-text);
+  border-radius:7px; padding:8px 9px; font-size:10px; font-weight:650;
+}
+.pfx-explore__comparison p { color:var(--pfx-muted); font-size:10px; line-height:1.55; margin:9px 0 0; }
+.pfx-explore__comparison-swatches { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
+.pfx-explore__comparison-swatches > div { display:grid; min-width:0; gap:5px; }
+.pfx-explore__comparison-swatches div > span { display:block; min-height:47px; border:1px solid rgba(0,0,0,.13); border-radius:7px; }
+.pfx-explore__comparison-swatches small { color:var(--pfx-muted); font:9px var(--ex-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pfx-explore__comparison-result { display:flex; align-items:baseline; justify-content:space-between; gap:7px; margin-top:11px; }
+.pfx-explore__comparison-result span { color:var(--pfx-muted); font-size:10px; }
+.pfx-explore__comparison-result strong { font:700 14px var(--ex-mono); color:var(--pfx-text); }
+.pfx-explore__inspector-note { padding:10px 12px 12px; }
+
 @media (min-width:1600px) { .pfx-explore__atlas-tile { min-height:105px; } }
 @media (max-width:1180px) {
-  .pfx-explore__workbench { grid-template-columns:minmax(0,1fr) 264px; gap:13px; }
+  .pfx-explore__workbench { grid-template-columns:minmax(0,1fr) 250px; gap:13px; }
   .pfx-explore__spectrum-body { grid-template-columns:185px minmax(0,1fr); gap:12px; }
   .pfx-explore__atlas-grid { grid-template-columns:repeat(8,minmax(0,1fr)); gap:5px; }
   .pfx-explore__atlas-tile { min-height:78px; }
@@ -187,7 +218,7 @@
   .pfx-explore__inspector-ident { grid-column:1; }
   .pfx-explore__inspector-values { grid-row:2/4; grid-column:2; border-top:0; align-content:center; }
   .pfx-explore__inspector-footnote { grid-column:2; margin:0 16px 12px; }
-  .pfx-explore__contrast { grid-column:1/-1; }
+  .pfx-explore__contrast, .pfx-explore__comparison { grid-column:1/-1; }
   .pfx-explore__inspector-links { grid-column:1/-1; grid-template-columns:1fr 1fr; }
   .pfx-explore__inspector-note { grid-column:1/-1; }
 }
