@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ColorInput, WorkspaceState, PfxColorsWorkspace } from "@pfx/color-core";
 import { normalizeHex } from "./color-library";
 import { copyColorText } from "./clipboard";
@@ -130,7 +130,8 @@ export function Tones({ state, workspace, sync, commitColor, openGradient }: Pro
   const json = useMemo(() => tonesJson(tones), [tones]);
 
   return (
-    <section className="pfx-c-tones pfx-tones-embedded" aria-label="Tone scale builder">
+    <section className="pfx-c-tones pfx-tones-embedded" aria-label="Tone scale builder"
+      style={{ "--tone-preview-color": seed } as CSSProperties}>
       <header className="pfx-c-tones__heading">
         <strong>Tones</strong>
         <span>{settings.count} shades</span>
