@@ -164,6 +164,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           "Pinned reference compares with the live selected color");
         await search.fill("#000000");
         await page.getByRole("button", { name: /Locate color/ }).click();
+        await page.waitForFunction(() => document.querySelector('input[aria-label="Current color"]')?.value.toLowerCase() === "#000000");
         assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(),
           "#000000", "Black remains a valid explicit selection");
         await page.getByRole("slider", { name: /Hue/ }).first().press("ArrowRight");
