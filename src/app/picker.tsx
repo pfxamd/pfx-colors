@@ -98,6 +98,7 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
   const [active, setActive] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
   const [format, setFormat] = useState<"rgb" | "hsl">("hsl");
+  const [mobilePanel, setMobilePanel] = useState<"field" | "values">("field");
 
   const setHsl = (h: number, s: number, l: number, a = alpha) =>
     commitColor(cssHsl(h, s, l, a));
@@ -145,7 +146,11 @@ export function Picker({ state, commitColor, openTones, favorite, toggleFavorite
             onClick={() => openTones(state.color.hex)}>Create Tones →</button>
         </div>
       </div>
-      <div className="pfx-picker__layout">
+      <div className="pfx-picker__views" role="group" aria-label="Picker panels">
+        <button type="button" aria-pressed={mobilePanel === "field"} onClick={() => setMobilePanel("field")}>Color field</button>
+        <button type="button" aria-pressed={mobilePanel === "values"} onClick={() => setMobilePanel("values")}>Values &amp; channels</button>
+      </div>
+      <div className="pfx-picker__layout" data-panel={mobilePanel}>
         <div className="pfx-picker__canvas-card">
           <div className="pfx-picker__card-caption"><strong>Color field</strong><span>Drag or use arrow keys · Shift for fine steps</span></div>
           <div className="pfx-c-picker-main pfx-picker__surface">
