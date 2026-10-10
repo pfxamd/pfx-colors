@@ -1,6 +1,6 @@
 # PFx Colors
 
-A browser-based color workspace with five tools: **Home**, **Picker**, **Palette**, **Harmony** and **Gradient**.
+A browser-based color workspace with color discovery, precise picking, tonal palettes, harmonies, editable gradients, image palette extraction, WCAG text contrast checking, and saved collections.
 
 **Live app:** https://pfxamd.github.io/pfx-colors/  
 **Independent Rust preview:** https://pfxamd.github.io/pfx-colors/preview/

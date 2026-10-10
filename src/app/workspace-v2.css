@@ -85,7 +85,7 @@
   min-width: 0;
   display: flex;
   gap: 2px;
-  justify-content: center;
+  justify-content: flex-start;
   overflow-x: auto;
   border: 0;
   scrollbar-width: none;
