@@ -106,7 +106,9 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           assert.equal(await page.locator("#explore-rgb-atlas").getAttribute("open"), null);
           const first = grid.locator(".pfx-explore__browse-cell").first();
           const initialGrid = await grid.locator(".pfx-explore__browse-cell-foot code").allTextContents();
+          const chosen = "#" + (await first.locator(".pfx-explore__browse-cell-foot code").innerText()).toLowerCase();
           await first.locator(".pfx-explore__browse-color").click();
+          await waitHex(page, chosen);
           const selected = await getHex(page);
           assert.match(selected, /^#[0-9a-f]{6}$/);
           assert.deepEqual(await grid.locator(".pfx-explore__browse-cell-foot code").allTextContents(), initialGrid,
@@ -209,6 +211,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           const dims = await canvas.boundingBox();
           assert.ok(dims && dims.width > 150);
           await canvas.click({ position: { x: dims.width * .22, y: dims.height * .35 } });
+          await page.waitForFunction(previous => document.querySelector('input[aria-label="Current color"]')?.value?.toLowerCase() !== previous, lessChroma);
           assert.notEqual(await getHex(page), lessChroma);
           assert.match(await page.locator(".pfx-explore__depth-controls").innerText(), /Lightness/);
         });
@@ -223,6 +226,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           await items.first().locator(".pfx-explore__related-code").click();
           assert.equal((await page.evaluate(() => window.__PFX_COPIED__)), proposed.toUpperCase());
           await items.first().locator("button").first().click();
+          await waitHex(page, proposed);
           const hex = await getHex(page);
           assert.equal(hex, proposed);
           assert.match(hex, /^#[0-9a-f]{6}$/);
