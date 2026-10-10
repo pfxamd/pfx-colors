@@ -117,46 +117,32 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-picker.png`, animations: "disabled" });
 
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
-        await page.locator(".pfx-c-explore").waitFor();
-        assert.ok(await page.locator(".pfx-v2__swatch").count() >= 20);
-        const search = page.locator('input[placeholder="Color name or #RRGGBB"]');
-        const countNamed = await page.locator(".pfx-explore__summary strong").innerText();
-        assert.match(countNamed, /148/, "Full 148-name CSS catalog is available");
+        await page.locator(".pfx-explore").waitFor();
+        assert.equal(await page.locator(".pfx-explore__atlas-tile").count(), 64,
+          "An exhaustive level starts with 64 RGB regions");
+        assert.equal(await page.locator(".pfx-explore__wheel").count(), 1, "Perceptual spectrum available");
+        assert.equal(await page.locator(".pfx-explore__depth-map canvas").count(), 1,
+          "Gamut-aware color-depth canvas is present");
+        const search = page.getByRole("searchbox", { name: "Search a color name or exact HEX" });
         await search.fill("royal blue");
-        await page.getByRole("button", { name: "Find", exact: true }).click();
-        assert.equal(await page.locator(".pfx-c-explore .pfx-v2__swatch").count(), 1,
-          "Name search narrows the named catalog");
-        await search.fill("");
-        await page.getByRole("button", { name: "Find", exact: true }).click();
-        await page.getByRole("button", { name: "All RGB", exact: true }).click();
-        await page.getByRole("button", { name: "Blue", exact: true }).click();
-        await page.waitForFunction(() => document.querySelectorAll(".pfx-c-explore .pfx-v2__swatch").length === 48,
-          null, { timeout: 15000 });
-        assert.equal(await page.getByRole("button", { name: "Blue", exact: true }).getAttribute("aria-pressed"), "true");
-        await page.getByRole("button", { name: "Next", exact: true }).click();
-        await page.waitForFunction(() =>
-          document.querySelector(".pfx-explore__summary")?.textContent?.includes("Page 2") &&
-          document.querySelector(".pfx-explore__summary")?.textContent?.includes("Filtered RGB results") &&
-          document.querySelectorAll(".pfx-c-explore .pfx-v2__swatch").length === 48,
-          null, { timeout: 15000 });
-        await page.getByRole("button", { name: "Previous", exact: true }).click();
-        await page.waitForFunction(() => document.querySelectorAll(".pfx-c-explore .pfx-v2__swatch").length === 48,
-          null, { timeout: 15000 });
-        await page.getByRole("button", { name: "Reset filters", exact: true }).click();
-        await page.getByRole("combobox", { name: "RGB browsing order" }).selectOption("reverse");
-        assert.match(await page.locator(".pfx-c-explore .pfx-v2__swatch-info span").first().innerText(),
-          /#FFFFFF/, "Reverse RGB enumerates complete HEX range");
-        await page.getByRole("button", { name: "Set reference" }).click();
-        await page.locator(".pfx-c-explore .pfx-v2__swatch-color").nth(1).click();
-        assert.match(await page.locator(".pfx-explore__compare-result output").innerText(), /:1 contrast/,
-          "Comparison calculates contrast for selected colors");
+        await page.getByRole("button", { name: /Royal Blue/i }).click();
+        assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(),
+          "#4169e1", "CSS named colors locate an exact sRGB value");
         await search.fill("#ff8800");
-        await page.getByRole("button", { name: "Find", exact: true }).click();
+        await page.getByRole("button", { name: /Locate color/ }).click();
         await page.waitForFunction(() =>
           document.querySelector('input[aria-label="Current color"]')?.value?.toLowerCase() === "#ff8800",
           null, { timeout: 5000 });
-        assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(), "#ff8800");
-        assert.ok(await page.locator(".pfx-v2__swatch").count() >= 1);
+        assert.equal(await page.locator(".pfx-explore__atlas-tile").count(), 64,
+          "Exact HEX location opens the final atlas subdivision");
+        assert.match(await page.locator(".pfx-explore__atlas-meta").innerText(), /LEVEL 04/);
+        const hueControl = page.getByRole("slider", { name: /Hue/ }).first();
+        await hueControl.focus();
+        await hueControl.press("ArrowRight");
+        assert.equal(await page.locator(".pfx-explore__atlas-tile").count(), 64,
+          "Hue changes preserve atlas navigation");
+        await page.getByRole("button", { name: /Back/ }).click();
+        assert.match(await page.locator(".pfx-explore__atlas-meta").innerText(), /LEVEL 03/);
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-explore.png`, animations: "disabled" });
 
         await page.getByRole("button", { name: "Create Tones" }).click();
@@ -281,15 +267,12 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-collections.png`, animations: "disabled" });
 
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
-        await page.getByRole("button", { name: "Named colors" }).click();
-        await page.getByRole("group", { name: "Filter by color family" }).getByRole("button", { name: "Blue" }).click();
-        assert.equal(await page.getByRole("group", { name: "Filter by color family" })
-          .getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"), "true");
+        await page.getByRole("button", { name: "Blue", exact: true }).click();
+        const savedExploreColor = (await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase();
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
-        assert.equal(await page.getByRole("group", { name: "Filter by color family" })
-          .getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"), "true",
-          "Explore filters survive tool navigation");
+        assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(), savedExploreColor,
+          "Explore selection survives tool navigation");
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Harmony" }).click();
         assert.equal(await page.locator('.pfx-c-harmony-presets button[aria-label="complementary"]')
           .getAttribute("aria-pressed"), "true", "Harmony scheme survives tool navigation");
@@ -298,9 +281,10 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.getByRole("slider", { name: "Study Lightness" }).inputValue(), "59",
           "Home preferences survive reload");
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
-        assert.equal(await page.getByRole("group", { name: "Filter by color family" })
-          .getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"), "true",
-          "Explore preferences survive reload");
+        assert.equal(await page.locator(".pfx-explore__wheel").count(), 1,
+          "Explore spectrum survives reload");
+        assert.equal((await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase(), savedExploreColor,
+          "Selected Explore color survives reload");
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Gradient" }).click();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 2,
           "Gradient stop geometry survives reload");
