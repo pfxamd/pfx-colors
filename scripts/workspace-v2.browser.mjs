@@ -308,7 +308,12 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-collections.png`, animations: "disabled" });
 
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
-        await page.getByRole("button", { name: "Blue", exact: true }).click();
+        await page.getByRole("group", { name: "Browse color families" }).getByRole("button", { name: "Blue" }).click();
+        await page.waitForFunction(() => {
+          const current = document.querySelector('input[aria-label="Current color"]')?.value?.toLowerCase();
+          const inspected = document.querySelector('.pfx-explore__inspector-ident button')?.textContent?.match(/#[0-9a-f]{6}/i)?.[0]?.toLowerCase();
+          return Boolean(current && inspected && current === inspected);
+        });
         const savedExploreColor = (await page.locator('input[aria-label="Current color"]').inputValue()).toLowerCase();
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Home" }).click();
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Explore" }).click();
