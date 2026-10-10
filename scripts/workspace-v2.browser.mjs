@@ -113,16 +113,40 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
             const tab = el.querySelector(".pfx-picker__layout");
             const shown = [...tab.children].filter(child => getComputedStyle(child).display !== "none");
             const last = shown[0];
+            const page = el.getBoundingClientRect();
+            const heading = el.querySelector(".pfx-picker__heading").getBoundingClientRect();
+            const layout = tab.getBoundingClientRect();
+            const field = el.querySelector(".pfx-picker__field").getBoundingClientRect();
+            const inspector = el.querySelector(".pfx-picker__inspector");
             return {
               scroll: el.scrollHeight - el.clientHeight,
               contentBottom: last?.getBoundingClientRect().bottom ?? 0,
-              availableBottom: el.getBoundingClientRect().bottom,
+              availableBottom: page.bottom,
               horizontal: el.scrollWidth - el.clientWidth,
+              pageWidth: page.width,
+              headingWidth: heading.width,
+              headingTop: heading.top - page.top,
+              layoutWidth: layout.width,
+              layoutLeft: layout.left - page.left,
+              fieldWidth: field.width,
+              fieldVisible: getComputedStyle(el.querySelector(".pfx-picker__canvas-card")).display !== "none",
+              inspectorWidth: inspector.getBoundingClientRect().width,
+              inspectorVisible: getComputedStyle(inspector).display !== "none",
             };
           });
           assert.ok(fit.scroll <= 2, label + " does not vertically scroll");
           assert.ok(fit.horizontal <= 2, label + " does not horizontally scroll");
           assert.ok(fit.contentBottom <= fit.availableBottom + 2, label + " is not clipped");
+          assert.ok(fit.headingTop >= -1 && fit.headingTop <= 55,
+            label + " heading must be at top, not vertically centered");
+          assert.ok(fit.headingWidth >= fit.pageWidth - 90,
+            label + " heading must span the page, not sit in a legacy grid column");
+          assert.ok(fit.layoutWidth >= fit.pageWidth - 90 && fit.layoutLeft <= 55,
+            label + " content must span the page, not collapse into a side column");
+          if (fit.fieldVisible) assert.ok(fit.fieldWidth >= 250,
+            label + " color field must have usable width");
+          if (fit.inspectorVisible) assert.ok(fit.inspectorWidth >= 290,
+            label + " inspector must retain a usable width");
         };
         await checkPickerFit("Picker color field");
         if (mobilePicker) {
