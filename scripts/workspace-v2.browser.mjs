@@ -160,7 +160,6 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.match(sliderPaint[0].checker, /conic-gradient\(/, "Opacity shows real transparency");
         assert.match(sliderPaint[1].gradient, /hsl\(/, "Saturation follows active HSL");
         assert.match(sliderPaint[2].gradient, /50%\) 50%/, "Lightness has the HSL midpoint");
-        const saturationTrackBefore = sliderPaint[1].gradient;
         assert.equal(await format.inputValue(), "hex");
         assert.equal((await valueField.inputValue()).toLowerCase(), (await currentInput.inputValue()).toLowerCase());
         const beforePicker = await currentInput.inputValue();
@@ -198,6 +197,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await format.selectOption("hex");
         const hueRail = page.getByRole("slider", { name: "Hue", exact: true });
         await hueRail.focus();
+        const saturationTrackBefore = await page.locator(".pfx-picker__rail--saturation").evaluate(el =>
+          getComputedStyle(el).getPropertyValue("--pfx-rail-gradient").trim());
         await hueRail.press("ArrowRight");
         const saturationTrackAfter = await page.locator(".pfx-picker__rail--saturation").evaluate(el =>
           getComputedStyle(el).getPropertyValue("--pfx-rail-gradient").trim());
