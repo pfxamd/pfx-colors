@@ -318,6 +318,42 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Gradient" }).click();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), randomStopCount,
           "Random gradient survives reload");
+        const historyBefore = await page.locator(".pfx-gradient__css code").textContent();
+        const radialButton = page.getByRole("button", { name: "radial gradient" });
+        const switchTo = await radialButton.getAttribute("aria-pressed") === "true"
+          ? page.getByRole("button", { name: "linear gradient" }) : radialButton;
+        await switchTo.click();
+        const historyAfter = await page.locator(".pfx-gradient__css code").textContent();
+        assert.notEqual(historyAfter, historyBefore, "Changing type updates the gradient");
+        await page.getByRole("button", { name: "UNDO" }).click();
+        assert.equal(await page.locator(".pfx-gradient__css code").textContent(), historyBefore,
+          "Undo restores gradient type and geometry");
+        await page.getByRole("button", { name: "REDO" }).click();
+        assert.equal(await page.locator(".pfx-gradient__css code").textContent(), historyAfter,
+          "Redo restores gradient type and geometry");
+        await page.getByRole("button", { name: "Save gradient" }).click();
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Collections" }).click();
+        await page.getByRole("button", { name: /Saved gradients/ }).click();
+        assert.equal(await page.locator(".pfx-c-collections__gradient-preview").count(), 1,
+          "Saved gradients have a separate editable library");
+        await page.getByRole("button", { name: "Edit gradient" }).click();
+        assert.equal(await page.locator(".pfx-gradient__css code").textContent(), historyAfter,
+          "Saved gradient reopens with the complete geometry");
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Collections" }).click();
+        const backupDownload = page.waitForEvent("download");
+        await page.getByRole("button", { name: "Export backup" }).click();
+        const backupFile = await backupDownload;
+        assert.equal(backupFile.suggestedFilename(), "pfx-colors-library.json");
+        const backupContents = JSON.parse(await (await import("node:fs/promises")).readFile(await backupFile.path(), "utf8"));
+        assert.equal(backupContents.gradients.length, 1, "Backup includes complete saved gradients");
+        await page.getByRole("button", { name: "Import library backup" }).setInputFiles({
+          name: "pfx-colors-library.json", mimeType: "application/json",
+          buffer: Buffer.from(JSON.stringify(backupContents)),
+        });
+        await page.getByText("Backup imported · Existing saved items preserved").waitFor();
+        await page.getByRole("button", { name: /Saved gradients/ }).click();
+        assert.equal(await page.locator(".pfx-c-collections__gradient-preview").count(), 1,
+          "Restoring a backup does not duplicate existing saved gradients");
 
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "No horizontal page overflow");
         assert.deepEqual(errors, [], browserName + " runtime errors");

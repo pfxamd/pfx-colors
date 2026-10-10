@@ -4,9 +4,9 @@ import { PfxColorsWorkspace, type WorkspaceState } from "@pfx/color-core";
 import type { WorkspaceFactory } from "../rust/loader";
 import { WorkspaceShell, TOOLS, type ToolId } from "./workspace-shell";
 import { useTheme } from "./use-theme";
-import { useColorLibrary } from "./use-color-library";
+import { useColorLibrary, type SavedGradient } from "./use-color-library";
 import { useStoredState } from "./workspace-state";
-import { readGradientDraft } from "./gradient-session";
+import { readGradientDraft, saveGradientDraft, clearGradientDraft } from "./gradient-session";
 import { Home } from "./home";
 import { Explore } from "./explore";
 import { Collections } from "./collections";
@@ -55,6 +55,11 @@ export function App({ workspaceFactory, engine = "legacy" }: {
   const { theme, preference, setPreference } = useTheme();
   const library = useColorLibrary();
 
+  useEffect(() => {
+    if (state.gradient) saveGradientDraft(state.gradient);
+    else clearGradientDraft();
+  }, [state.gradient]);
+
   const commitColor = useCallback((input: ColorInput) => {
     const next = workspace.setColor(input);
     try { localStorage.setItem("pfx-colors.current", next.color.hex); }
@@ -85,6 +90,16 @@ export function App({ workspaceFactory, engine = "legacy" }: {
   const clearTonesRequest = useCallback(() => setTonesRequest(null), []);
   const clearGradientRequest = useCallback(() => setGradientRequest(0), []);
   const openGradientFromTool = () => {
+    setGradientRequest(value => value + 1);
+    setActiveTool("gradient");
+  };
+  const openSavedGradient = (saved: SavedGradient) => {
+    const draft = saved.gradient;
+    sync(workspace.createGradient(draft.stops, {
+      type: draft.type, angle: draft.angle,
+      centerX: draft.centerX, centerY: draft.centerY,
+      interpolationSpace: draft.interpolationSpace, hue: "shorter",
+    }));
     setGradientRequest(value => value + 1);
     setActiveTool("gradient");
   };
@@ -151,11 +166,14 @@ export function App({ workspaceFactory, engine = "legacy" }: {
       {activeTool === "gradient" && (
         <Gradient state={state} workspace={workspace} sync={sync}
           commitColor={commitColor} saveSet={library.saveSet}
+          saveGradient={library.saveGradient}
           requestVersion={gradientRequest} onRequestApplied={clearGradientRequest} />
       )}
       {activeTool === "collections" && (
         <Collections currentHex={state.color.hex} favorites={library.favorites}
           recent={library.recent} sets={library.sets} removeSet={library.removeSet}
+          gradients={library.gradients} removeGradient={library.removeGradient}
+          openGradient={openSavedGradient} restoreBackup={library.restoreBackup}
           select={commitColor} openTones={openTones}
           toggleFavorite={library.toggleFavorite} clearRecent={library.clearRecent} />
       )}

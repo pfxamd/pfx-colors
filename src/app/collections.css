@@ -25,3 +25,17 @@
   padding:12px; color:var(--pfx-muted); font:10px ui-monospace,monospace;
 }
 @media (max-width:580px) { .pfx-c-collections__sets { grid-template-columns:minmax(0,1fr); } }
+
+.pfx-collections__header-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.pfx-v2 .pfx-collections__header-actions > button,
+.pfx-v2 .pfx-collections__restore {
+  display:inline-flex; align-items:center; justify-content:center; position:relative;
+  min-height:38px; padding:9px 12px; font-size:11px; font-weight:600;
+  border:1px solid var(--pfx-line-strong); border-radius:9px;
+  background:var(--pfx-panel); color:var(--pfx-text); cursor:pointer;
+}
+.pfx-v2 .pfx-collections__header-actions > button:hover,
+.pfx-v2 .pfx-collections__restore:hover { border-color:var(--pfx-accent); }
+.pfx-collections__restore input { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+.pfx-collections__restore:focus-within { outline:2px solid var(--pfx-accent); outline-offset:3px; }
+.pfx-c-collections__gradient-preview { min-height:130px; margin:0 12px; border-radius:9px; border:1px solid var(--pfx-line); }

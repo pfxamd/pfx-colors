@@ -1,50 +1,47 @@
 import { useCallback, useState } from "react";
 import { normalizeHex } from "./color-library";
+import {
+  readColorSets, readSavedGradients, readColors,
+  type LibrarySnapshot, type SavedColorSet, type SavedGradient,
+} from "./library-backup";
+import type { SavedGradientDraft } from "./gradient-session";
 
 const favoriteKey = "pfx-colors.favorites.v2";
 const recentKey = "pfx-colors.recent.v2";
 const setsKey = "pfx-colors.sets.v2";
-export type SavedColorSet = { id: string; name: string; colors: string[]; created: number };
+const gradientsKey = "pfx-colors.gradients.v1";
+export type { SavedColorSet, SavedGradient };
 
-function readSets(): SavedColorSet[] {
-  try {
-    const raw: unknown = JSON.parse(window.localStorage.getItem(setsKey) ?? "[]");
-    if (!Array.isArray(raw)) return [];
-    return raw.slice(0, 40).flatMap((value: unknown) => {
-      if (!value || typeof value !== "object") return [];
-      const item = value as Partial<SavedColorSet>;
-      if (typeof item.id !== "string" || typeof item.name !== "string" ||
-          !Array.isArray(item.colors) || typeof item.created !== "number") return [];
-      const colors = item.colors.slice(0, 16).map((hex: unknown) =>
-        typeof hex === "string" ? normalizeHex(hex) : null)
-        .filter((hex): hex is string => hex !== null);
-      if (!colors.length) return [];
-      return [{ id: item.id.slice(0, 80), name: item.name.slice(0, 60),
-        colors, created: item.created }];
-    });
-  } catch { return []; }
-}
-
-
-function readList(key: string): string[] {
-  try {
-    const json = JSON.parse(window.localStorage.getItem(key) ?? "[]");
-    if (!Array.isArray(json)) return [];
-    return [...new Set(json.map((value: unknown) =>
-      typeof value === "string" ? normalizeHex(value) : null).filter((value): value is string => value !== null))].slice(0, 120);
-  } catch {
-    return [];
-  }
+function stored(key: string): unknown {
+  try { return JSON.parse(window.localStorage.getItem(key) ?? "[]"); }
+  catch { return []; }
 }
 
 function persist<T>(key: string, values: readonly T[]): void {
-  try { window.localStorage.setItem(key, JSON.stringify(values)); } catch { /* storage unavailable */ }
+  try { window.localStorage.setItem(key, JSON.stringify(values)); }
+  catch { /* Storage may be unavailable. */ }
+}
+
+function newId(): string {
+  return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+}
+
+function mergeById<T extends { id: string }>(
+  current: readonly T[], imported: readonly T[], limit: number,
+): T[] {
+  const seen = new Set<string>();
+  return [...current, ...imported].filter(item => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  }).slice(0, limit);
 }
 
 export function useColorLibrary() {
-  const [favorites, setFavorites] = useState<string[]>(() => readList(favoriteKey));
-  const [recent, setRecent] = useState<string[]>(() => readList(recentKey));
-  const [sets, setSets] = useState<SavedColorSet[]>(readSets);
+  const [favorites, setFavorites] = useState<string[]>(() => readColors(stored(favoriteKey), 120));
+  const [recent, setRecent] = useState<string[]>(() => readColors(stored(recentKey), 60));
+  const [sets, setSets] = useState<SavedColorSet[]>(() => readColorSets(stored(setsKey)));
+  const [gradients, setGradients] = useState<SavedGradient[]>(() => readSavedGradients(stored(gradientsKey)));
 
   const toggleFavorite = useCallback((raw: string) => {
     const hex = normalizeHex(raw);
@@ -72,11 +69,12 @@ export function useColorLibrary() {
   }, []);
 
   const saveSet = useCallback((name: string, raw: readonly string[]) => {
-    const colors = raw.map(normalizeHex).filter((hex): hex is string => hex !== null).slice(0, 16);
+    const colors = readColors(raw, 16);
     if (!colors.length) return;
-    const item: SavedColorSet = { id: Date.now().toString(36) + "-" +
-      Math.random().toString(36).slice(2, 8), name: name.trim().slice(0, 60) || "Untitled set",
-      colors, created: Date.now() };
+    const item: SavedColorSet = {
+      id: newId(), name: name.trim().slice(0, 60) || "Untitled set",
+      colors, created: Date.now(),
+    };
     setSets(previous => {
       const next = [item, ...previous].slice(0, 40);
       persist(setsKey, next);
@@ -92,5 +90,52 @@ export function useColorLibrary() {
     });
   }, []);
 
-  return { favorites, recent, sets, toggleFavorite, addRecent, clearRecent, saveSet, removeSet };
+  const saveGradient = useCallback((name: string, gradient: SavedGradientDraft) => {
+    const item: SavedGradient = {
+      id: newId(), name: name.trim().slice(0, 60) || "Untitled gradient",
+      created: Date.now(), gradient,
+    };
+    setGradients(previous => {
+      const next = [item, ...previous].slice(0, 40);
+      persist(gradientsKey, next);
+      return next;
+    });
+  }, []);
+
+  const removeGradient = useCallback((id: string) => {
+    setGradients(previous => {
+      const next = previous.filter(item => item.id !== id);
+      persist(gradientsKey, next);
+      return next;
+    });
+  }, []);
+
+  const restoreBackup = useCallback((backup: LibrarySnapshot) => {
+    setFavorites(previous => {
+      const next = readColors([...previous, ...backup.favorites], 120);
+      persist(favoriteKey, next);
+      return next;
+    });
+    setRecent(previous => {
+      const next = readColors([...previous, ...backup.recent], 60);
+      persist(recentKey, next);
+      return next;
+    });
+    setSets(previous => {
+      const next = mergeById(previous, backup.sets, 40);
+      persist(setsKey, next);
+      return next;
+    });
+    setGradients(previous => {
+      const next = mergeById(previous, backup.gradients, 40);
+      persist(gradientsKey, next);
+      return next;
+    });
+  }, []);
+
+  return {
+    favorites, recent, sets, gradients,
+    toggleFavorite, addRecent, clearRecent, saveSet, removeSet,
+    saveGradient, removeGradient, restoreBackup,
+  };
 }
