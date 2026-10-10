@@ -759,16 +759,15 @@ export function Gradient({
   return (
     <section className="pfx-c-workbench pfx-c-workbench--gradient pfx-v2__page pfx-gradient"
       aria-label="Gradient workstation">
-      <div className="pfx-v2__page-heading pfx-gradient__heading">
-        <div><span className="pfx-v2__eyebrow">COLOR TRANSITIONS</span>
-          <h1>Gradient.</h1>
-          <p>Compose, adjust, preview and export polished gradients with exact controls.</p>
+      <div className="pfx-gradient__toolbar" aria-label="Gradient commands">
+        <div className="pfx-gradient__toolbar-identity">
+          <span className="pfx-gradient__toolbar-mark" style={{ background: css }} aria-hidden="true" />
+          <strong>Gradient</strong>
+          <span className="pfx-gradient__toolbar-type">{type}</span>
         </div>
         <div className="pfx-gradient__top-actions">
           <button type="button" className="pfx-gradient__randomize" onClick={randomizeGradient}
-            title="Generate a new random gradient">
-            <span aria-hidden="true">↻</span> Random gradient
-          </button>
+            title="Generate a new random gradient"><span aria-hidden="true">↻</span> Random gradient</button>
           <button type="button" onClick={() => void copy(css, "Gradient CSS")}>Copy CSS</button>
           <button type="button" onClick={saveGradientSet}>Save colors</button>
           <button type="button" onClick={saveCurrentGradient}>Save gradient</button>
@@ -786,7 +785,7 @@ export function Gradient({
       <div className="pfx-c-gradient-shell">
         <div className="pfx-c-gradient-canvas-card">
           <div className="pfx-gradient__panel-heading">
-            <strong>01 / LIVE PREVIEW</strong><span>Drag geometry handles to reshape the gradient</span>
+            <strong>Preview</strong><span>{type} · {gradient.stops.length} stops</span>
           </div>
           <div
             ref={previewRef}
@@ -831,7 +830,7 @@ export function Gradient({
           </div>
 
           <div className="pfx-gradient__stops-header">
-            <strong>COLOR STOPS</strong><span>{gradient.stops.length} stops · Click the rail to add</span>
+            <strong>Color stops</strong><span>Click the rail to add</span>
           </div>
           <div className="pfx-c-gradient-stop-strip">
             <div
@@ -868,8 +867,8 @@ export function Gradient({
         </div>
 
         <aside className="pfx-c-gradient-inspector">
-          <div className="pfx-gradient__panel-heading">
-            <strong>02 / CONTROLS</strong><span>Type, rotation, colors and interpolation</span>
+          <div className="pfx-gradient__panel-heading pfx-gradient__inspector-title">
+            <strong>Controls</strong>
           </div>
           <div className="pfx-gradient__group-label">Gradient type</div>
           <div className="pfx-c-gradient-types" aria-label="Gradient type">
@@ -977,7 +976,7 @@ export function Gradient({
         </aside>
       </div>
       <div className="pfx-gradient__footer">
-        <div className="pfx-gradient__css"><span>CSS OUTPUT</span>
+        <div className="pfx-gradient__css"><span>CSS</span>
           <code title={css}>{css}</code></div>
         <p role="status" aria-live="polite">{status}</p>
       </div>
