@@ -175,6 +175,34 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await pickerPanel.locator(".pfx-picker__canvas-card").count(), 1);
         assert.equal(await pickerPanel.locator(".pfx-tones-embedded").count(), 1,
           "Tones is the companion instrument inside Picker");
+        const stripPosition = await pickerPanel.evaluate(el => {
+          const ribbon = el.querySelector(".pfx-c-tones__ribbon");
+          const strip = el.querySelector(".pfx-picker__tone-strip");
+          const header = document.querySelector(".pfx-c-header");
+          const stage = document.querySelector(".pfx-l-stage");
+          const controls = el.querySelector(".pfx-tones-embedded");
+          const bar = ribbon?.getBoundingClientRect();
+          const slot = strip?.getBoundingClientRect();
+          const nav = header?.getBoundingClientRect();
+          const content = stage?.getBoundingClientRect();
+          const panel = controls?.getBoundingClientRect();
+          return { barWidth: bar?.width, stageWidth: content?.width,
+            barLeft: bar?.left, stageLeft: content?.left,
+            offsetFromNav: slot && nav ? slot.top - nav.bottom : null,
+            panelBelowStrip: panel && slot ? panel.top - slot.bottom : null,
+            correctlyPortaled: Boolean(ribbon && strip?.contains(ribbon) && !controls?.contains(ribbon)),
+          };
+        });
+        assert.ok(stripPosition.correctlyPortaled, "Original tone strip is relocated, not duplicated");
+        assert.ok(Math.abs(stripPosition.barWidth - stripPosition.stageWidth) <= 3,
+          "Tones strip fills the entire available page width");
+        assert.ok(Math.abs(stripPosition.barLeft - stripPosition.stageLeft) <= 3,
+          "Tones strip aligns flush with the page edge");
+        assert.ok(Math.abs(stripPosition.offsetFromNav) <= 3,
+          "Tones strip starts immediately below navbar");
+        assert.ok(stripPosition.panelBelowStrip >= 0,
+          "Existing Picker and Tones controls remain below the strip");
+
         assert.equal(await page.locator('nav[aria-label="Color tools"] button').filter({hasText:"Tones"}).count(), 0,
           "Standalone Tones navigation is removed");
         const fitTones = await pickerPanel.evaluate(el => {
@@ -374,9 +402,17 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           "Original base color remains locked in the scale");
         await page.locator('input[aria-label="Lock base color in scale"]').uncheck();
         const currentBeforePreview = await page.locator('input[aria-label="Current color"]').inputValue();
+        const priorSelection = await page.locator(".pfx-c-palette-ribbon button.pfx-is-selected").first()
+          .getAttribute("aria-label");
         await page.locator(".pfx-c-palette-ribbon button").nth(1).click();
         assert.equal(await page.locator('input[aria-label="Current color"]').inputValue(),
           currentBeforePreview, "Previewing a tone does not replace the base color");
+        assert.equal(await page.locator(".pfx-c-palette-ribbon button.pfx-is-selected").count(), 1,
+          "Original selected-tone indicator still tracks exactly one swatch");
+        assert.equal(await page.locator(".pfx-c-palette-ribbon button").nth(1).getAttribute("aria-pressed"), "true",
+          "Relocated swatch keeps its original pressed-state interaction");
+        assert.notEqual(priorSelection, await page.locator(".pfx-c-palette-ribbon button.pfx-is-selected").first()
+          .getAttribute("aria-label"), "Selected-tone indicator moves to the clicked swatch");
         await page.locator(".pfx-c-tones__manual > summary").click();
         const editor = page.locator('input[aria-label="Selected tone lightness"]');
         await editor.focus();
