@@ -83,7 +83,7 @@
 .pfx-c-tones__seedbar code { font: 700 11px ui-monospace, monospace; color: var(--pfx-text); }
 .pfx-c-tones__seedbar small { margin-left: auto; font-size: 9px; }
 /* The spectrum is a single continuous instrument, not a mini card collection. */
-.pfx-tones-embedded .pfx-c-tones__spectrum {
+.pfx-picker__tone-strip .pfx-c-tones__spectrum {
   position: relative;
   padding: 0 0 9px;
 }

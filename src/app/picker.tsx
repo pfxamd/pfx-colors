@@ -127,6 +127,7 @@ export function Picker({ state, workspace, sync, commitColor, openGradient, favo
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [active, setActive] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
+  const [spectrumTarget, setSpectrumTarget] = useState<HTMLDivElement | null>(null);
   const [format, setFormat] = useState<"hex" | "rgb" | "hsl" | "oklch">("hex");
   const [draft, setDraft] = useState(state.color.hex.toUpperCase());
   const [editing, setEditing] = useState(false);
@@ -199,6 +200,7 @@ export function Picker({ state, workspace, sync, commitColor, openGradient, favo
 
   return (
     <section className="pfx-c-workbench--picker pfx-picker pfx-v2__page" aria-label="Color picker workstation">
+      <div className="pfx-picker__tone-strip" ref={setSpectrumTarget} />
       <div className="pfx-picker__layout">
         <div className="pfx-picker__canvas-card">
           <div className="pfx-picker__card-caption">
@@ -298,7 +300,8 @@ export function Picker({ state, workspace, sync, commitColor, openGradient, favo
           <p className="pfx-picker__status" role="status" aria-live="polite">{copyStatus}</p>
         </div>
         <Tones state={state} workspace={workspace} sync={sync}
-          commitColor={commitColor} openGradient={openGradient} />
+          commitColor={commitColor} openGradient={openGradient}
+          spectrumTarget={spectrumTarget} />
       </div>
     </section>
   );
