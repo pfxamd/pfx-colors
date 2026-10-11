@@ -510,15 +510,21 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         });
         assert.equal(await page.locator(".pfx-gradient h1").count(), 0,
           "Gradient has no unnecessary large heading");
-        assert.equal(await page.locator(".pfx-gradient__toolbar .pfx-gradient__top-actions button").count(), 5,
-          "Existing gradient commands share one compact toolbar");
+        assert.equal(await page.locator(".pfx-gradient__toolbar .pfx-gradient__top-actions button").count(), 4,
+          "Primary actions remain compact with a contextual Save menu");
+        assert.equal(await page.locator(".pfx-gradient__advanced").count(), 1,
+          "Color interpolation remains available without crowding the editor");
+        await page.locator(".pfx-gradient__advanced > summary").click();
+        assert.ok(await page.getByRole("button", { name: "OKLCH" }).isVisible(),
+          "Expanded advanced controls retain color interpolation");
+        await page.locator(".pfx-gradient__advanced > summary").click();
         assert.ok(gradientLayout.pageOverflowX <= 2, "Gradient never overflows horizontally");
-        assert.ok(gradientLayout.previewHeight >= 250 && gradientLayout.previewHeight <= 465,
+        assert.ok(gradientLayout.previewHeight >= 250 && gradientLayout.previewHeight <= 630,
           "Main preview is prominent without overwhelming the viewport");
         if (viewport.width >= 1200) {
           assert.ok(gradientLayout.headerHeight <= 58, "Gradient toolbar stays one compact row");
-          assert.ok(gradientLayout.canvasWidth >= 540 && gradientLayout.canvasWidth <= 710,
-            "Preview workspace remains bounded rather than stretched");
+          assert.ok(gradientLayout.canvasWidth >= 700,
+            "Canvas expands to use available desktop width");
           assert.ok(gradientLayout.inspectorWidth >= 305 && gradientLayout.inspectorWidth <= 355,
             "Inspector stays compact beside the preview");
           assert.ok(gradientLayout.gap >= 9 && gradientLayout.gap <= 22,
@@ -559,6 +565,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("button", { name: "Copy JSON" }).click();
         const gradientJson = JSON.parse(await page.evaluate(() => window.__PFX_COPIED__));
         assert.equal(gradientJson.stops.length, stopsBefore, "Exported gradient stops retained");
+        await page.getByRole("button", { name: "Save", exact: true }).click();
         await page.getByRole("button", { name: "Save colors" }).click();
         await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-gradient.png`, animations: "disabled" });
 
@@ -636,6 +643,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("button", { name: "REDO" }).click();
         assert.equal(await page.locator(".pfx-gradient__css code").textContent(), historyAfter,
           "Redo restores gradient type and geometry");
+        await page.getByRole("button", { name: "Save", exact: true }).click();
         await page.getByRole("button", { name: "Save gradient" }).click();
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Collections" }).click();
         await page.getByRole("button", { name: /Saved gradients/ }).click();
