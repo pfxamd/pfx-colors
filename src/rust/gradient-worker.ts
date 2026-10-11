@@ -85,7 +85,7 @@ async function drain(): Promise<void> {
       const pixels = render(core, job);
       scope.postMessage({
         kind: "frame", revision: job.revision,
-        width: job.width, height: job.height,
+        width: job.width, height: job.height, quality: job.quality,
         durationMs: performance.now() - start,
         pixels: pixels.buffer,
       }, [pixels.buffer]);
