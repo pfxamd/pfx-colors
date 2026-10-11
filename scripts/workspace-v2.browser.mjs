@@ -467,7 +467,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.locator(".pfx-c-workbench--gradient").waitFor();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 2,
           "Conic gradient received the current harmony set");
-        const conicCss = await page.locator(".pfx-gradient__css code").textContent();
+        const conicCss = await page.locator(".pfx-gstudio__source code").textContent();
         assert.match(conicCss, /^conic-gradient\(/, "Harmony Conic mode produces CSS");
         const conicColorStops = [...conicCss.matchAll(/rgb\([^)]*\)/g)].map(match => match[0]);
         assert.ok(conicColorStops.length >= 3, "Periodic gradient includes a render-only closing stop");
@@ -489,53 +489,40 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
             detail.ratio >= 0.95, "Rust raster follows real preview size: " + JSON.stringify(detail));
         }
 
-        const gradientLayout = await page.locator(".pfx-gradient").evaluate(el => {
+        // Canvas-first studio opens without a permanent inspector.
+        const studio = await page.locator(".pfx-gstudio").evaluate(el => {
           const page = el.getBoundingClientRect();
-          const header = el.querySelector(".pfx-gradient__toolbar").getBoundingClientRect();
-          const preview = el.querySelector(".pfx-c-gradient-preview").getBoundingClientRect();
-          const canvas = el.querySelector(".pfx-c-gradient-canvas-card").getBoundingClientRect();
-          const inspector = el.querySelector(".pfx-c-gradient-inspector").getBoundingClientRect();
-          const footer = el.querySelector(".pfx-gradient__footer").getBoundingClientRect();
+          const stage = el.querySelector(".pfx-gstudio__canvas").getBoundingClientRect();
+          const artboard = el.querySelector(".pfx-gstudio__artboard").getBoundingClientRect();
           return {
-            width: page.width, pageScroll: el.scrollHeight - el.clientHeight,
-            pageOverflowX: el.scrollWidth - el.clientWidth,
-            headerHeight: header.height,
-            previewWidth: preview.width, previewHeight: preview.height,
-            canvasWidth: canvas.width, inspectorWidth: inspector.width,
-            gap: inspector.left - canvas.right, inspectorBelow: inspector.top >= canvas.bottom,
-            footerBelow: footer.top >= canvas.bottom,
-            sourceX: canvas.left - page.left,
-            inspectorEnd: inspector.bottom - page.top,
+            scrollY: el.scrollHeight - el.clientHeight,
+            overflowX: el.scrollWidth - el.clientWidth,
+            canvasWidth: stage.width, canvasHeight: stage.height,
+            artboardWidth: artboard.width,
+            rootWidth: page.width,
           };
         });
-        assert.equal(await page.locator(".pfx-gradient h1").count(), 0,
-          "Gradient has no unnecessary large heading");
-        assert.equal(await page.locator(".pfx-gradient__toolbar .pfx-gradient__top-actions button").count(), 4,
-          "Primary actions remain compact with a contextual Save menu");
-        assert.equal(await page.locator(".pfx-gradient__advanced").count(), 1,
-          "Color interpolation remains available without crowding the editor");
-        await page.locator(".pfx-gradient__advanced > summary").click();
-        assert.ok(await page.getByRole("button", { name: "OKLCH" }).isVisible(),
-          "Expanded advanced controls retain color interpolation");
-        await page.locator(".pfx-gradient__advanced > summary").click();
-        assert.ok(gradientLayout.pageOverflowX <= 2, "Gradient never overflows horizontally");
-        assert.ok(gradientLayout.previewHeight >= 250 && gradientLayout.previewHeight <= 630,
-          "Main preview is prominent without overwhelming the viewport");
+        assert.equal(await page.locator(".pfx-gstudio__inspector").count(), 0,
+          "Canvas stays free of editing panels until a color or setting is selected");
+        assert.equal(await page.locator(".pfx-gstudio__types > button").count(), 3,
+          "Three gradient types stay directly accessible");
+        assert.ok(studio.overflowX <= 2, "Studio does not overflow horizontally");
+        assert.ok(studio.canvasHeight >= 230, "Canvas has practical visual editing space");
         if (viewport.width >= 1200) {
-          assert.ok(gradientLayout.headerHeight <= 58, "Gradient toolbar stays one compact row");
-          assert.ok(gradientLayout.canvasWidth >= 700,
-            "Canvas expands to use available desktop width");
-          assert.ok(gradientLayout.inspectorWidth >= 305 && gradientLayout.inspectorWidth <= 355,
-            "Inspector stays compact beside the preview");
-          assert.ok(gradientLayout.gap >= 9 && gradientLayout.gap <= 22,
-            "Preview and controls stay precisely aligned");
-          assert.equal(gradientLayout.inspectorBelow, false, "Controls are beside the preview on laptop");
-          assert.ok(gradientLayout.pageScroll <= 3,
-            "Gradient fits a standard 1440×900 workspace without vertical scrolling: " +
-              JSON.stringify(gradientLayout));
+          assert.ok(studio.canvasWidth >= 950,
+            "Canvas gets most of the desktop width when no editor is open");
+          assert.ok(studio.scrollY <= 3,
+            "Desktop studio fits its workspace without page scrolling: " + JSON.stringify(studio));
         }
-
-
+        await page.getByRole("button", { name: "Settings", exact: false }).click();
+        assert.equal(await page.locator(".pfx-gstudio__inspector").count(), 1,
+          "Advanced settings open contextually");
+        assert.ok(await page.getByRole("button", { name: "OKLCH" }).isVisible(),
+          "Interpolation modes remain accessible");
+        await page.getByRole("button", { name: "Close editor" }).click();
+        await page.getByRole("button", { name: "Edit color 1" }).click();
+        assert.ok(await page.locator(".pfx-c-gradient-color-editor__field").isVisible(),
+          "Picking a color opens the actual color editor");
         const markerBounds = await page.locator(".pfx-c-gradient-color-editor__field").evaluate(field => {
           const marker = field.querySelector("i");
           const outer = field.getBoundingClientRect();
@@ -544,39 +531,40 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
             && inner.right <= outer.right + 1 && inner.top >= outer.top - 1
             && inner.bottom <= outer.bottom + 1) };
         });
-        assert.ok(markerBounds.inside, "Color selection marker remains inside the editor at gamut edges");
-        if (viewport.width <= 580) {
-          const layout = await page.locator(".pfx-gradient__top-actions").evaluate(el =>
-            getComputedStyle(el).display);
-          assert.equal(layout, "grid", "Mobile actions use a balanced two-column layout");
-        }
+        assert.ok(markerBounds.inside, "Color marker stays within the selection surface");
+        await page.getByRole("button", { name: "Close editor" }).click();
 
         // Exercise gradient composition and source exports without publishing the branch.
         const gradientType = page.getByRole("button", { name: "radial gradient" });
         await gradientType.click();
         assert.equal(await gradientType.getAttribute("aria-pressed"), "true", "Radial type selected");
-        const angle = page.getByRole("slider", { name: "Gradient angle" });
-        assert.equal(await angle.isDisabled(), true, "Angle disabled for radial geometry");
+        assert.equal(await page.getByRole("slider", { name: "Gradient angle" }).count(), 0,
+          "Radial geometry has no irrelevant angle control");
         await page.getByRole("button", { name: "linear gradient" }).click();
+        const angle = page.getByRole("slider", { name: "Gradient angle" });
         await angle.focus();
         await angle.press("ArrowRight");
-        assert.equal(await angle.isDisabled(), false, "Linear angle editable");
+        assert.ok(await angle.isVisible(), "Linear angle is editable");
         await page.getByRole("button", { name: "Copy CSS", exact: true }).click();
         assert.match(await page.evaluate(() => window.__PFX_COPIED__), /gradient\(/, "Valid CSS gradient copied");
         const stopsBefore = await page.locator(".pfx-c-gradient-stop-handle").count();
         await page.getByRole("button", { name: "Add gradient stop" }).click();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), stopsBefore + 1, "Added stop");
+        await page.getByRole("button", { name: "Edit color 1" }).click();
         await page.getByRole("button", { name: "Copy stop HEX" }).click();
         assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^#[0-9A-F]{6}$/, "Stop HEX copied");
         await page.getByRole("button", { name: "Remove selected stop" }).click();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), stopsBefore, "Removed stop");
+        await page.getByRole("button", { name: "Close editor" }).click();
         await page.getByRole("button", { name: "Export", exact: false }).click();
         const cssFileEvent = page.waitForEvent("download");
         await page.getByRole("button", { name: "Download CSS" }).click();
         assert.equal((await cssFileEvent).suggestedFilename(), "pfx-gradient.css");
+        await page.getByRole("button", { name: "Export", exact: false }).click();
         const jsonFileEvent = page.waitForEvent("download");
         await page.getByRole("button", { name: "Download JSON" }).click();
         assert.equal((await jsonFileEvent).suggestedFilename(), "pfx-gradient.json");
+        await page.getByRole("button", { name: "Export", exact: false }).click();
         await page.getByRole("button", { name: "Copy JSON" }).click();
         const gradientJson = JSON.parse(await page.evaluate(() => window.__PFX_COPIED__));
         assert.equal(gradientJson.stops.length, stopsBefore, "Exported gradient stops retained");
@@ -632,12 +620,12 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 2,
           "Gradient stop geometry survives reload");
         const randomGradientButton = page.getByRole("button", { name: "Random gradient" });
-        const beforeRandom = await page.locator(".pfx-gradient__css code").textContent();
+        const beforeRandom = await page.locator(".pfx-gstudio__source code").textContent();
         await randomGradientButton.click();
-        const firstRandom = await page.locator(".pfx-gradient__css code").textContent();
+        const firstRandom = await page.locator(".pfx-gstudio__source code").textContent();
         assert.notEqual(firstRandom, beforeRandom, "Random gradient changes the preview and CSS");
         await randomGradientButton.click();
-        const secondRandom = await page.locator(".pfx-gradient__css code").textContent();
+        const secondRandom = await page.locator(".pfx-gstudio__source code").textContent();
         assert.notEqual(secondRandom, firstRandom, "Each click generates a different gradient");
         const randomStopCount = await page.locator(".pfx-c-gradient-stop-handle").count();
         assert.ok(randomStopCount >= 2 && randomStopCount <= 4, "Randomized stops remain editable");
@@ -645,18 +633,18 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Gradient" }).click();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), randomStopCount,
           "Random gradient survives reload");
-        const historyBefore = await page.locator(".pfx-gradient__css code").textContent();
+        const historyBefore = await page.locator(".pfx-gstudio__source code").textContent();
         const radialButton = page.getByRole("button", { name: "radial gradient" });
         const switchTo = await radialButton.getAttribute("aria-pressed") === "true"
           ? page.getByRole("button", { name: "linear gradient" }) : radialButton;
         await switchTo.click();
-        const historyAfter = await page.locator(".pfx-gradient__css code").textContent();
+        const historyAfter = await page.locator(".pfx-gstudio__source code").textContent();
         assert.notEqual(historyAfter, historyBefore, "Changing type updates the gradient");
         await page.getByRole("button", { name: "UNDO" }).click();
-        assert.equal(await page.locator(".pfx-gradient__css code").textContent(), historyBefore,
+        assert.equal(await page.locator(".pfx-gstudio__source code").textContent(), historyBefore,
           "Undo restores gradient type and geometry");
         await page.getByRole("button", { name: "REDO" }).click();
-        assert.equal(await page.locator(".pfx-gradient__css code").textContent(), historyAfter,
+        assert.equal(await page.locator(".pfx-gstudio__source code").textContent(), historyAfter,
           "Redo restores gradient type and geometry");
         await page.getByRole("button", { name: "Save", exact: true }).click();
         await page.getByRole("button", { name: "Save gradient" }).click();
@@ -665,7 +653,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator(".pfx-c-collections__gradient-preview").count(), 1,
           "Saved gradients have a separate editable library");
         await page.getByRole("button", { name: "Edit gradient" }).click();
-        assert.equal(await page.locator(".pfx-gradient__css code").textContent(), historyAfter,
+        assert.equal(await page.locator(".pfx-gstudio__source code").textContent(), historyAfter,
           "Saved gradient reopens with the complete geometry");
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Collections" }).click();
         const backupDownload = page.waitForEvent("download");
