@@ -138,6 +138,16 @@ for (const [browserName, engine] of [["chromium", chromium], ["firefox", firefox
             cy - distance * Math.cos(radians));
         }
         await page.mouse.up();
+        const conicAfterInput = await page.evaluate(() => ({
+          stats: { ...window.__PFX_RUST_RENDER__ },
+          angle: document.querySelector(".pfx-c-gradient-preview__angle")?.textContent,
+          canvas: document.querySelector("canvas[data-rust-gradient-preview]")?.dataset
+            .rustGradientPreview,
+        }));
+        console.log("CONIC AFTER INPUT", browserName, viewport.width, JSON.stringify({
+          startRevision: conicBefore.latestRevision,
+          after: conicAfterInput, grip: conicGrip,
+        }));
         await page.waitForFunction(previous => {
           const stats = window.__PFX_RUST_RENDER__;
           const settled = stats?.latestRevision > previous &&
