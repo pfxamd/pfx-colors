@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { gradientExport } from "../src/app/gradient-export";
 import { createGradient, gradientToCss, sampleGradient } from "../src/rust/operations";
 import {
   closeConicGradient, conicEditableLimit, prepareConicStops,
@@ -35,6 +36,11 @@ describe("Seamless Conic interpolation", () => {
     expect(sampleGradient(painted, 0).hex).toBe(sampleGradient(painted, 1).hex);
     expect(gradientToCss(painted)).toContain("conic-gradient(");
     expect(gradientToCss(painted)).toContain("100%");
+    const exported = JSON.parse(gradientExport(editor));
+    expect(exported.seamless).toBe(true);
+    expect(exported.stops).toHaveLength(3);
+    expect(exported.closingStop.position).toBe(100);
+    expect(exported.closingStop.hex).toBe(exported.stops[0].hex);
     expect(closeConicGradient(editor).stops).toEqual(painted.stops);
   });
 
