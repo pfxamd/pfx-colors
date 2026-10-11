@@ -489,7 +489,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
             detail.width >= Math.min(1024, detail.viewWidth * 0.7), "Rust raster uses the bounded high-quality canvas size: " + JSON.stringify(detail));
         }
 
-        // Canvas-first studio opens without a permanent inspector.
+        // Atelier begins with a permanent compact color editor and a fixed-size square.
         const studio = await page.locator(".pfx-gstudio").evaluate(el => {
           const page = el.getBoundingClientRect();
           const stage = el.querySelector(".pfx-gstudio__canvas").getBoundingClientRect();
@@ -500,17 +500,24 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
             canvasWidth: stage.width, canvasHeight: stage.height,
             artboardWidth: artboard.width,
             rootWidth: page.width,
+            reservedWhitespace: page.right - el.querySelector(".pfx-gstudio__workspace").getBoundingClientRect().right,
           };
         });
-        assert.equal(await page.locator(".pfx-gstudio__inspector").count(), 0,
-          "Canvas stays free of editing panels until a color or setting is selected");
+        assert.equal(await page.locator(".pfx-gstudio__inspector").count(), 1,
+          "Color tools remain visible without extra clicks");
+        assert.ok(await page.locator(".pfx-c-gradient-color-editor__field").isVisible(),
+          "Everyday color controls are visible from first render");
         assert.equal(await page.locator(".pfx-gstudio__types > button").count(), 3,
           "Three gradient types stay directly accessible");
         assert.ok(studio.overflowX <= 2, "Studio does not overflow horizontally");
         assert.ok(studio.canvasHeight >= 230, "Canvas has practical visual editing space");
         if (viewport.width >= 1200) {
-          assert.ok(studio.canvasWidth >= 950,
-            "Canvas gets most of the desktop width when no editor is open");
+          assert.ok(studio.canvasWidth >= 330 && studio.canvasWidth <= 370,
+            "The square preview remains modest rather than stretching across the screen");
+          assert.ok(Math.abs(studio.canvasHeight - studio.canvasWidth) <= 3,
+            "Gradient preview has square proportions");
+          assert.ok(studio.reservedWhitespace >= 300,
+            "The desktop retains substantial intentional empty space");
           assert.ok(studio.scrollY <= 3,
             "Desktop studio fits its workspace without page scrolling: " + JSON.stringify(studio));
         }
@@ -519,7 +526,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           "Advanced settings open contextually");
         assert.ok(await page.getByRole("button", { name: "OKLCH" }).isVisible(),
           "Interpolation modes remain accessible");
-        await page.getByRole("button", { name: "Close editor" }).click();
+        await page.getByRole("button", { name: "Back to color editor" }).click();
         await page.getByRole("button", { name: "Edit color 1" }).click();
         assert.ok(await page.locator(".pfx-c-gradient-color-editor__field").isVisible(),
           "Picking a color opens the actual color editor");
@@ -532,7 +539,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
             && inner.bottom <= outer.bottom + 1) };
         });
         assert.ok(markerBounds.inside, "Color marker stays within the selection surface");
-        await page.getByRole("button", { name: "Close editor" }).click();
+
 
         // Exercise gradient composition and source exports without publishing the branch.
         const gradientType = page.getByRole("button", { name: "radial gradient" });
@@ -555,7 +562,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.match(await page.evaluate(() => window.__PFX_COPIED__), /^#[0-9A-F]{6}$/, "Stop HEX copied");
         await page.getByRole("button", { name: "Remove selected stop" }).click();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), stopsBefore, "Removed stop");
-        await page.getByRole("button", { name: "Close editor" }).click();
+
         await page.getByRole("button", { name: "Export", exact: false }).click();
         const cssFileEvent = page.waitForEvent("download");
         await page.getByRole("button", { name: "Download CSS" }).click();
