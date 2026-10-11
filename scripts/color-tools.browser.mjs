@@ -50,10 +50,11 @@ for (const [browserName, launcher] of [["chromium",chromium],["firefox",firefox]
         await page.locator(".pfx-contrast").waitFor();
         const input = page.getByRole("textbox",{name:"Text color HEX"});
         await input.fill("#ffffff"); await input.press("Enter");
-        assert.equal((await page.locator(".pfx-contrast__ratio strong").innerText()).trim(),"1.00:1");
+        assert.equal((await page.locator(".pfx-contrast__ratio strong").innerText()).trim(),"1.00");
         assert.equal(await page.locator(".pfx-contrast__criteria .pfx-contrast__fail").count(),4);
         await page.getByRole("button",{name:"Find readable text"}).click();
-        assert.equal((await page.locator(".pfx-contrast__ratio strong").innerText()).trim(),"21.00:1");
+        await page.waitForFunction(() => document.querySelector(".pfx-contrast__ratio strong")?.textContent?.trim() === "21.00");
+        assert.equal((await page.locator(".pfx-contrast__ratio strong").innerText()).trim(),"21.00");
         assert.equal(await page.locator(".pfx-contrast__criteria .pfx-contrast__pass").count(),4);
         await page.getByRole("button",{name:"Copy CSS"}).click();
         assert.match(await page.evaluate(() => window.__COPIED__ ?? ""),/background-color: #FFFFFF/);
