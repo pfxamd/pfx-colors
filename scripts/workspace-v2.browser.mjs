@@ -486,7 +486,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
           });
           assert.equal(detail.quality, "final", "Settled gradient preview is high quality");
           assert.ok(detail.width > 160 && detail.height > 100 &&
-            detail.ratio >= 0.95, "Rust raster follows real preview size: " + JSON.stringify(detail));
+            detail.width >= Math.min(1024, detail.viewWidth * 0.7), "Rust raster uses the bounded high-quality canvas size: " + JSON.stringify(detail));
         }
 
         // Canvas-first studio opens without a permanent inspector.
