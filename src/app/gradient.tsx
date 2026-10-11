@@ -410,6 +410,8 @@ export function Gradient({
   const [status, setStatus] = useState("");
   const [showExport, setShowExport] = useState(false);
   const [showSave, setShowSave] = useState(false);
+  const [panel, setPanel] = useState<"color" | "settings" | null>(null);
+  const [showGuides, setShowGuides] = useState(false);
   const [initialCenter] = useStoredState(
     "pfx-colors.gradient.center.v2",
     { x: state.gradient?.centerX ?? 0.5, y: state.gradient?.centerY ?? 0.5 }, validCenter);
@@ -640,6 +642,8 @@ export function Gradient({
   }, [renderGradient]);
 
   const css = compactGradientCss(gradientToCss(renderGradient));
+  const railCss = "linear-gradient(90deg, " + gradient.stops.map(stop =>
+    stop.source.css + " " + (stop.position * 100).toFixed(2) + "%").join(", ") + ")";
   const cssFile = gradientCssExport(css);
   const jsonFile = gradientExport(gradient);
   const activeStop = gradient.stops[selectedStop] ?? gradient.stops[0];
@@ -685,6 +689,7 @@ export function Gradient({
   const randomizeGradient = () => {
     const next = generateRandomGradient(gradient.stops.map(stop => stop.hex));
     setSelectedStop(0);
+    setPanel(null);
     commitGradient(next.stops, {
       type: next.type, angle: next.angle,
       centerX: next.center.x, centerY: next.center.y,
@@ -779,7 +784,6 @@ export function Gradient({
   };
 
   const handleRailPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget) return;
     const rect = event.currentTarget.getBoundingClientRect();
     addStopAt((event.clientX - rect.left) / rect.width);
   };
@@ -801,257 +805,225 @@ export function Gradient({
   };
 
   return (
-    <section className="pfx-c-workbench pfx-c-workbench--gradient pfx-v2__page pfx-gradient"
-      aria-label="Gradient workstation">
-      <div className="pfx-gradient__toolbar" aria-label="Gradient commands">
-        <div className="pfx-gradient__toolbar-identity">
-          <span className="pfx-gradient__toolbar-mark" style={{ background: css }} aria-hidden="true" />
-          <strong>Gradient</strong>
-          <span className="pfx-gradient__toolbar-type">{type}</span>
+    <section className="pfx-c-workbench pfx-c-workbench--gradient pfx-v2__page pfx-gstudio"
+      aria-label="Gradient editor">
+      <header className="pfx-gstudio__header">
+        <div className="pfx-gstudio__identity">
+          <span className="pfx-gstudio__symbol" style={{ background: css }} aria-hidden="true" />
+          <div><strong>Gradient</strong><span>Color studio</span></div>
         </div>
-        <div className="pfx-gradient__top-actions">
-          <button type="button" className="pfx-gradient__randomize" onClick={randomizeGradient}
-            title="Generate a new random gradient"><span aria-hidden="true">↻</span> Random gradient</button>
-          <button type="button" className="pfx-gradient__primary"
+        <div className="pfx-gstudio__commands">
+          <button className="pfx-gstudio__new" type="button" onClick={randomizeGradient}
+            aria-label="Random gradient" title="Generate new gradient">
+            <span aria-hidden="true">↻</span> New
+          </button>
+          <button className="pfx-gstudio__main-command" type="button"
             onClick={() => void copy(css, "Gradient CSS")}>Copy CSS</button>
-          <div className="pfx-gradient__menu-anchor">
+          <div className="pfx-gstudio__command-menu">
             <button type="button" aria-expanded={showSave}
               aria-controls="pfx-gradient-save-menu"
-              onClick={() => { setShowExport(false); setShowSave(value => !value); }}>
-              Save <span aria-hidden="true">⌄</span>
-            </button>
-            {showSave && (
-              <div className="pfx-gradient__menu" id="pfx-gradient-save-menu" role="group" aria-label="Save options">
-                <button type="button" onClick={() => { saveCurrentGradient(); setShowSave(false); }}>Save gradient</button>
-                <button type="button" onClick={() => { saveGradientSet(); setShowSave(false); }}>Save colors</button>
+              onClick={() => { setShowExport(false); setShowSave(value => !value); }}>Save <span aria-hidden="true">⌄</span></button>
+            {showSave && <div className="pfx-gstudio__menu" id="pfx-gradient-save-menu" role="group" aria-label="Save options">
+              <button type="button" onClick={() => { saveCurrentGradient(); setShowSave(false); }}>Save gradient</button>
+              <button type="button" onClick={() => { saveGradientSet(); setShowSave(false); }}>Save colors</button>
+            </div>}
+          </div>
+          <div className="pfx-gstudio__command-menu">
+            <button type="button" aria-expanded={showExport}
+              aria-controls="pfx-gradient-export-menu"
+              onClick={() => { setShowSave(false); setShowExport(value => !value); }}>Export <span aria-hidden="true">⌄</span></button>
+            {showExport && <div className="pfx-gstudio__menu" id="pfx-gradient-export-menu" role="group" aria-label="Export options">
+              <button type="button" onClick={() => { downloadText("pfx-gradient.css", cssFile, "text/css;charset=utf-8"); setShowExport(false); }}>Download CSS</button>
+              <button type="button" onClick={() => { downloadText("pfx-gradient.json", jsonFile, "application/json;charset=utf-8"); setShowExport(false); }}>Download JSON</button>
+              <button type="button" onClick={() => void copy(jsonFile, "Gradient JSON")}>Copy JSON</button>
+            </div>}
+          </div>
+        </div>
+      </header>
+
+      <div className={"pfx-gstudio__workspace" + (panel ? " pfx-gstudio__workspace--editing" : "")}>
+        <div className="pfx-gstudio__artboard">
+          <div className="pfx-gstudio__toolstrip">
+            <div className="pfx-gstudio__types" role="group" aria-label="Gradient type">
+              {(["linear", "radial", "conic"] as GradientType[]).map(item => (
+                <button key={item} type="button" className={type === item ? "is-active" : ""}
+                  onClick={() => updateGeometry({ type: item })} aria-label={item + " gradient"}
+                  aria-pressed={type === item}>
+                  <GradientTypeGlyph type={item} /><span>{item[0].toUpperCase() + item.slice(1)}</span>
+                </button>
+              ))}
+            </div>
+            <div className="pfx-gstudio__geometry-tools">
+              {type !== "radial" && (
+                <label className="pfx-gstudio__angle" htmlFor="pfx-gradient-angle">
+                  <span>Angle</span>
+                  <input id="pfx-gradient-angle" type="range" min="0" max="359" step="1"
+                    aria-label="Gradient angle" value={Math.round(angle)}
+                    onChange={event => updateGeometry({ angle: Number(event.target.value) })} />
+                  <output>{Math.round(angle)}°</output>
+                </label>
+              )}
+              <button type="button" className={"pfx-gstudio__guide-toggle" + (showGuides ? " is-active" : "")}
+                aria-pressed={showGuides} onClick={() => setShowGuides(value => !value)}
+                title="Edit direction and center on the canvas">
+                <span aria-hidden="true">⌖</span> Guides
+              </button>
+              <button className={"pfx-gstudio__advanced-toggle" + (panel === "settings" ? " is-active" : "")}
+                type="button" onClick={() => setPanel(value => value === "settings" ? null : "settings")}
+                aria-pressed={panel === "settings"}>Settings <span aria-hidden="true">⚙</span></button>
+            </div>
+          </div>
+
+          <div className="pfx-gstudio__canvas-wrap">
+            <div ref={previewRef} className="pfx-c-gradient-preview pfx-gstudio__canvas"
+              style={{ background: isRustEngine() && !rustPreviewFailed ? "transparent" : css }}
+              onClick={event => {
+                if (event.target !== event.currentTarget) return;
+                const rect = event.currentTarget.getBoundingClientRect();
+                const point = {
+                  x: (event.clientX - rect.left) / rect.width,
+                  y: (event.clientY - rect.top) / rect.height,
+                };
+                const at = type === "conic"
+                  ? ((angleFromNormalizedPoint(point, center, rect.width, rect.height) - angle + 360) % 360) / 360
+                  : Math.max(0, Math.min(1, point.x));
+                commitColor(asInput(sampleGradient(renderGradient, at)));
+              }}
+              aria-label="Live gradient preview">
+              {isRustEngine() && !rustPreviewFailed && (
+                <canvas ref={rustCanvasRef} aria-hidden="true" data-rust-gradient-preview="pending"
+                  style={{
+                    position: "absolute", inset: 0, width: "100%", height: "100%",
+                    pointerEvents: "none", borderRadius: "inherit",
+                  }} />
+              )}
+              {showGuides && <GradientCanvasGeometry surfaceRef={previewRef} type={type}
+                angle={angle} center={center}
+                onAngleChange={value => updateGeometry({ angle: value })}
+                onCenterChange={point => updateGeometry({ centerX: point.x, centerY: point.y })} />}
+              <span className="pfx-gstudio__canvas-caption" aria-hidden="true">
+                {type} <span>·</span> {gradient.stops.length} colors
+              </span>
+            </div>
+          </div>
+
+          <div className="pfx-gstudio__colors">
+            <div className="pfx-gstudio__colors-bar">
+              <div><strong>Colors</strong><span>Choose a point to edit</span></div>
+              <div className="pfx-gstudio__stop-actions">
+                <button type="button" onClick={addStopNearSelection} aria-label="Add gradient stop" title="Add color">+ Add</button>
+                <button type="button" onClick={reverseGradient} aria-label="Reverse gradient" title="Reverse colors">⇄ Reverse</button>
+              </div>
+            </div>
+            <div className="pfx-c-gradient-stop-strip pfx-gstudio__stop-strip">
+              <div ref={railRef} className="pfx-c-gradient-rail pfx-gstudio__rail"
+                style={{ "--pfx-gradient": railCss } as CSSProperties}
+                onPointerDown={handleRailPointerDown} aria-label="Gradient stops">
+                <span className="pfx-c-gradient-rail__line" />
+                {gradient.stops.map((stop, index) => {
+                  const previous = gradient.stops[index - 1];
+                  const next = gradient.stops[index + 1];
+                  const min = previous ? previous.position + 0.005 : 0;
+                  const max = next ? next.position - 0.005
+                    : type === "conic" ? conicEditableLimit(gradient.stops.length) : 1;
+                  return <GradientStopHandle key={index} railRef={railRef} index={index}
+                    position={stop.position} hex={stop.hex} min={min} max={max}
+                    selected={selectedStop === index && panel === "color"}
+                    onChange={value => updateStopPosition(index, value)}
+                    onSelect={() => { setSelectedStop(index); setPanel("color"); }} />;
+                })}
+              </div>
+            </div>
+            <div className="pfx-gstudio__swatches" role="group" aria-label="Gradient colors">
+              {gradient.stops.map((stop, index) => (
+                <button key={index} type="button"
+                  className={selectedStop === index && panel === "color" ? "is-selected" : ""}
+                  aria-label={"Edit color " + (index + 1)}
+                  aria-pressed={selectedStop === index && panel === "color"}
+                  onClick={() => { setSelectedStop(index); setPanel("color"); }}>
+                  <span className="pfx-gstudio__swatch" style={{ background: stop.source.css }} />
+                  <span className="pfx-gstudio__swatch-value">{stop.hex.toUpperCase()}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {panel && (
+          <aside className="pfx-gstudio__inspector" aria-label={panel === "color" ? "Color editor" : "Advanced settings"}>
+            <div className="pfx-gstudio__inspector-head">
+              <div>
+                <span>{panel === "color" ? "POINT " + (selectedStop + 1) + " OF " + gradient.stops.length : "GRADIENT"}</span>
+                <strong>{panel === "color" ? "Edit color" : "Settings"}</strong>
+              </div>
+              <button type="button" onClick={() => setPanel(null)}
+                aria-label="Close editor" title="Close panel">×</button>
+            </div>
+            {panel === "color" ? (
+              <div className="pfx-gstudio__inspector-body">
+                <div className="pfx-gstudio__selected-swatch" style={{ background: activeStop.source.css }}>
+                  <span>Selected color</span>
+                </div>
+                <GradientColorEditor color={activeStop.source}
+                  onChange={value => updateStopColor(selectedStop, value)} />
+                <div className="pfx-gstudio__editor-buttons">
+                  <button type="button" onClick={() => void copy(activeStop.hex.toUpperCase(), "Stop HEX")}>Copy stop HEX</button>
+                  <button type="button" onClick={() => updateStopColor(selectedStop, asInput(state.color.source))}>Use current color</button>
+                </div>
+                <div className="pfx-gstudio__position">
+                  <label>Position</label>
+                  <div className="pfx-c-gradient-position">
+                    <button type="button" onClick={() => nudgeActiveStop(-1)} aria-label="Move selected stop left">−</button>
+                    <output>{Math.round(activeStop.position * 100)}%</output>
+                    <button type="button" onClick={() => nudgeActiveStop(1)} aria-label="Move selected stop right">+</button>
+                  </div>
+                </div>
+                <button className="pfx-gstudio__remove" type="button"
+                  disabled={gradient.stops.length <= 2}
+                  onClick={() => {
+                    removeStop(selectedStop);
+                    if (gradient.stops.length === 3) setPanel(null);
+                  }}
+                  aria-label="Remove selected stop">Remove color</button>
+              </div>
+            ) : (
+              <div className="pfx-gstudio__inspector-body pfx-gstudio__settings-body">
+                <div className="pfx-gstudio__settings-group">
+                  <strong>Color interpolation</strong>
+                  <span>How colors blend between points</span>
+                  <div className="pfx-gstudio__spaces" role="group" aria-label="Interpolation space">
+                    {([
+                      ["oklch", "OKLCH"],
+                      ["oklab", "OKLAB"],
+                      ["srgb", "RGB"],
+                    ] as const).map(([value, label]) => (
+                      <button key={value} type="button" className={space === value ? "is-active" : ""}
+                        aria-pressed={space === value}
+                        onClick={() => updateGeometry({ interpolationSpace: value })}>{label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="pfx-gstudio__settings-group">
+                  <strong>Position and direction</strong>
+                  <span>Drag the handles directly on the canvas</span>
+                  <button type="button" className="pfx-gstudio__setting-action"
+                    onClick={() => { setShowGuides(true); setPanel(null); }}>
+                    Show canvas guides <span aria-hidden="true">↗</span>
+                  </button>
+                </div>
               </div>
             )}
-          </div>
-          <button type="button" aria-expanded={showExport}
-            aria-controls="pfx-gradient-export-menu"
-            onClick={() => { setShowSave(false); setShowExport(value => !value); }}>
-            Export <span aria-hidden="true">{showExport ? "−" : "⌄"}</span>
-          </button>
-        </div>
+          </aside>
+        )}
       </div>
-      {showExport && <div className="pfx-gradient__exports" id="pfx-gradient-export-menu" role="group" aria-label="Export options">
-        <button type="button" onClick={() => downloadText("pfx-gradient.css", cssFile, "text/css;charset=utf-8")}>Download CSS</button>
-        <button type="button" onClick={() => downloadText("pfx-gradient.json", jsonFile, "application/json;charset=utf-8")}>Download JSON</button>
-        <button type="button" onClick={() => void copy(jsonFile, "Gradient JSON")}>Copy JSON</button>
-      </div>}
-      <div className="pfx-c-gradient-shell">
-        <div className="pfx-c-gradient-canvas-card">
-          <div className="pfx-gradient__panel-heading">
-            <strong>Canvas</strong><span>{type} · {gradient.stops.length} colors</span>
-          </div>
-          <div
-            ref={previewRef}
-            className="pfx-c-gradient-preview"
-            style={{ background: isRustEngine() && !rustPreviewFailed ? "transparent" : css }}
-            onClick={(event) => {
-              if (event.target !== event.currentTarget) return;
-              const rect = event.currentTarget.getBoundingClientRect();
-              const point = {
-                x: (event.clientX - rect.left) / rect.width,
-                y: (event.clientY - rect.top) / rect.height,
-              };
-              const at = type === "conic"
-                ? ((angleFromNormalizedPoint(point, center, rect.width, rect.height) - angle + 360) % 360) / 360
-                : Math.max(0, Math.min(1, point.x));
-              commitColor(asInput(sampleGradient(renderGradient, at)));
-            }}
-          >
-            {isRustEngine() && !rustPreviewFailed && (
-              <canvas
-                ref={rustCanvasRef}
-                aria-hidden="true"
-                data-rust-gradient-preview="pending"
-                style={{
-                  position: "absolute", inset: 0,
-                  width: "100%", height: "100%", pointerEvents: "none",
-                  borderRadius: "inherit",
-                }}
-              />
-            )}
-            <GradientCanvasGeometry
-              surfaceRef={previewRef}
-              type={type}
-              angle={angle}
-              center={center}
-              onAngleChange={(value) => updateGeometry({ angle: value })}
-              onCenterChange={(point) => updateGeometry({ centerX: point.x, centerY: point.y })}
-            />
 
-            {type !== "radial" && (
-              <output className="pfx-c-gradient-preview__angle">
-                {String(Math.round(angle)).padStart(3, "0")}°
-              </output>
-            )}
-          </div>
-
-          <div className="pfx-gradient__stops-header">
-            <strong>Color stops</strong><span>Click the rail to add</span>
-          </div>
-          <div className="pfx-c-gradient-stop-strip">
-            <div
-              ref={railRef}
-              className="pfx-c-gradient-rail"
-              style={{ "--pfx-gradient": css } as CSSProperties}
-              onPointerDown={handleRailPointerDown}
-              aria-label="Gradient stops"
-            >
-              <span className="pfx-c-gradient-rail__line" />
-              {gradient.stops.map((stop, index) => {
-                const previous = gradient.stops[index - 1];
-                const next = gradient.stops[index + 1];
-                const min = previous ? previous.position + 0.005 : 0;
-                const max = next ? next.position - 0.005
-                  : type === "conic" ? conicEditableLimit(gradient.stops.length) : 1;
-
-                return (
-                  <GradientStopHandle
-                    key={index}
-                    railRef={railRef}
-                    index={index}
-                    position={stop.position}
-                    hex={stop.hex}
-                    min={min}
-                    max={max}
-                    selected={selectedStop === index}
-                    onChange={(value) => updateStopPosition(index, value)}
-                    onSelect={() => setSelectedStop(index)}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <aside className="pfx-c-gradient-inspector">
-          <div className="pfx-gradient__panel-heading pfx-gradient__inspector-title">
-            <strong>Adjust</strong>
-          </div>
-          <div className="pfx-gradient__group-label">Gradient type</div>
-          <div className="pfx-c-gradient-types" aria-label="Gradient type">
-            {(["linear", "radial", "conic"] as GradientType[]).map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={item === type ? "pfx-is-current" : ""}
-                onClick={() => updateGeometry({ type: item })}
-                aria-label={item + " gradient"}
-                aria-pressed={item === type}
-                title={item}
-              >
-                <GradientTypeGlyph type={item} /><span>{item}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="pfx-gradient__angle-panel">
-            <div><label htmlFor="pfx-gradient-angle">Rotation</label><output>{Math.round(angle)}°</output></div>
-            <input id="pfx-gradient-angle" type="range" min="0" max="359" step="1"
-              aria-label="Gradient angle" value={Math.round(angle)}
-              disabled={type === "radial"} onChange={event => updateGeometry({ angle: Number(event.target.value) })} />
-          </div>
-          <div className="pfx-gradient__editor-heading">
-            <strong>Selected color</strong><span>{selectedStop + 1} of {gradient.stops.length}</span>
-          </div>
-          {activeStop && (
-            <GradientColorEditor
-              color={activeStop.source}
-              onChange={(value) => updateStopColor(selectedStop, value)}
-            />
-          )}
-
-          <div className="pfx-gradient__selected-actions">
-            <button type="button" onClick={() => void copy(activeStop.hex.toUpperCase(), "Stop HEX")}>Copy stop HEX</button>
-            <button type="button" onClick={() => updateStopColor(selectedStop, asInput(state.color.source))}>Use current color</button>
-          </div>
-          <div className="pfx-gradient__position-row"><span>Position</span>
-          <div className="pfx-c-gradient-position">
-            <button
-              type="button"
-              onClick={() => nudgeActiveStop(-1)}
-              aria-label="Move selected stop left"
-            >
-              −
-            </button>
-            <output>
-              {String(Math.round(activeStop.position * 100)).padStart(3, "0")}%
-            </output>
-            <button
-              type="button"
-              onClick={() => nudgeActiveStop(1)}
-              aria-label="Move selected stop right"
-            >
-              +
-            </button>
-          </div>
-
-          </div>
-
-          <div className="pfx-c-gradient-actions">
-            <button
-              type="button"
-              onClick={addStopNearSelection}
-              aria-label="Add gradient stop"
-              title="Add stop"
-            >
-              + <span>Add color</span>
-            </button>
-            <button
-              type="button"
-              onClick={reverseGradient}
-              aria-label="Reverse gradient"
-              title="Reverse"
-            >
-              ⇄ <span>Reverse</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => removeStop(selectedStop)}
-              disabled={gradient.stops.length <= 2}
-              aria-label="Remove selected stop"
-              title="Remove stop"
-            >
-              × <span>Remove</span>
-            </button>
-          </div>
-
-          <details className="pfx-gradient__advanced">
-            <summary><span>Advanced settings</span><small>{space.toUpperCase()}</small></summary>
-            <div className="pfx-gradient__advanced-body">
-          <div className="pfx-gradient__group-label">Color interpolation</div>
-          <div className="pfx-c-gradient-space-grid" aria-label="Interpolation space">
-            {[
-              ["oklch", "OKLCH"],
-              ["oklab", "OKLAB"],
-              ["srgb", "RGB"],
-            ].map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className={space === value ? "pfx-is-current" : ""}
-                onClick={() => updateGeometry({ interpolationSpace: value })}
-                aria-pressed={space === value}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-            </div>
-          </details>
-        </aside>
-      </div>
-      <div className="pfx-gradient__footer">
-        <details className="pfx-gradient__source">
-          <summary>View CSS <span aria-hidden="true">⌄</span></summary>
-          <div className="pfx-gradient__css"><span>CSS</span>
-            <code title={css}>{css}</code></div>
+      <footer className="pfx-gstudio__footer">
+        <details className="pfx-gstudio__source">
+          <summary>CSS code <span aria-hidden="true">⌄</span></summary>
+          <div className="pfx-gradient__css"><code title={css}>{css}</code></div>
         </details>
         <p role="status" aria-live="polite">{status}</p>
-      </div>
+      </footer>
     </section>
   );
 }
