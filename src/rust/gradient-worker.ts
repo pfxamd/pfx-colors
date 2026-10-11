@@ -11,7 +11,7 @@ type WasmCore = {
   createCssGradient(stops: Array<{ position: number; color: CoreColor }>,
     options: Record<string, unknown>): PixelHandle;
 };
-type Job = { kind: "render"; revision: number; gradient: GradientDefinition; width: number; height: number };
+type Job = { kind: "render"; revision: number; gradient: GradientDefinition; width: number; height: number; quality: "interactive" | "final" };
 type Init = { kind: "init"; assetRoot: string };
 type Incoming = Init | Job;
 
@@ -37,7 +37,7 @@ function initialize(assetRoot: string): Promise<WasmCore> {
 function render(core: WasmCore, job: Job): Uint8ClampedArray {
   const { gradient, width, height } = job;
   if (!Number.isInteger(width) || !Number.isInteger(height)
-    || width < 1 || height < 1 || width * height > 32768) {
+    || width < 1 || height < 1 || width * height > 640000) {
     throw new RangeError("Invalid Rust gradient worker dimensions");
   }
   const stops = gradient.stops.map(stop => ({
