@@ -734,6 +734,10 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("textbox", { name: "Background color HEX" }).press("Enter");
         assert.equal((await page.locator(".pfx-contrast__ratio strong").textContent())?.trim(), "21.00",
           "Contrast logic still reports the exact black-on-white ratio");
+        assert.equal((await page.getByRole("textbox", { name: "Text color HEX" }).inputValue()).toUpperCase(), "#000000",
+          "Text HEX entry commits before swapping");
+        assert.equal((await page.getByRole("textbox", { name: "Background color HEX" }).inputValue()).toUpperCase(), "#FFFFFF",
+          "Background HEX entry commits before swapping");
         await page.getByRole("button", { name: "Swap contrast colors" }).click();
         assert.equal((await page.getByRole("textbox", { name: "Text color HEX" }).inputValue()).toUpperCase(), "#FFFFFF");
         await page.getByRole("textbox", { name: "Text color HEX" }).fill("#555555");
