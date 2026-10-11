@@ -694,6 +694,58 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator(".pfx-c-collections__gradient-preview").count(), 1,
           "Restoring a backup does not duplicate existing saved gradients");
 
+        // Contrast is an independent, fixed-size editorial study, not a dashboard.
+        await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Contrast" }).click();
+        const contrastPage = page.locator(".pfx-contrast");
+        const contrastLayout = await contrastPage.evaluate(el => {
+          const preview = el.querySelector(".pfx-contrast__preview").getBoundingClientRect();
+          const composition = el.querySelector(".pfx-contrast__composition").getBoundingClientRect();
+          const actions = el.querySelector(".pfx-contrast__actions").getBoundingClientRect();
+          const footnote = el.querySelector(".pfx-contrast__footnote").getBoundingClientRect();
+          const rect = el.getBoundingClientRect();
+          return {
+            scrollY: el.scrollHeight - el.clientHeight,
+            scrollX: el.scrollWidth - el.clientWidth,
+            previewWidth: preview.width, previewHeight: preview.height,
+            compositionWidth: composition.width,
+            blankRight: rect.right - composition.right,
+            actionsVisible: actions.bottom <= rect.bottom + 2,
+            footnoteVisible: footnote.bottom <= rect.bottom + 2,
+          };
+        });
+        assert.ok(contrastLayout.scrollY <= 2, "Contrast work fits without internal vertical scrolling: " + JSON.stringify(contrastLayout));
+        assert.ok(contrastLayout.scrollX <= 2, "Contrast work fits without horizontal scrolling: " + JSON.stringify(contrastLayout));
+        assert.ok(contrastLayout.actionsVisible && contrastLayout.footnoteVisible,
+          "Everyday actions and accessibility note remain in view");
+        if (viewport.width >= 1200) {
+          assert.ok(contrastLayout.previewWidth >= 330 && contrastLayout.previewWidth <= 365,
+            "The color study stays compact on desktop");
+          assert.ok(contrastLayout.blankRight >= 300,
+            "At least 300px of genuine future-use whitespace remain on desktop");
+        } else {
+          assert.ok(contrastLayout.previewHeight <= 200,
+            "Mobile preview is deliberately compact rather than pushing actions below the fold");
+        }
+        assert.equal(await page.locator(".pfx-contrast__criterion").count(), 4,
+          "All AA and AAA text criteria remain visible");
+        await page.getByRole("textbox", { name: "Text color HEX" }).fill("#000000");
+        await page.getByRole("textbox", { name: "Text color HEX" }).press("Enter");
+        await page.getByRole("textbox", { name: "Background color HEX" }).fill("#FFFFFF");
+        await page.getByRole("textbox", { name: "Background color HEX" }).press("Enter");
+        assert.equal((await page.locator(".pfx-contrast__ratio strong").textContent())?.trim(), "21.00",
+          "Contrast logic still reports the exact black-on-white ratio");
+        await page.getByRole("button", { name: "Swap contrast colors" }).click();
+        assert.equal((await page.getByRole("textbox", { name: "Text color HEX" }).inputValue()).toUpperCase(), "#FFFFFF");
+        await page.getByRole("textbox", { name: "Text color HEX" }).fill("#555555");
+        await page.getByRole("textbox", { name: "Text color HEX" }).press("Enter");
+        await page.getByRole("button", { name: "Find readable text" }).click();
+        assert.equal((await page.getByRole("textbox", { name: "Text color HEX" }).inputValue()).toUpperCase(), "#FFFFFF",
+          "Suggested readable ink remains functional");
+        await page.getByRole("button", { name: "Copy CSS" }).click();
+        assert.match(await page.evaluate(() => window.__PFX_COPIED__), /background-color:\s*#000000/i,
+          "Exported CSS reflects the active pair");
+        await page.screenshot({ path: `browser-evidence/workspace-v2/${browserName}-${viewport.width}-contrast.png`, animations: "disabled" });
+
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "No horizontal page overflow");
         assert.deepEqual(errors, [], browserName + " runtime errors");
         console.log("WORKSPACE V2 PASS", browserName, viewport.width);
