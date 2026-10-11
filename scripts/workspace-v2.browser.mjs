@@ -536,6 +536,21 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         }
 
 
+        const markerBounds = await page.locator(".pfx-c-gradient-color-editor__field").evaluate(field => {
+          const marker = field.querySelector("i");
+          const outer = field.getBoundingClientRect();
+          const inner = marker?.getBoundingClientRect();
+          return { inside: Boolean(inner && inner.left >= outer.left - 1
+            && inner.right <= outer.right + 1 && inner.top >= outer.top - 1
+            && inner.bottom <= outer.bottom + 1) };
+        });
+        assert.ok(markerBounds.inside, "Color selection marker remains inside the editor at gamut edges");
+        if (viewport.width <= 580) {
+          const layout = await page.locator(".pfx-gradient__top-actions").evaluate(el =>
+            getComputedStyle(el).display);
+          assert.equal(layout, "grid", "Mobile actions use a balanced two-column layout");
+        }
+
         // Exercise gradient composition and source exports without publishing the branch.
         const gradientType = page.getByRole("button", { name: "radial gradient" });
         await gradientType.click();
