@@ -61,6 +61,10 @@ const specs = [
     { position: 0.33, color: "#777B81" },
     { position: 0.7, color: "#181D27" },
   ] },
+  { label: "sixteen-stops", stops: Array.from({ length: 16 }, (_, i) => ({
+    position: i * 0.055,
+    color: `hsl(${i * 22.5} 92% ${43 + (i % 5) * 3}%)`,
+  })) },
 ];
 
 const browser = await chromium.launch({ headless: true });
@@ -136,6 +140,12 @@ try {
     const after = rendered[1].samples.map(jump);
     const average = items => items.reduce((a, b) => a + b, 0) / items.length;
     const improvement = average(before) / Math.max(average(after), 1e-8);
+    assert.ok(improvement > 1.4,
+      spec.label + ": periodic path failed tangent-continuity regression " + improvement);
+    for (const item of rendered) {
+      assert.ok(item.largest <= 4,
+        spec.label + ": accelerated preview exceeded RGBA8 error tolerance " + item.largest);
+    }
 
     for (let i = 0; i < rendered.length; i++) {
       const item = rendered[i];
