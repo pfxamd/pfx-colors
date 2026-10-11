@@ -114,9 +114,17 @@ for (const [browserName, engine] of [["chromium", chromium], ["firefox", firefox
         await page.getByRole("button", { name: "conic gradient" }).click();
         await page.locator('canvas[data-rust-gradient-preview="ready"]')
           .waitFor({ timeout: 30000 });
+        const conicHandle = page.getByRole("button", { name: "Rotate conic gradient" });
+        await conicHandle.scrollIntoViewIfNeeded();
+        // Selecting Conic scrolls the inspector on some Firefox mobile layouts.
+        // Re-measure the preview instead of reusing coordinates from Linear.
+        const conicPreview = await page.locator(".pfx-c-gradient-preview").boundingBox();
+        const conicGrip = await conicHandle.boundingBox();
+        assert.ok(conicGrip && conicPreview, "Conic drag handle and preview exist");
+        const conicCx = conicPreview.x + conicPreview.width / 2;
+        const conicCy = conicPreview.y + conicPreview.height / 2;
+        const conicDistance = Math.min(conicPreview.width, conicPreview.height) * 0.28;
         const conicBefore = await page.evaluate(() => ({ ...window.__PFX_RUST_RENDER__ }));
-        const conicGrip = await page.getByRole("button", { name: "Rotate conic gradient" }).boundingBox();
-        assert.ok(conicGrip, "Conic drag handle exists");
         await page.evaluate(() => {
           const frames = { times: [], active: true };
           window.__PFX_CONIC_FRAMES__ = frames;
@@ -134,8 +142,8 @@ for (const [browserName, engine] of [["chromium", chromium], ["firefox", firefox
         await page.mouse.down();
         for (let i = 0; i < 45; i++) {
           const radians = 2 * Math.PI * (i + 1) / 45;
-          await page.mouse.move(cx + distance * Math.sin(radians),
-            cy - distance * Math.cos(radians));
+          await page.mouse.move(conicCx + conicDistance * Math.sin(radians),
+            conicCy - conicDistance * Math.cos(radians));
         }
         await page.mouse.up();
         const conicAfterInput = await page.evaluate(() => ({
