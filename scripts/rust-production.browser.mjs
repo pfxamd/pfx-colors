@@ -43,7 +43,20 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
               "Picker includes Tones in the Rust production build");
           }
           if (name === "Gradient") {
-            await page.locator('canvas[data-rust-gradient-preview="ready"]').waitFor({ timeout: 30000 });
+            try {
+              await page.locator('canvas[data-rust-gradient-preview="ready"]').waitFor({ timeout: 30000 });
+            } catch (error) {
+              const detail = await page.evaluate(() => ({
+                worker: window.__PFX_RUST_RENDER__,
+                canvases: [...document.querySelectorAll("canvas[data-rust-gradient-preview]")].map(el =>
+                  ({ preview: el.dataset.rustGradientPreview, quality: el.dataset.rustPreviewQuality,
+                    width: el.width, height: el.height })),
+                preview: Boolean(document.querySelector(".pfx-c-gradient-preview")),
+              }));
+              console.error("RUST GRADIENT DIAGNOSTICS", browserName, viewport.width,
+                JSON.stringify(detail), "page errors:", errors);
+              throw error;
+            }
             assert.equal(await page.evaluate(() => window.__PFX_RUST_RENDER__?.worker), true);
           }
         }
