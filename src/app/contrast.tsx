@@ -17,18 +17,24 @@ function HexField({ label, value, onChange, current }: {
     setInvalid(false); onChange(hex); setDraft(hex.toUpperCase());
   };
   return <div className="pfx-contrast__field">
-    <label>{label}<div className="pfx-contrast__field-row">
+    <div className="pfx-contrast__field-head">
+      <label htmlFor={"pfx-contrast-" + label.toLowerCase().replace(/\s+/g, "-")}>{label}</label>
+      <button type="button" onClick={() => onChange(current)} title="Use the current workspace color">
+        Use active <span aria-hidden="true">↗</span>
+      </button>
+    </div>
+    <div className="pfx-contrast__field-row">
       <input type="color" aria-label={label + " picker"} value={value}
         onChange={event => onChange(event.target.value)} />
-      <input aria-label={label + " HEX"} value={draft} maxLength={7} spellCheck={false}
-        aria-invalid={invalid}
+      <input id={"pfx-contrast-" + label.toLowerCase().replace(/\s+/g, "-")}
+        aria-label={label + " HEX"} value={draft} maxLength={7}
+        spellCheck={false} autoComplete="off" aria-invalid={invalid}
         onChange={event => { setDraft(event.target.value); setInvalid(false); }}
         onBlur={commit} onKeyDown={event => {
-          if (event.key === "Enter") commit();
+          if (event.key === "Enter") { commit(); event.currentTarget.blur(); }
           if (event.key === "Escape") { setDraft(value.toUpperCase()); setInvalid(false); }
         }} />
-    </div></label>
-    <button type="button" onClick={() => onChange(current)}>Use active</button>
+    </div>
     {invalid && <small role="alert">Enter a valid 6-digit HEX color</small>}
   </div>;
 }
@@ -44,48 +50,86 @@ export function Contrast({ currentHex }: { currentHex: string }) {
     setStatus(await copyColorText(css) ? "CSS copied" : "Clipboard unavailable");
   };
   return <section className="pfx-v2__page pfx-contrast" aria-label="Color contrast checker">
-    <div className="pfx-v2__page-heading"><div>
-      <span className="pfx-v2__eyebrow">ACCESSIBLE COLOR PAIRS</span>
-      <h1>Contrast.</h1>
-      <p>Test text and background colors against WCAG contrast thresholds.</p>
-    </div></div>
-    <div className="pfx-contrast__layout">
-      <div className="pfx-contrast__sidebar">
-        <div className="pfx-contrast__head"><strong>01 / COLORS</strong><span>Opaque HEX</span></div>
-        <div className="pfx-contrast__inputs">
-          <HexField label="Text color" value={foreground} current={currentHex} onChange={setForeground} />
-          <button className="pfx-contrast__swap" type="button" aria-label="Swap contrast colors"
-            onClick={() => { setForeground(background); setBackground(foreground); }}>⇅ Swap colors</button>
-          <HexField label="Background color" value={background} current={currentHex} onChange={setBackground} />
+    <div className="pfx-contrast__composition">
+      <header className="pfx-contrast__heading">
+        <div>
+          <span className="pfx-contrast__eyebrow">COLOR / 08</span>
+          <h1>Contrast</h1>
         </div>
-        <div className="pfx-contrast__ratio"><span>CONTRAST RATIO</span>
-          <strong>{ratio.toFixed(2)}:1</strong>
-          <span className={ratio >= 4.5 ? "pfx-contrast__pass" : "pfx-contrast__fail"}>
-            {ratio >= 4.5 ? "AA normal text passes" : "AA normal text fails"}</span>
+        <span className="pfx-contrast__heading-note">Type & color study</span>
+      </header>
+
+      <div className="pfx-contrast__work">
+        <div className="pfx-contrast__artwork">
+          <div className="pfx-contrast__preview"
+            style={{ color: foreground, backgroundColor: background }}
+            aria-label="Live text and background color preview">
+            <span className="pfx-contrast__preview-index">PFx — COLOR STUDY</span>
+            <div className="pfx-contrast__type">
+              <strong>Aa</strong>
+              <span>Color is context.</span>
+              <small>0123456789 / abcdef</small>
+            </div>
+            <div className="pfx-contrast__preview-bottom">
+              <span>Foreground / Background</span>
+              <span>↗</span>
+            </div>
+          </div>
+          <div className="pfx-contrast__artwork-caption" aria-hidden="true">
+            <span>01 / LIVE STUDY</span>
+            <span>{foreground.toUpperCase()} <span className="pfx-contrast__caption-cross">×</span> {background.toUpperCase()}</span>
+          </div>
         </div>
-        <div className="pfx-contrast__actions">
-          <button type="button" onClick={() => setForeground(readableInk(background))}>Find readable text</button>
-          <button type="button" onClick={() => void copy()}>Copy CSS</button>
+
+        <div className="pfx-contrast__tools">
+          <div className="pfx-contrast__pair">
+            <HexField label="Text color" value={foreground} current={currentHex} onChange={setForeground} />
+            <button className="pfx-contrast__swap" type="button" aria-label="Swap contrast colors"
+              onClick={() => { setForeground(background); setBackground(foreground); }}>
+              <span aria-hidden="true">⇅</span> <span className="pfx-contrast__swap-label">Swap</span>
+            </button>
+            <HexField label="Background color" value={background} current={currentHex} onChange={setBackground} />
+          </div>
+
+          <div className="pfx-contrast__evaluation">
+            <div className="pfx-contrast__ratio">
+              <span className="pfx-contrast__micro">CONTRAST RATIO</span>
+              <div><strong>{ratio.toFixed(2)}</strong><span>:1</span></div>
+            </div>
+            <div className="pfx-contrast__assessment">
+              <span className={ratio >= 4.5 ? "pfx-contrast__pass" : "pfx-contrast__fail"}>
+                <span className="pfx-contrast__mark" aria-hidden="true">{ratio >= 4.5 ? "●" : "○"}</span>
+                {ratio >= 4.5 ? "AA text passes" : "AA text fails"}
+              </span>
+            </div>
+          </div>
+
+          <div className="pfx-contrast__checks" aria-label="WCAG 2.2 text contrast results">
+            <div className="pfx-contrast__checks-head">
+              <span className="pfx-contrast__micro">WCAG / TEXT</span>
+              <span>MINIMUM</span>
+            </div>
+            <div className="pfx-contrast__criteria">
+              {criteria.map(item => <div key={item.label} className="pfx-contrast__criterion">
+                <span>{item.label}</span>
+                <span>{item.threshold}:1</span>
+                <strong className={item.passes ? "pfx-contrast__pass" : "pfx-contrast__fail"}>
+                  {item.passes ? "Pass" : "Fail"}
+                </strong>
+              </div>)}
+            </div>
+          </div>
+
+          <div className="pfx-contrast__actions">
+            <button type="button" onClick={() => setForeground(readableInk(background))}>
+              Find readable text
+            </button>
+            <button type="button" onClick={() => void copy()}>Copy CSS <span aria-hidden="true">↗</span></button>
+          </div>
+          <p className="pfx-contrast__status" role="status" aria-live="polite">{status}</p>
         </div>
-        <p role="status" aria-live="polite">{status}</p>
       </div>
-      <div className="pfx-contrast__main">
-        <div className="pfx-contrast__head"><strong>02 / LIVE PREVIEW</strong><span>Text on background</span></div>
-        <div className="pfx-contrast__preview" style={{color:foreground,backgroundColor:background}}>
-          <span>COLOR PREVIEW / PFx</span>
-          <h2>Color is context.</h2>
-          <p>Check how readable these colors are before applying them in your work.</p>
-          <div className="pfx-contrast__sample">Sample interface label</div>
-          <small>0123456789 · Aa Bb Cc</small>
-        </div>
-        <div className="pfx-contrast__head"><strong>03 / WCAG 2.2 TEXT RESULTS</strong><span>Contrast thresholds</span></div>
-        <div className="pfx-contrast__criteria">{criteria.map(c => <div key={c.label}>
-          <div><strong>{c.label}</strong><span>Minimum {c.threshold}:1</span></div>
-          <span className={c.passes ? "pfx-contrast__pass" : "pfx-contrast__fail"}>
-            {c.passes ? "Pass" : "Fail"}</span>
-        </div>)}</div>
-        <p className="pfx-contrast__note">Text contrast only. Other accessibility requirements still apply.</p>
-      </div>
+      <p className="pfx-contrast__footnote">Text contrast only. Other accessibility requirements still apply.</p>
     </div>
   </section>;
 }
