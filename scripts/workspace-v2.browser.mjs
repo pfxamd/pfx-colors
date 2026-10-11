@@ -467,6 +467,28 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.locator(".pfx-c-workbench--gradient").waitFor();
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 2,
           "Conic gradient received the current harmony set");
+        const conicCss = await page.locator(".pfx-gradient__css code").textContent();
+        assert.match(conicCss, /^conic-gradient\(/, "Harmony Conic mode produces CSS");
+        const conicColorStops = [...conicCss.matchAll(/rgb\([^)]*\)/g)].map(match => match[0]);
+        assert.ok(conicColorStops.length >= 3, "Periodic gradient includes a render-only closing stop");
+        assert.equal(conicColorStops[0], conicColorStops.at(-1),
+          "The color at 360° exactly matches 0°, removing the hard seam");
+        assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 2,
+          "Closing stop never becomes a user-editable duplicate");
+        const rasterCanvas = page.locator("canvas[data-rust-gradient-preview]");
+        if (await rasterCanvas.count()) {
+          await page.locator('canvas[data-rust-gradient-preview="ready"]').waitFor({ timeout: 30000 });
+          const detail = await rasterCanvas.evaluate(canvas => {
+            const box = canvas.parentElement.getBoundingClientRect();
+            return { width: canvas.width, height: canvas.height,
+              viewWidth: box.width, ratio: canvas.width / box.width,
+              quality: canvas.dataset.rustPreviewQuality };
+          });
+          assert.equal(detail.quality, "final", "Settled gradient preview is high quality");
+          assert.ok(detail.width > 160 && detail.height > 100 &&
+            detail.ratio >= 0.95, "Rust raster follows real preview size: " + JSON.stringify(detail));
+        }
+
         const gradientLayout = await page.locator(".pfx-gradient").evaluate(el => {
           const page = el.getBoundingClientRect();
           const header = el.querySelector(".pfx-gradient__toolbar").getBoundingClientRect();
