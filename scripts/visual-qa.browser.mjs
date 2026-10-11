@@ -90,7 +90,7 @@ for (const [browserName, launcher] of [["chromium",chromium],["firefox",firefox]
                 assert.equal(await page.locator(".pfx-picker__card-caption .pfx-picker__save").count(), 1,
                   "Picker Save button lives in the compact in-card toolbar");
               } else {
-                assert.equal(await page.locator(".pfx-gradient__toolbar .pfx-gradient__top-actions").count(), 1,
+                assert.equal(await page.locator(".pfx-gstudio__commands").count(), 1,
                   "Gradient commands live in the compact toolbar");
               }
             } else {
