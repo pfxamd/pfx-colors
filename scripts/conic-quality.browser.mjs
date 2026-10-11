@@ -107,9 +107,9 @@ try {
           const at = [];
           for (const p of positions) {
             const eps = 0.0001;
-            const left = gradient.sampleProgress(p - eps).color;
-            const middle = gradient.sampleProgress(p).color;
-            const right = gradient.sampleProgress(p + eps).color;
+            const left = gradient.sampleProgress(p === 0 ? 1 - eps : p - eps);
+            const middle = gradient.sampleProgress(p);
+            const right = gradient.sampleProgress(p + eps);
             at.push({ p, left, middle, right });
           }
           images.push({
