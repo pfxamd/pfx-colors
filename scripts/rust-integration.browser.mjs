@@ -82,7 +82,7 @@ async function scenario(browser, browserName, viewport, engine) {
     await page.getByRole("button", { name: /Send harmony to gradient/i }).click();
     await page.locator(".pfx-c-workbench--gradient").waitFor();
     assert.ok((await page.locator(".pfx-c-gradient-stop-handle").count()) >= 2);
-    await page.locator(".pfx-c-gradient-actions button[aria-label='Add gradient stop']").click();
+    await page.locator("button[aria-label='Add gradient stop']").click();
     const stopsAfterAdding = await page.locator(".pfx-c-gradient-stop-handle").count();
     assert.ok(stopsAfterAdding >= 3);
     await page.getByRole("button", { name: /UNDO/ }).click();
