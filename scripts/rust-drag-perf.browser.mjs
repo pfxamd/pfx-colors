@@ -108,6 +108,79 @@ for (const [browserName, engine] of [["chromium", chromium], ["firefox", firefox
         });
         console.log("RUST DRAG PERF PASS", browserName, viewport.width + "x" +
           viewport.height, JSON.stringify(outcome));
+
+        // Run a second sustained gesture through the periodic Conic path.
+        // Its render-only color samples must not stall the main thread.
+        await page.getByRole("button", { name: "conic gradient" }).click();
+        await page.locator('canvas[data-rust-gradient-preview="ready"]')
+          .waitFor({ timeout: 30000 });
+        const conicBefore = await page.evaluate(() => ({ ...window.__PFX_RUST_RENDER__ }));
+        const conicGrip = await page.getByRole("button", { name: "Rotate conic gradient" }).boundingBox();
+        assert.ok(conicGrip, "Conic drag handle exists");
+        await page.evaluate(() => {
+          const frames = { times: [], active: true };
+          window.__PFX_CONIC_FRAMES__ = frames;
+          let prior = performance.now();
+          const tick = now => {
+            if (!frames.active) return;
+            frames.times.push(now - prior);
+            prior = now;
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+        await page.mouse.move(conicGrip.x + conicGrip.width / 2,
+          conicGrip.y + conicGrip.height / 2);
+        await page.mouse.down();
+        for (let i = 0; i < 45; i++) {
+          const radians = 2 * Math.PI * (i + 1) / 45;
+          await page.mouse.move(cx + distance * Math.sin(radians),
+            cy - distance * Math.cos(radians));
+        }
+        await page.mouse.up();
+        await page.waitForFunction(previous => {
+          const stats = window.__PFX_RUST_RENDER__;
+          const settled = stats?.latestRevision > previous &&
+            stats.paintRevision === stats.latestRevision &&
+            document.querySelector('canvas[data-rust-gradient-preview]')?.dataset
+              .rustGradientPreview === "ready";
+          if (!settled) {
+            window.__PFX_CONIC_STABLE__ = null;
+            return false;
+          }
+          if (window.__PFX_CONIC_STABLE__?.revision !== stats.latestRevision) {
+            window.__PFX_CONIC_STABLE__ = { revision: stats.latestRevision, since: performance.now() };
+            return false;
+          }
+          return performance.now() - window.__PFX_CONIC_STABLE__.since >= 180;
+        }, conicBefore.latestRevision, { timeout: 30000 });
+        const conic = await page.evaluate(() => {
+          const collector = window.__PFX_CONIC_FRAMES__;
+          collector.active = false;
+          const times = collector.times.slice(1).sort((a, b) => a - b);
+          return {
+            frames: times.length,
+            p95FrameMs: times[Math.floor((times.length - 1) * 0.95)] ?? 0,
+            maxFrameMs: times.at(-1) ?? 0,
+            ...window.__PFX_RUST_RENDER__,
+          };
+        });
+        assert.ok(conic.frames >= 10, "Conic interaction must continue producing animation frames");
+        assert.ok(conic.p95FrameMs < 150,
+          "Conic pointer frame p95 exceeded budget: " + JSON.stringify(conic));
+        assert.ok(conic.maxFrameMs < 500,
+          "Conic pointer stalled the main thread: " + JSON.stringify(conic));
+        assert.ok(conic.painted > conicBefore.painted,
+          "Conic gradient has not delivered a newly rendered frame");
+        assert.equal(conic.paintRevision, conic.latestRevision,
+          "Conic gradient has not finished painting the current revision");
+        assert.deepEqual(errors, [], "Conic drag must not produce runtime errors");
+        await page.screenshot({
+          path: "browser-evidence/rust-regression/conic-drag-" + browserName +
+            "-" + viewport.width + ".png", animations: "disabled",
+        });
+        console.log("CONIC DRAG PERF PASS", browserName, viewport.width + "x" +
+          viewport.height, JSON.stringify(conic));
       } finally {
         await context.close();
       }
