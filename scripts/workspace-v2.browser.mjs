@@ -739,6 +739,8 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal((await page.getByRole("textbox", { name: "Background color HEX" }).inputValue()).toUpperCase(), "#FFFFFF",
           "Background HEX entry commits before swapping");
         await page.getByRole("button", { name: "Swap contrast colors" }).click();
+        await page.waitForFunction(() => document.querySelector('.pfx-contrast__field-row input[aria-label="Text color HEX"]')?.value.toUpperCase() === "#FFFFFF",
+          { timeout: 10000 });
         assert.equal((await page.getByRole("textbox", { name: "Text color HEX" }).inputValue()).toUpperCase(), "#FFFFFF");
         await page.getByRole("textbox", { name: "Text color HEX" }).fill("#555555");
         await page.getByRole("textbox", { name: "Text color HEX" }).press("Enter");
