@@ -29,10 +29,17 @@ describe("Seamless Conic interpolation", () => {
     });
     const painted = closeConicGradient(editor);
     expect(editor.stops).toHaveLength(3);
-    expect(painted.stops).toHaveLength(4);
-    expect(painted.stops[3].position).toBe(1);
-    expect(painted.stops[3].hex).toBe(painted.stops[0].hex);
-    expect(painted.stops[3].source).toEqual(painted.stops[0].source);
+    expect(painted.stops.length).toBeGreaterThan(4);
+    expect(painted.stops.length).toBeLessThanOrEqual(129);
+    expect(painted.stops.at(-1)?.position).toBe(1);
+    expect(painted.stops.at(-1)?.hex).toBe(painted.stops[0].hex);
+    expect(painted.stops.at(-1)?.source).toEqual(painted.stops[0].source);
+    for (const editable of editor.stops) {
+      const matching = painted.stops.find(stop => stop.position === editable.position);
+      expect(matching?.source.space).toBe(editable.source.space);
+      expect(matching?.source.coordinates).toEqual(editable.source.coordinates);
+      expect(matching?.source.alpha).toBe(editable.source.alpha);
+    }
     expect(sampleGradient(painted, 0).hex).toBe(sampleGradient(painted, 1).hex);
     expect(gradientToCss(painted)).toContain("conic-gradient(");
     expect(gradientToCss(painted)).toContain("100%");

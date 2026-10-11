@@ -5,7 +5,7 @@ import {
 import type { ColorInput, ColorValue, GradientStopInput, GradientType, WorkspaceState, PfxColorsWorkspace } from "@pfx/color-core";
 import { useNormalizedDragSurface } from "../interaction/use-normalized-drag-surface";
 import { useHorizontalTrackDrag } from "../interaction/use-horizontal-track-drag";
-import { useAngleHandleDrag, useNormalizedHandleDrag } from "../interaction/use-gradient-geometry";
+import { angleFromNormalizedPoint, useAngleHandleDrag, useNormalizedHandleDrag } from "../interaction/use-gradient-geometry";
 import { colorEngine, createGradient, generateHarmony, gradientToCss, sampleGradient, isRustEngine, recordRustGradientRaster } from "../rust/operations";
 import { copyColorText } from "./clipboard";
 import { useStoredState, numberBetween, oneOf } from "./workspace-state";
@@ -837,10 +837,13 @@ export function Gradient({
             onClick={(event) => {
               if (event.target !== event.currentTarget) return;
               const rect = event.currentTarget.getBoundingClientRect();
-              const at = Math.max(
-                0,
-                Math.min(1, (event.clientX - rect.left) / rect.width),
-              );
+              const point = {
+                x: (event.clientX - rect.left) / rect.width,
+                y: (event.clientY - rect.top) / rect.height,
+              };
+              const at = type === "conic"
+                ? ((angleFromNormalizedPoint(point, center, rect.width, rect.height) - angle + 360) % 360) / 360
+                : Math.max(0, Math.min(1, point.x));
               commitColor(asInput(sampleGradient(renderGradient, at)));
             }}
           >
