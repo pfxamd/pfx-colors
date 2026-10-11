@@ -117,10 +117,15 @@
   overflow: visible;
 }
 .pfx-gstudio__toolstrip {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; min-height: 38px;
+  display: grid; grid-template-columns: minmax(0,1fr);
+  justify-items: start; align-items: center;
+  row-gap: 4px;
   width: 100%; padding: 0; margin: 0 0 14px;
   background: transparent; border: none;
+}
+.pfx-gstudio__toolstrip .pfx-gstudio__geometry-tools {
+  justify-self: end;
+  min-height: 28px;
 }
 .pfx-gstudio__types { display: flex; gap: 3px; min-width: 0; }
 .pfx-v2 .pfx-gstudio__types button {
