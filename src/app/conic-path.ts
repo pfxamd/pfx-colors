@@ -25,8 +25,13 @@ type Tangent = Knot;
 const TAU = Math.PI * 2;
 const EPS = 1e-8;
 const hueModulo = (h: number) => ((h % 360) + 360) % 360;
-const shortHueDelta = (from: number, to: number) =>
-  ((to - from + 540) % 360 + 360) % 360 - 180;
+const shortHueDelta = (from: number, to: number) => {
+  // CSS Color 4 preserves the direction of an exact 180-degree tie.
+  let difference = hueModulo(to) - hueModulo(from);
+  if (difference > 180) difference -= 360;
+  else if (difference < -180) difference += 360;
+  return difference;
+};
 
 function monotoneSlope(previous: number, next: number, before: number, after: number): number {
   if (previous * next <= 0) return 0;
