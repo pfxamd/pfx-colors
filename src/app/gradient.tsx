@@ -431,6 +431,7 @@ export function Gradient({
     gradient: typeof gradient;
     width: number;
     height: number;
+    quality: "interactive" | "final";
   } | null>(null);
   const flushRender = useRef<() => void>(() => {});
 
@@ -501,6 +502,7 @@ export function Gradient({
     const stats = {
       submitted: 0, completed: 0, painted: 0, discarded: 0,
       latestRevision: 0, paintRevision: 0, maxRustMs: 0, worker: true,
+      paintedWidth: 0, paintedHeight: 0, lastQuality: "interactive",
     };
     Object.defineProperty(window, "__PFX_RUST_RENDER__", {
       value: stats, configurable: true,
@@ -517,6 +519,7 @@ export function Gradient({
       kind: "frame" | "error"; message?: string;
       revision: number; width: number; height: number;
       durationMs: number; pixels: ArrayBuffer;
+      quality: "interactive" | "final";
     }>) => {
       if (event.data.kind === "error") {
         console.error("PFx Rust gradient worker error:", event.data.message);
@@ -546,7 +549,12 @@ export function Gradient({
           new Uint8ClampedArray(event.data.pixels), event.data.width, event.data.height,
         ), 0, 0);
         canvas.dataset.rustGradientPreview =
-          event.data.revision === renderRevision.current ? "ready" : "pending";
+          event.data.revision === renderRevision.current && event.data.quality === "final"
+            ? "ready" : "pending";
+        canvas.dataset.rustPreviewQuality = event.data.quality;
+        stats.paintedWidth = event.data.width;
+        stats.paintedHeight = event.data.height;
+        stats.lastQuality = event.data.quality;
         stats.painted += 1;
         stats.paintRevision = event.data.revision;
         recordRustGradientRaster();
@@ -586,22 +594,38 @@ export function Gradient({
     const canvas = rustCanvasRef.current;
     const surface = previewRef.current;
     let scheduled = 0;
+    let settled: ReturnType<typeof setTimeout> | undefined;
+    const enqueue = (quality: "interactive" | "final") => {
+      if (!canvas.isConnected) return;
+      const box = surface.getBoundingClientRect();
+      if (box.width <= 0 || box.height <= 0) return;
+      const aspect = box.width / box.height;
+      // The small frame keeps pointer dragging responsive; the settled frame
+      // follows the real CSS size and DPR, bounded for reliable WASM throughput.
+      const targetWidth = quality === "interactive"
+        ? Math.max(180, Math.min(240, Math.round(box.width * 0.4)))
+        : Math.min(Math.round(box.width * Math.min(window.devicePixelRatio || 1, 2)),
+          1024, Math.floor(Math.sqrt(640000 * aspect)));
+      const width = Math.max(1, targetWidth);
+      const height = Math.max(1, Math.floor(width / aspect));
+      const revision = ++renderRevision.current;
+      canvas.dataset.rustGradientPreview = "pending";
+      latestRender.current = {
+        kind: "render", revision, gradient: renderGradient, width, height, quality,
+      };
+      const stats = (window as Window & {
+        __PFX_RUST_RENDER__?: { latestRevision: number };
+      }).__PFX_RUST_RENDER__;
+      if (stats) stats.latestRevision = revision;
+      flushRender.current();
+    };
     const schedule = () => {
       cancelAnimationFrame(scheduled);
+      if (settled !== undefined) clearTimeout(settled);
       scheduled = requestAnimationFrame(() => {
-        if (!canvas.isConnected) return;
-        const box = surface.getBoundingClientRect();
-        if (box.width <= 0 || box.height <= 0) return;
-        const width = 160;
-        const height = Math.max(1, Math.min(180, Math.round(width * box.height / box.width)));
-        const revision = ++renderRevision.current;
-        canvas.dataset.rustGradientPreview = "pending";
-        latestRender.current = { kind: "render", revision, gradient: renderGradient, width, height };
-        const stats = (window as Window & {
-          __PFX_RUST_RENDER__?: { latestRevision: number };
-        }).__PFX_RUST_RENDER__;
-        if (stats) stats.latestRevision = revision;
-        flushRender.current();
+        enqueue("interactive");
+        // Never queue expensive final frames during active pointer movement.
+        settled = setTimeout(() => enqueue("final"), 360);
       });
     };
     const observer = new ResizeObserver(schedule);
@@ -610,6 +634,7 @@ export function Gradient({
     return () => {
       observer.disconnect();
       cancelAnimationFrame(scheduled);
+      if (settled !== undefined) clearTimeout(settled);
     };
   }, [renderGradient]);
 
