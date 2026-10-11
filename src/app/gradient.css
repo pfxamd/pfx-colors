@@ -586,3 +586,18 @@
   .pfx-v2 .pfx-c-gradient-preview { height: 290px; }
   .pfx-v2 .pfx-gradient__footer { align-items: center; }
 }
+
+/* Prevent field handles clipping at fully saturated / lightness extremes. */
+@media (max-width: 580px) {
+  .pfx-v2 .pfx-gradient__top-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .pfx-v2 .pfx-gradient__top-actions > button,
+  .pfx-v2 .pfx-gradient__top-actions > .pfx-gradient__menu-anchor,
+  .pfx-v2 .pfx-gradient__top-actions > .pfx-gradient__menu-anchor > button {
+    width: 100%;
+    min-width: 0;
+  }
+}
