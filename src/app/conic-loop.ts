@@ -1,5 +1,6 @@
 import type { ColorInput, GradientDefinition, GradientStopInput } from "@pfx/color-core";
-import { createGradient } from "../rust/operations";
+import { colorEngine, createGradient } from "../rust/operations";
+import { smoothConicStops } from "./conic-path";
 
 /**
  * Conic gradients are periodic, but distinct colors at 0 and 360 degrees
@@ -41,8 +42,12 @@ export function closeConicGradient(gradient: GradientDefinition): GradientDefini
     color: asInput(stop.source),
     position: stop.position,
   })));
+  const paintedStops = gradient.interpolationSpace === "oklch" &&
+    (gradient.hue === undefined || gradient.hue === "shorter")
+    ? smoothConicStops(stops, color => colorEngine.color.convert(color, "oklch"))
+    : stops;
   return createGradient(
-    [...stops, { color: stops[0].color, position: 1 }],
+    [...paintedStops, { color: stops[0].color, position: 1 }],
     {
       type: "conic",
       angle: gradient.angle,
