@@ -36,7 +36,9 @@ describe("Seamless Conic interpolation", () => {
     expect(painted.stops.at(-1)?.source).toEqual(painted.stops[0].source);
     for (const editable of editor.stops) {
       const matching = painted.stops.find(stop => stop.position === editable.position);
-      expect(matching?.source).toEqual(editable.source);
+      expect(matching?.source.space).toBe(editable.source.space);
+      expect(matching?.source.coordinates).toEqual(editable.source.coordinates);
+      expect(matching?.source.alpha).toBe(editable.source.alpha);
     }
     expect(sampleGradient(painted, 0).hex).toBe(sampleGradient(painted, 1).hex);
     expect(gradientToCss(painted)).toContain("conic-gradient(");
