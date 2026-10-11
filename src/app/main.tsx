@@ -11,6 +11,7 @@ import "./gradient.css";
 import "./home.css";
 import "./explore.css";
 import "./color-tools.css";
+import "./contrast.css";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("PFx Colors root element missing");
