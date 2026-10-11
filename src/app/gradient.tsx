@@ -409,6 +409,7 @@ export function Gradient({
     "pfx-colors.gradient.selected-stop.v2", 0, numberBetween(0, 15));
   const [status, setStatus] = useState("");
   const [showExport, setShowExport] = useState(false);
+  const [showSave, setShowSave] = useState(false);
   const [initialCenter] = useStoredState(
     "pfx-colors.gradient.center.v2",
     { x: state.gradient?.centerX ?? 0.5, y: state.gradient?.centerY ?? 0.5 }, validCenter);
@@ -811,16 +812,29 @@ export function Gradient({
         <div className="pfx-gradient__top-actions">
           <button type="button" className="pfx-gradient__randomize" onClick={randomizeGradient}
             title="Generate a new random gradient"><span aria-hidden="true">↻</span> Random gradient</button>
-          <button type="button" onClick={() => void copy(css, "Gradient CSS")}>Copy CSS</button>
-          <button type="button" onClick={saveGradientSet}>Save colors</button>
-          <button type="button" onClick={saveCurrentGradient}>Save gradient</button>
           <button type="button" className="pfx-gradient__primary"
-            aria-expanded={showExport} onClick={() => setShowExport(value => !value)}>
-            Export {showExport ? "−" : "↓"}
+            onClick={() => void copy(css, "Gradient CSS")}>Copy CSS</button>
+          <div className="pfx-gradient__menu-anchor">
+            <button type="button" aria-expanded={showSave}
+              aria-controls="pfx-gradient-save-menu"
+              onClick={() => { setShowExport(false); setShowSave(value => !value); }}>
+              Save <span aria-hidden="true">⌄</span>
+            </button>
+            {showSave && (
+              <div className="pfx-gradient__menu" id="pfx-gradient-save-menu" role="group" aria-label="Save options">
+                <button type="button" onClick={() => { saveCurrentGradient(); setShowSave(false); }}>Save gradient</button>
+                <button type="button" onClick={() => { saveGradientSet(); setShowSave(false); }}>Save colors</button>
+              </div>
+            )}
+          </div>
+          <button type="button" aria-expanded={showExport}
+            aria-controls="pfx-gradient-export-menu"
+            onClick={() => { setShowSave(false); setShowExport(value => !value); }}>
+            Export <span aria-hidden="true">{showExport ? "−" : "⌄"}</span>
           </button>
         </div>
       </div>
-      {showExport && <div className="pfx-gradient__exports">
+      {showExport && <div className="pfx-gradient__exports" id="pfx-gradient-export-menu" role="group" aria-label="Export options">
         <button type="button" onClick={() => downloadText("pfx-gradient.css", cssFile, "text/css;charset=utf-8")}>Download CSS</button>
         <button type="button" onClick={() => downloadText("pfx-gradient.json", jsonFile, "application/json;charset=utf-8")}>Download JSON</button>
         <button type="button" onClick={() => void copy(jsonFile, "Gradient JSON")}>Copy JSON</button>
@@ -828,7 +842,7 @@ export function Gradient({
       <div className="pfx-c-gradient-shell">
         <div className="pfx-c-gradient-canvas-card">
           <div className="pfx-gradient__panel-heading">
-            <strong>Preview</strong><span>{type} · {gradient.stops.length} stops</span>
+            <strong>Canvas</strong><span>{type} · {gradient.stops.length} colors</span>
           </div>
           <div
             ref={previewRef}
@@ -915,7 +929,7 @@ export function Gradient({
 
         <aside className="pfx-c-gradient-inspector">
           <div className="pfx-gradient__panel-heading pfx-gradient__inspector-title">
-            <strong>Controls</strong>
+            <strong>Adjust</strong>
           </div>
           <div className="pfx-gradient__group-label">Gradient type</div>
           <div className="pfx-c-gradient-types" aria-label="Gradient type">
@@ -941,7 +955,7 @@ export function Gradient({
               disabled={type === "radial"} onChange={event => updateGeometry({ angle: Number(event.target.value) })} />
           </div>
           <div className="pfx-gradient__editor-heading">
-            <strong>SELECTED STOP</strong><span>{selectedStop + 1} / {gradient.stops.length}</span>
+            <strong>Selected color</strong><span>{selectedStop + 1} of {gradient.stops.length}</span>
           </div>
           {activeStop && (
             <GradientColorEditor
@@ -954,6 +968,7 @@ export function Gradient({
             <button type="button" onClick={() => void copy(activeStop.hex.toUpperCase(), "Stop HEX")}>Copy stop HEX</button>
             <button type="button" onClick={() => updateStopColor(selectedStop, asInput(state.color.source))}>Use current color</button>
           </div>
+          <div className="pfx-gradient__position-row"><span>Position</span>
           <div className="pfx-c-gradient-position">
             <button
               type="button"
@@ -974,6 +989,8 @@ export function Gradient({
             </button>
           </div>
 
+          </div>
+
           <div className="pfx-c-gradient-actions">
             <button
               type="button"
@@ -981,7 +998,7 @@ export function Gradient({
               aria-label="Add gradient stop"
               title="Add stop"
             >
-              +
+              + <span>Add color</span>
             </button>
             <button
               type="button"
@@ -989,7 +1006,7 @@ export function Gradient({
               aria-label="Reverse gradient"
               title="Reverse"
             >
-              ⇄
+              ⇄ <span>Reverse</span>
             </button>
             <button
               type="button"
@@ -998,11 +1015,14 @@ export function Gradient({
               aria-label="Remove selected stop"
               title="Remove stop"
             >
-              ×
+              × <span>Remove</span>
             </button>
           </div>
 
-          <div className="pfx-gradient__group-label">Interpolation</div>
+          <details className="pfx-gradient__advanced">
+            <summary><span>Advanced settings</span><small>{space.toUpperCase()}</small></summary>
+            <div className="pfx-gradient__advanced-body">
+          <div className="pfx-gradient__group-label">Color interpolation</div>
           <div className="pfx-c-gradient-space-grid" aria-label="Interpolation space">
             {[
               ["oklch", "OKLCH"],
@@ -1020,11 +1040,16 @@ export function Gradient({
               </button>
             ))}
           </div>
+            </div>
+          </details>
         </aside>
       </div>
       <div className="pfx-gradient__footer">
-        <div className="pfx-gradient__css"><span>CSS</span>
-          <code title={css}>{css}</code></div>
+        <details className="pfx-gradient__source">
+          <summary>View CSS <span aria-hidden="true">⌄</span></summary>
+          <div className="pfx-gradient__css"><span>CSS</span>
+            <code title={css}>{css}</code></div>
+        </details>
         <p role="status" aria-live="polite">{status}</p>
       </div>
     </section>
