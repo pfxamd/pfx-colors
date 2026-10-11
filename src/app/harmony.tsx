@@ -250,7 +250,7 @@ export function Harmony({ state, workspace, sync, commitColor, openGradient,
 
       <aside className="pfx-harmony__inspector" aria-label="Harmony controls">
         <div className="pfx-harmony__section-line"><strong>03 / ROTATION</strong>
-          <button type="button" onClick={reset}>Reset geometry</button></div>
+          <button type="button" onClick={reset} aria-label="Reset geometry" title="Reset geometry">Reset</button></div>
         <RotationDial hue={harmony.baseHue} onChange={rotate} />
         <div className="pfx-harmony__spread">
           <div><strong>Color spread</strong><output>{angleValue}°</output></div>
@@ -263,7 +263,7 @@ export function Harmony({ state, workspace, sync, commitColor, openGradient,
           <div><small>SELECTED · {String(chosen.index + 1).padStart(2,"0")}</small>
             <strong>{chosen.hex.toUpperCase()}</strong></div>
           <span style={{background:chosen.hex}} />
-          <button type="button" onClick={() => void copy(chosen.hex.toUpperCase(), "Color copied")}>Copy selected</button>
+          <button type="button" aria-label="Copy selected" title="Copy selected color" onClick={() => void copy(chosen.hex.toUpperCase(), "Color copied")}>Copy</button>
         </div>}
         <div className="pfx-harmony__export">
           <button type="button" aria-expanded={expandedExport}
