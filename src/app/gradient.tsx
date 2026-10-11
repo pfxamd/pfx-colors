@@ -12,6 +12,7 @@ import { useStoredState, numberBetween, oneOf } from "./workspace-state";
 import type { SavedGradientDraft } from "./gradient-session";
 import { gradientExport, gradientCssExport, compactGradientCss } from "./gradient-export";
 import { generateRandomGradient } from "./gradient-random";
+import { closeConicGradient, conicEditableLimit, prepareConicStops } from "./conic-loop";
 
 function validCenter(value: unknown): value is { x: number; y: number } {
   if (!value || typeof value !== "object") return false;
@@ -455,10 +456,13 @@ export function Gradient({
   const gradient = useMemo(
     () =>
       createGradient(
-        source.stops.map((stop) => ({
-          color: asInput(stop.source),
-          position: stop.position,
-        })),
+        type === "conic"
+          ? prepareConicStops(source.stops.map(stop => ({
+              color: asInput(stop.source), position: stop.position,
+            })))
+          : source.stops.map(stop => ({
+              color: asInput(stop.source), position: stop.position,
+            })),
         {
           type,
           angle,
@@ -470,6 +474,8 @@ export function Gradient({
       ),
     [angle, center.x, center.y, source, space, type],
   );
+
+  const renderGradient = useMemo(() => closeConicGradient(gradient), [gradient]);
 
   useEffect(() => {
     if (requestVersion === 0 || !state.gradient) return;
@@ -590,7 +596,7 @@ export function Gradient({
         const height = Math.max(1, Math.min(180, Math.round(width * box.height / box.width)));
         const revision = ++renderRevision.current;
         canvas.dataset.rustGradientPreview = "pending";
-        latestRender.current = { kind: "render", revision, gradient, width, height };
+        latestRender.current = { kind: "render", revision, gradient: renderGradient, width, height };
         const stats = (window as Window & {
           __PFX_RUST_RENDER__?: { latestRevision: number };
         }).__PFX_RUST_RENDER__;
@@ -605,9 +611,9 @@ export function Gradient({
       observer.disconnect();
       cancelAnimationFrame(scheduled);
     };
-  }, [gradient]);
+  }, [renderGradient]);
 
-  const css = compactGradientCss(gradientToCss(gradient));
+  const css = compactGradientCss(gradientToCss(renderGradient));
   const cssFile = gradientCssExport(css);
   const jsonFile = gradientExport(gradient);
   const activeStop = gradient.stops[selectedStop] ?? gradient.stops[0];
@@ -635,10 +641,14 @@ export function Gradient({
     changes: Partial<{ type: GradientType; angle: number; centerX: number;
       centerY: number; interpolationSpace: string }> = {},
   ) => {
-    sync(workspace.createGradient(stops, {
-      type, angle, centerX: center.x, centerY: center.y,
-      interpolationSpace: space, hue: "shorter", ...changes,
-    }));
+    const nextType = changes.type ?? type;
+    sync(workspace.createGradient(
+      nextType === "conic" ? prepareConicStops(stops) : stops,
+      {
+        type, angle, centerX: center.x, centerY: center.y,
+        interpolationSpace: space, hue: "shorter", ...changes,
+      },
+    ));
   };
   const updateGeometry = (changes: Parameters<typeof commitGradient>[1]) => {
     commitGradient(gradient.stops.map(stop => ({
@@ -662,7 +672,9 @@ export function Gradient({
     commitStops(
       gradient.stops.map((item, itemIndex) => ({
         color: asInput(item.source),
-        position: itemIndex === index ? position : item.position,
+        position: itemIndex === index && type === "conic"
+          ? Math.min(position, conicEditableLimit(gradient.stops.length))
+          : itemIndex === index ? position : item.position,
       })),
     );
   };
@@ -677,8 +689,11 @@ export function Gradient({
   };
 
   const addStopAt = (position: number) => {
-    const at = Math.max(0, Math.min(1, position));
-    const sampled = sampleGradient(gradient, at);
+    const at = Math.max(0, Math.min(
+      type === "conic" ? conicEditableLimit(gradient.stops.length + 1) : 1,
+      position,
+    ));
+    const sampled = sampleGradient(renderGradient, at);
     const insertionIndex = gradient.stops.filter(
       (stop) => stop.position <= at,
     ).length;
@@ -729,7 +744,9 @@ export function Gradient({
     commitStops(
       gradient.stops.map((stop) => ({
         color: asInput(stop.source),
-        position: 1 - stop.position,
+        position: type === "conic"
+          ? gradient.stops[gradient.stops.length - 1].position - stop.position
+          : 1 - stop.position,
       })),
     );
     setSelectedStop(gradient.stops.length - 1 - selectedStop);
@@ -745,7 +762,8 @@ export function Gradient({
     const previous = gradient.stops[selectedStop - 1];
     const next = gradient.stops[selectedStop + 1];
     const min = previous ? previous.position + 0.005 : 0;
-    const max = next ? next.position - 0.005 : 1;
+    const max = next ? next.position - 0.005
+      : type === "conic" ? conicEditableLimit(gradient.stops.length) : 1;
 
     updateStopPosition(
       selectedStop,
@@ -798,7 +816,7 @@ export function Gradient({
                 0,
                 Math.min(1, (event.clientX - rect.left) / rect.width),
               );
-              commitColor(asInput(sampleGradient(gradient, at)));
+              commitColor(asInput(sampleGradient(renderGradient, at)));
             }}
           >
             {isRustEngine() && !rustPreviewFailed && (
@@ -845,7 +863,8 @@ export function Gradient({
                 const previous = gradient.stops[index - 1];
                 const next = gradient.stops[index + 1];
                 const min = previous ? previous.position + 0.005 : 0;
-                const max = next ? next.position - 0.005 : 1;
+                const max = next ? next.position - 0.005
+                  : type === "conic" ? conicEditableLimit(gradient.stops.length) : 1;
 
                 return (
                   <GradientStopHandle
