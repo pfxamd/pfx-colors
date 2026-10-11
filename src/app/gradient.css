@@ -146,7 +146,7 @@
 }
 .pfx-v2 .pfx-c-gradient-preview {
   width: calc(100% - 24px);
-  height: clamp(320px, 54vh, 610px);
+  height: clamp(320px, 52vh, 610px);
   min-height: 0;
   margin: 12px 12px 9px;
   border: 1px solid var(--pfx-line-strong);
