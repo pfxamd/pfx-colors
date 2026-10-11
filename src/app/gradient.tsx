@@ -982,10 +982,7 @@ export function Gradient({
                 </div>
                 <button className="pfx-gstudio__remove" type="button"
                   disabled={gradient.stops.length <= 2}
-                  onClick={() => {
-                    removeStop(selectedStop);
-                    if (gradient.stops.length === 3) setPanel(null);
-                  }}
+                  onClick={() => removeStop(selectedStop)}
                   aria-label="Remove selected stop">Remove color</button>
               </div>
             ) : (
