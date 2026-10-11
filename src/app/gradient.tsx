@@ -409,7 +409,7 @@ export function Gradient({
   const [status, setStatus] = useState("");
   const [showExport, setShowExport] = useState(false);
   const [showSave, setShowSave] = useState(false);
-  const [panel, setPanel] = useState<"color" | "settings" | null>(null);
+  const [panel, setPanel] = useState<"color" | "settings">("color");
   const [showGuides, setShowGuides] = useState(false);
   const [initialCenter] = useStoredState(
     "pfx-colors.gradient.center.v2",
@@ -688,7 +688,7 @@ export function Gradient({
   const randomizeGradient = () => {
     const next = generateRandomGradient(gradient.stops.map(stop => stop.hex));
     setSelectedStop(0);
-    setPanel(null);
+    setPanel("color");
     commitGradient(next.stops, {
       type: next.type, angle: next.angle,
       centerX: next.center.x, centerY: next.center.y,
@@ -868,7 +868,7 @@ export function Gradient({
                 <span aria-hidden="true">⌖</span> Guides
               </button>
               <button className={"pfx-gstudio__advanced-toggle" + (panel === "settings" ? " is-active" : "")}
-                type="button" onClick={() => setPanel(value => value === "settings" ? null : "settings")}
+                type="button" onClick={() => setPanel(value => value === "settings" ? "color" : "settings")}
                 aria-pressed={panel === "settings"}>Settings <span aria-hidden="true">⚙</span></button>
             </div>
           </div>
@@ -958,8 +958,8 @@ export function Gradient({
                 <span>{panel === "color" ? "POINT " + (selectedStop + 1) + " OF " + gradient.stops.length : "GRADIENT"}</span>
                 <strong>{panel === "color" ? "Edit color" : "Settings"}</strong>
               </div>
-              <button type="button" onClick={() => setPanel(null)}
-                aria-label="Close editor" title="Close panel">×</button>
+              {panel === "settings" && <button type="button" onClick={() => setPanel("color")}
+                aria-label="Back to color editor" title="Back to color editor">←</button>}
             </div>
             {panel === "color" ? (
               <div className="pfx-gstudio__inspector-body">
@@ -1006,7 +1006,7 @@ export function Gradient({
                   <strong>Position and direction</strong>
                   <span>Drag the handles directly on the canvas</span>
                   <button type="button" className="pfx-gstudio__setting-action"
-                    onClick={() => { setShowGuides(true); setPanel(null); }}>
+                    onClick={() => { setShowGuides(true); setPanel("color"); }}>
                     Show canvas guides <span aria-hidden="true">↗</span>
                   </button>
                 </div>
