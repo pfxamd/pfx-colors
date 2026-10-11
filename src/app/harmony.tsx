@@ -193,9 +193,9 @@ export function Harmony({ state, workspace, sync, commitColor, openGradient,
   return <section className="pfx-v2__page pfx-c-workbench--harmony pfx-harmony"
     aria-label="Harmony workstation">
     <div className="pfx-v2__page-heading pfx-harmony__heading">
-      <div><span className="pfx-v2__eyebrow">COLOR RELATIONSHIPS</span>
-        <h1>Harmony.</h1>
-        <p>Build linked color families. Rotate the wheel, adjust geometry, and use every result.</p></div>
+      <div><span className="pfx-v2__eyebrow">COLOR STUDIES / 03</span>
+        <h1>Harmony</h1>
+        </div>
       <div className="pfx-harmony__actions">
         <button type="button" onClick={() => void copy(hexes.map(x => x.toUpperCase()).join("\n"),
           "Harmony HEX colors copied")}>Copy all HEX</button>
@@ -209,7 +209,7 @@ export function Harmony({ state, workspace, sync, commitColor, openGradient,
     </div>
 
     <div className="pfx-harmony__presets">
-      <div className="pfx-harmony__section-line"><strong>01 / RELATIONSHIP</strong><span>Choose a harmony type</span></div>
+      <div className="pfx-harmony__section-line"><strong>01 / RELATIONSHIPS</strong><span>Six color structures</span></div>
       <div className="pfx-c-harmony-presets" aria-label="Harmony schemes">
         {HARMONY_SCHEMES.map(item => <button key={item} type="button"
           className={"pfx-c-harmony-preset" + (scheme === item ? " pfx-is-current" : "")}
@@ -222,8 +222,8 @@ export function Harmony({ state, workspace, sync, commitColor, openGradient,
 
     <div className="pfx-harmony__stage">
       <div className="pfx-harmony__wheel-card">
-        <div className="pfx-harmony__section-line"><strong>02 / INTERACTIVE WHEEL</strong>
-          <span>Drag a handle to rotate the linked colors</span></div>
+        <div className="pfx-harmony__section-line"><strong>02 / COLOR ORBIT</strong>
+          <span>Drag a point to rotate</span></div>
         <div className="pfx-c-wheel-zone pfx-harmony__wheel-zone">
           <div className="pfx-c-wheel pfx-harmony__wheel" ref={wheelRef}>
             {harmony.colors.map(color => {
@@ -249,8 +249,8 @@ export function Harmony({ state, workspace, sync, commitColor, openGradient,
       </div>
 
       <aside className="pfx-harmony__inspector" aria-label="Harmony controls">
-        <div className="pfx-harmony__section-line"><strong>03 / CONTROL</strong>
-          <button type="button" onClick={reset}>Reset geometry</button></div>
+        <div className="pfx-harmony__section-line"><strong>03 / ROTATION</strong>
+          <button type="button" onClick={reset} aria-label="Reset geometry" title="Reset geometry">Reset</button></div>
         <RotationDial hue={harmony.baseHue} onChange={rotate} />
         <div className="pfx-harmony__spread">
           <div><strong>Color spread</strong><output>{angleValue}°</output></div>
@@ -263,7 +263,7 @@ export function Harmony({ state, workspace, sync, commitColor, openGradient,
           <div><small>SELECTED · {String(chosen.index + 1).padStart(2,"0")}</small>
             <strong>{chosen.hex.toUpperCase()}</strong></div>
           <span style={{background:chosen.hex}} />
-          <button type="button" onClick={() => void copy(chosen.hex.toUpperCase(), "Color copied")}>Copy selected</button>
+          <button type="button" aria-label="Copy selected" title="Copy selected color" onClick={() => void copy(chosen.hex.toUpperCase(), "Color copied")}>Copy</button>
         </div>}
         <div className="pfx-harmony__export">
           <button type="button" aria-expanded={expandedExport}
@@ -277,8 +277,8 @@ export function Harmony({ state, workspace, sync, commitColor, openGradient,
     </div>
 
     <div className="pfx-harmony__result">
-      <div className="pfx-harmony__section-line"><strong>04 / HARMONY COLORS</strong>
-        <span>Select · Copy · Save individually</span></div>
+      <div className="pfx-harmony__section-line"><strong>04 / SELECTED PALETTE</strong>
+        <span>Select, copy or save</span></div>
       <div className="pfx-c-harmony-swatches pfx-harmony__swatches" aria-label="Harmony colors">
         {harmony.colors.map(color => <article key={color.index} className="pfx-harmony__swatch">
           <button type="button" className="pfx-harmony__swatch-surface"
