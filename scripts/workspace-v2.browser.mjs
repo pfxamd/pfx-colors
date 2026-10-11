@@ -627,6 +627,22 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         assert.equal(await page.locator(".pfx-c-gradient-stop-handle").count(), 2,
           "Gradient stop geometry survives reload");
         const randomGradientButton = page.getByRole("button", { name: "Random gradient" });
+        for (const requested of ["linear", "radial", "conic"]) {
+          const typeButton = page.getByRole("button", { name: requested + " gradient" });
+          await typeButton.click();
+          for (let generation = 0; generation < 3; generation += 1) {
+            const previous = await page.locator(".pfx-gstudio__source code").textContent();
+            await randomGradientButton.click();
+            const generated = await page.locator(".pfx-gstudio__source code").textContent();
+            assert.equal(await typeButton.getAttribute("aria-pressed"), "true",
+              "Random preserves the active " + requested + " mode");
+            assert.ok(generated.startsWith(requested + "-gradient("),
+              "Generated CSS matches selected type " + requested + ": " + generated);
+            assert.notEqual(generated, previous,
+              "Each " + requested + " generation changes its gradient");
+          }
+        }
+        await page.getByRole("button", { name: "linear gradient" }).click();
         const beforeRandom = await page.locator(".pfx-gstudio__source code").textContent();
         await randomGradientButton.click();
         const firstRandom = await page.locator(".pfx-gstudio__source code").textContent();
