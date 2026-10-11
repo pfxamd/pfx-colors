@@ -686,14 +686,14 @@ export function Gradient({
   };
 
   const randomizeGradient = () => {
-    const next = generateRandomGradient(gradient.stops.map(stop => stop.hex));
+    const next = generateRandomGradient(type, gradient.stops.map(stop => stop.hex));
     setSelectedStop(0);
     setPanel("color");
     commitGradient(next.stops, {
       type: next.type, angle: next.angle,
       centerX: next.center.x, centerY: next.center.y,
     });
-    setStatus("New random gradient");
+    setStatus("New " + type + " gradient");
   };
 
   const commitStops = (stops: GradientStopInput[]) => commitGradient(stops);
@@ -813,7 +813,7 @@ export function Gradient({
         </div>
         <div className="pfx-gstudio__commands">
           <button className="pfx-gstudio__new" type="button" onClick={randomizeGradient}
-            aria-label="Random gradient" title="Generate new gradient">
+            aria-label="Random gradient" title={"Generate another " + type + " gradient"}>
             <span aria-hidden="true">↻</span> New
           </button>
           <button className="pfx-gstudio__main-command" type="button"
