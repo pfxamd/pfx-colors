@@ -441,6 +441,40 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
 
         await page.locator('nav[aria-label="Color tools"] button').filter({ hasText: "Harmony" }).click();
         await page.locator(".pfx-c-workbench--harmony").waitFor();
+        // The color studio is deliberately compact, with a complete visible
+        // working set and genuinely unused space rather than stretched cards.
+        const harmonyFit = await page.locator(".pfx-c-workbench--harmony").evaluate(el => {
+          const root = el.getBoundingClientRect();
+          const heading = el.querySelector(".pfx-harmony__heading").getBoundingClientRect();
+          const swatches = el.querySelector(".pfx-harmony__swatches").getBoundingClientRect();
+          const wheel = el.querySelector(".pfx-harmony__wheel").getBoundingClientRect();
+          const exportButton = el.querySelector(".pfx-harmony__export > button").getBoundingClientRect();
+          const actions = el.querySelector(".pfx-harmony__actions").getBoundingClientRect();
+          return {
+            scrollY: el.scrollHeight - el.clientHeight,
+            scrollX: el.scrollWidth - el.clientWidth,
+            rightBlank: root.right - heading.right,
+            wheelWidth: wheel.width, swatchesBottom: swatches.bottom,
+            exportBottom: exportButton.bottom, actionsBottom: actions.bottom,
+            rootBottom: root.bottom,
+          };
+        });
+        assert.ok(harmonyFit.scrollY <= 2 && harmonyFit.swatchesBottom <= harmonyFit.rootBottom + 2,
+          "Harmony has no vertical scrolling or clipped palette: " + JSON.stringify(harmonyFit));
+        assert.ok(harmonyFit.scrollX <= 2,
+          "Harmony has no horizontal scrolling: " + JSON.stringify(harmonyFit));
+        assert.ok(harmonyFit.exportBottom <= harmonyFit.rootBottom + 2 &&
+          harmonyFit.actionsBottom <= harmonyFit.rootBottom + 2,
+          "All core Harmony actions remain visible");
+        if (viewport.width >= 1200) {
+          assert.ok(harmonyFit.wheelWidth <= 260 && harmonyFit.wheelWidth >= 210,
+            "Harmony wheel stays an intentional fixed size");
+          assert.ok(harmonyFit.rightBlank >= 300,
+            "Harmony leaves at least 300px of actual unoccupied desktop workspace");
+        } else {
+          assert.ok(harmonyFit.wheelWidth <= 190,
+            "Mobile harmony wheel must not expand to fill the viewport");
+        }
         assert.equal(await page.locator(".pfx-c-harmony-presets button").count(), 6,
           "All six harmony relationships available");
         await page.locator(".pfx-c-harmony-presets button[aria-label='analogous']").click();
