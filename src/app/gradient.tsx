@@ -75,7 +75,6 @@ function GradientStopHandle({
       } as CSSProperties}
       onPointerDown={(event) => {
         event.stopPropagation();
-        onSelect();
       }}
       onClick={(event) => {
         event.stopPropagation();
@@ -901,6 +900,9 @@ export function Gradient({
                 angle={angle} center={center}
                 onAngleChange={value => updateGeometry({ angle: value })}
                 onCenterChange={point => updateGeometry({ centerX: point.x, centerY: point.y })} />}
+              {showGuides && type !== "radial" && <output className="pfx-c-gradient-preview__angle">
+                {String(Math.round(angle)).padStart(3, "0")}°
+              </output>}
               <span className="pfx-gstudio__canvas-caption" aria-hidden="true">
                 {type} <span>·</span> {gradient.stops.length} colors
               </span>
