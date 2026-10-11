@@ -206,8 +206,8 @@ function GradientColorEditor({
       >
         <i
           style={{
-            left: String(saturation) + "%",
-            top: String(100 - lightness) + "%",
+            left: "clamp(8px, " + String(saturation) + "%, calc(100% - 8px))",
+            top: "clamp(8px, " + String(100 - lightness) + "%, calc(100% - 8px))",
             background: color.hex ?? color.css,
           }}
         />
