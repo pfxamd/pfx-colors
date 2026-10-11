@@ -745,6 +745,7 @@ for (const [browserName, launcher] of [["chromium", chromium], ["firefox", firef
         await page.getByRole("textbox", { name: "Text color HEX" }).fill("#555555");
         await page.getByRole("textbox", { name: "Text color HEX" }).press("Enter");
         await page.getByRole("button", { name: "Find readable text" }).click();
+        await page.waitForFunction(() => document.querySelector('.pfx-contrast__field-row input[aria-label="Text color HEX"]')?.value.toUpperCase() === "#FFFFFF");
         assert.equal((await page.getByRole("textbox", { name: "Text color HEX" }).inputValue()).toUpperCase(), "#FFFFFF",
           "Suggested readable ink remains functional");
         await page.getByRole("button", { name: "Copy CSS" }).click();
