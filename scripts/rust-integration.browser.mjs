@@ -117,8 +117,10 @@ async function scenario(browser, browserName, viewport, engine) {
         assert.ok(sampled.counts?.[operation] > 0,
           "Real Rust WASM operation not exercised: " + operation + " " + JSON.stringify(sampled));
       }
-      assert.equal(sampled.width, 160);
-      assert.ok(sampled.height > 0 && sampled.height <= 180);
+      assert.ok(sampled.width > 160 && sampled.width <= 1024,
+        "Final Rust preview must be higher resolution than the old fixed 160px");
+      assert.ok(sampled.height > 0 && sampled.width * sampled.height <= 640000,
+        "Rust preview remains within the bounded pixel budget");
       assert.ok(sampled.alphaAtCenter > 0);
     } else {
       assert.equal(await page.evaluate(() => window.__PFX_RUST_OPS__), undefined);

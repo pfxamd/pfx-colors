@@ -7,6 +7,21 @@ export function gradientExport(gradient: GradientDefinition): string {
     angle: gradient.angle,
     center: { x: gradient.centerX, y: gradient.centerY },
     interpolation: gradient.interpolationSpace,
+    // The 100% stop is implicit in the editor, but explicit in exported CSS.
+    // Portable JSON includes its construction so other renderers can close
+    // the circle without sacrificing the individually editable color stops.
+    ...(gradient.type === "conic" ? {
+      seamless: true,
+      closingStop: {
+        position: 100,
+        hex: gradient.stops[0].hex.toUpperCase(),
+        source: {
+          space: gradient.stops[0].source.space,
+          channels: gradient.stops[0].source.coordinates,
+          alpha: gradient.stops[0].source.alpha,
+        },
+      },
+    } : {}),
     stops: gradient.stops.map(stop => ({
       position: Number((stop.position * 100).toFixed(3)),
       hex: stop.hex.toUpperCase(),
