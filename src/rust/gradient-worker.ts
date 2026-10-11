@@ -1,9 +1,11 @@
 /** Off-main-thread Rust gradient rasterization. No DOM or CSS color calculations. */
 import type { GradientDefinition } from "@pfx/color-core";
+import { refineConicCenter } from "./conic-center";
 
 type CoreColor = { space: string; channels: number[]; alpha: number };
 type PixelHandle = {
   rasterRGBA8(width: number, height: number): Uint8ClampedArray;
+  samplePixel(x: number, y: number): CoreColor;
   rasterPreviewRGBA8(width: number, height: number): Uint8ClampedArray;
   dispose(): void;
 };
@@ -65,6 +67,15 @@ function render(core: WasmCore, job: Job): Uint8ClampedArray {
     const pixels = handle.rasterPreviewRGBA8(width, height);
     if (pixels.length !== width * height * 4) {
       throw new Error("Rust raster returned an invalid pixel count");
+    }
+    // Integrate the angular singularity over the pixel footprint, only after
+    // pointer input settles. The fast interactive path stays exactly as-is.
+    if (job.quality === "final" && gradient.type === "conic" &&
+        gradient.targetSpace === "srgb") {
+      refineConicCenter(
+        pixels, width, height, gradient.centerX * width, gradient.centerY * height,
+        (x, y) => handle.samplePixel(x, y),
+      );
     }
     return pixels;
   } finally {
