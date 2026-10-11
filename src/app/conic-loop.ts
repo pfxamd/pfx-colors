@@ -46,8 +46,13 @@ export function closeConicGradient(gradient: GradientDefinition): GradientDefini
     (gradient.hue === undefined || gradient.hue === "shorter")
     ? smoothConicStops(stops, color => colorEngine.color.convert(color, "oklch"))
     : stops;
+  // The spline already ends with an exact 360-degree copy; piecewise
+  // fallback paths still need the original implicit closure.
+  const closedStops = paintedStops.at(-1)?.position === 1
+    ? paintedStops
+    : [...paintedStops, { color: stops[0].color, position: 1 }];
   return createGradient(
-    [...paintedStops, { color: stops[0].color, position: 1 }],
+    closedStops,
     {
       type: "conic",
       angle: gradient.angle,
