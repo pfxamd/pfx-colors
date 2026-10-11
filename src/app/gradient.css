@@ -1,437 +1,427 @@
-/* PFx Gradient Studio — canvas-first, contextual editing.
-   Only this tool is styled here; the Color Core remains untouched. */
+/* Gradient Atelier
+   Small instruments, a fixed square study, deliberate unoccupied space.
+   This is a presentation layer only: the existing gradient editor, renderer
+   and persistence logic live in gradient.tsx and the color core. */
+
 .pfx-v2 .pfx-gstudio.pfx-c-workbench--gradient {
-  --gs-edge: var(--pfx-line);
-  --gs-muted: var(--pfx-muted);
-  --gs-ink: var(--pfx-text);
-  --gs-surface: var(--pfx-panel);
-  --gs-field: var(--pfx-v2-field);
-  --gs-focus: var(--pfx-accent);
-  box-sizing: border-box;
-  display: grid;
-  grid-template-columns: minmax(0,1fr);
-  grid-template-rows: auto minmax(0,1fr) auto;
-  gap: 16px;
+  --ga-ink: var(--pfx-text);
+  --ga-muted: var(--pfx-muted);
+  --ga-hairline: var(--pfx-line);
+  --ga-surface: var(--pfx-panel);
+  --ga-field: var(--pfx-v2-field);
+  --ga-focus: var(--pfx-accent);
+  display: block;
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: clamp(14px,1.65vw,26px);
+  box-sizing: border-box;
+  padding: clamp(24px, 4.1vh, 46px) clamp(20px, 5.5vw, 86px) 52px;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--pfx-bg);
-  color: var(--gs-ink);
-  overflow: hidden;
+  color: var(--ga-ink);
+  scrollbar-gutter: stable;
 }
-.pfx-v2 .pfx-gstudio *, .pfx-v2 .pfx-gstudio *::before,
+.pfx-v2 .pfx-gstudio *,
+.pfx-v2 .pfx-gstudio *::before,
 .pfx-v2 .pfx-gstudio *::after { box-sizing: border-box; }
-.pfx-v2 .pfx-gstudio button {
-  -webkit-tap-highlight-color: transparent;
-  font-family: inherit;
+.pfx-v2 .pfx-gstudio button { font-family: inherit; cursor: pointer; }
+.pfx-v2 .pfx-gstudio button:disabled { opacity: .32; cursor: not-allowed; }
+.pfx-v2 .pfx-gstudio button:focus-visible,
+.pfx-v2 .pfx-gstudio input:focus-visible,
+.pfx-v2 .pfx-gstudio summary:focus-visible {
+  outline: 2px solid var(--ga-focus); outline-offset: 3px;
 }
+
+/* Fixed-size composition: never expand the artwork or instruments to fill a monitor. */
 .pfx-gstudio__header {
   position: relative;
-  z-index: 11;
+  z-index: 12;
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
-  align-items: center;
-  gap: 18px;
-  min-height: 45px;
+  gap: 20px;
+  width: min(100%, 730px);
+  margin: 0 0 39px;
 }
-.pfx-gstudio__identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.pfx-gstudio__identity { display: flex; align-items: center; gap: 13px; }
 .pfx-gstudio__symbol {
-  flex: 0 0 34px; width: 34px; height: 34px; display: block;
-  border-radius: 10px; border: 1px solid rgba(127,127,127,.15);
+  display: block; flex: 0 0 31px; width: 31px; height: 31px;
+  border-radius: 50%; box-shadow: 0 0 0 4px var(--pfx-bg), 0 0 0 5px var(--ga-hairline);
 }
-.pfx-gstudio__identity > div { display: grid; gap: 3px; }
+.pfx-gstudio__identity > div { display: flex; align-items: baseline; gap: 11px; }
 .pfx-gstudio__identity strong {
-  font-size: 17px; font-weight: 710; letter-spacing: -.035em; line-height: 1.1;
+  font-size: 21px; line-height: 1.1; font-weight: 650;
+  letter-spacing: -.06em;
 }
 .pfx-gstudio__identity > div > span {
-  font-size: 10px; color: var(--gs-muted); line-height: 1.25; letter-spacing: .025em;
+  font: 600 10px ui-monospace, SFMono-Regular, monospace;
+  color: var(--ga-muted);
+  letter-spacing: .06em; text-transform: uppercase;
 }
-.pfx-gstudio__commands { display: flex; align-items: center; gap: 7px; }
-.pfx-v2 .pfx-gstudio__commands button,
-.pfx-v2 .pfx-gstudio__toolstrip button,
-.pfx-v2 .pfx-gstudio__stop-actions button,
-.pfx-v2 .pfx-gstudio__inspector button {
-  border: 1px solid var(--pfx-line-strong);
-  color: var(--gs-ink); background: var(--gs-surface);
-  border-radius: 9px;
-  min-height: 37px;
-  padding: 8px 13px;
-  font-size: 12px;
-  font-weight: 620;
-  white-space: nowrap;
-  line-height: 1.15;
-  cursor: pointer;
+.pfx-gstudio__commands { display: flex; align-items: center; gap: 5px; }
+.pfx-v2 .pfx-gstudio__commands > button,
+.pfx-v2 .pfx-gstudio__command-menu > button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 32px; border: 1px solid transparent;
+  border-radius: 5px; background: transparent; color: var(--ga-muted);
+  padding: 6px 9px; white-space: nowrap;
+  font-size: 11px; font-weight: 650;
 }
-.pfx-v2 .pfx-gstudio button:focus-visible,
-.pfx-v2 .pfx-gstudio summary:focus-visible {
-  outline: 2px solid var(--gs-focus); outline-offset: 3px;
+.pfx-v2 .pfx-gstudio__commands button:hover:not(:disabled) {
+  color: var(--ga-ink); background: var(--ga-field);
 }
-.pfx-v2 .pfx-gstudio button:disabled { opacity: .35; cursor: not-allowed; }
-.pfx-v2 .pfx-gstudio button:hover:not(:disabled) { border-color: var(--gs-focus); }
 .pfx-v2 .pfx-gstudio__commands .pfx-gstudio__main-command {
-  background: var(--gs-ink); color: var(--gs-surface); border-color: var(--gs-ink);
+  margin: 0 4px;
+  background: var(--ga-ink); color: var(--pfx-bg);
+  border-color: var(--ga-ink); padding-inline: 13px;
 }
 .pfx-v2 .pfx-gstudio__commands .pfx-gstudio__main-command:hover {
-  color: var(--gs-surface); filter: brightness(.92); border-color: var(--gs-ink);
+  color: var(--pfx-bg); filter: brightness(.92);
 }
-.pfx-v2 .pfx-gstudio__new { display: inline-flex; gap: 7px; align-items: center; }
-.pfx-gstudio__new > span { font-size: 18px; line-height: 0; }
+.pfx-gstudio__new > span { margin-right: 5px; font-size: 16px; }
 .pfx-gstudio__command-menu { position: relative; }
-.pfx-gstudio__command-menu > button > span { padding-left: 9px; color: var(--gs-muted); }
+.pfx-gstudio__command-menu > button > span { margin-left: 5px; opacity: .55; }
 .pfx-gstudio__menu {
-  display: grid; gap: 3px; position: absolute;
-  top: calc(100% + 7px); right: 0; z-index: 40; min-width: 165px;
-  padding: 5px;
-  border: 1px solid var(--pfx-line-strong); border-radius: 11px;
-  background: var(--gs-surface); box-shadow: 0 16px 40px rgba(0,0,0,.24);
+  display: grid; gap: 2px;
+  position: absolute; top: calc(100% + 7px); right: 0;
+  width: max-content; min-width: 165px;
+  padding: 6px; background: var(--ga-surface);
+  border: 1px solid var(--ga-hairline);
+  border-radius: 7px; box-shadow: 0 14px 30px rgba(0,0,0,.21);
+  z-index: 31;
 }
 .pfx-v2 .pfx-gstudio__menu button {
-  width: 100%; border-color: transparent; border-radius: 6px;
-  background: transparent; text-align: left; justify-content: flex-start;
-  font-size: 12px; min-height: 36px;
+  border: 0; background: transparent; color: var(--ga-ink);
+  min-height: 33px; padding: 8px 10px;
+  border-radius: 4px; text-align: left; font-size: 11px;
 }
-.pfx-v2 .pfx-gstudio__menu button:hover { background: var(--gs-field); }
-.pfx-gstudio__workspace {
-  display: grid;
-  grid-template-columns: minmax(0,1fr);
-  gap: 13px;
-  min-height: 0;
-  min-width: 0;
-}
+.pfx-v2 .pfx-gstudio__menu button:hover { background: var(--ga-field); }
+
+/* Compact, asymmetric composition, followed by actual EMPTY page space. */
+.pfx-gstudio__workspace,
 .pfx-gstudio__workspace--editing {
-  grid-template-columns: minmax(0,1fr) clamp(300px,24vw,360px);
+  display: grid;
+  grid-template-columns: 354px 265px;
+  align-items: start;
+  column-gap: 61px;
+  width: 680px;
+  max-width: 100%;
+  min-width: 0;
 }
 .pfx-gstudio__artboard {
-  display: grid;
-  grid-template-rows: auto minmax(0,1fr) auto;
+  display: flex; flex-direction: column; gap: 0;
+  width: 354px; max-width: 100%;
   min-width: 0;
-  min-height: 0;
-  border: 1px solid var(--gs-edge);
-  background: var(--gs-surface);
-  border-radius: 15px;
-  overflow: hidden;
+  background: transparent; border: 0; box-shadow: none;
+  overflow: visible;
 }
 .pfx-gstudio__toolstrip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  min-width: 0;
-  min-height: 58px;
-  padding: 10px 15px;
-  border-bottom: 1px solid var(--gs-edge);
+  display: grid; grid-template-columns: minmax(0,1fr);
+  justify-items: start; align-items: center;
+  row-gap: 4px;
+  width: 100%; padding: 0; margin: 0 0 14px;
+  background: transparent; border: none;
 }
-.pfx-gstudio__types {
-  display: inline-flex; align-items: center; gap: 3px;
-  flex: 0 0 auto;
-  background: var(--gs-field);
-  border-radius: 10px; padding: 4px;
-  border: 1px solid var(--gs-edge);
+.pfx-gstudio__toolstrip .pfx-gstudio__geometry-tools {
+  justify-self: end;
+  min-height: 28px;
 }
+.pfx-gstudio__types { display: flex; gap: 3px; min-width: 0; }
 .pfx-v2 .pfx-gstudio__types button {
-  display: inline-flex; align-items: center; gap: 7px;
-  border: 1px solid transparent; background: transparent;
-  min-height: 34px; padding: 6px 11px;
-  font-size: 12px; font-weight: 570; color: var(--gs-muted);
+  display: inline-flex; align-items: center; gap: 5px;
+  min-height: 28px; padding: 4px 7px;
+  border: 1px solid transparent; border-radius: 4px;
+  background: transparent; color: var(--ga-muted);
+  font-size: 11px; font-weight: 600; white-space: nowrap;
 }
 .pfx-v2 .pfx-gstudio__types button.is-active {
-  color: var(--gs-ink); background: var(--gs-surface);
-  border-color: var(--pfx-line-strong);
-  box-shadow: 0 1px 3px rgba(0,0,0,.09);
+  color: var(--ga-ink); border-color: var(--ga-hairline);
+  background: var(--ga-field);
 }
 .pfx-gstudio .pfx-c-gradient-type-glyph {
-  width: 18px; height: 18px; flex: 0 0 18px;
-  border-radius: 4px; border: 1px solid var(--pfx-line-strong);
-  background: var(--gs-field);
+  width: 17px; height: 17px; flex: 0 0 17px;
+  border-radius: 2px; border-color: var(--pfx-line-strong);
+  background: var(--ga-field);
 }
 .pfx-gstudio .pfx-c-gradient-type-glyph.pfx-is-linear::before { inset: 3px; }
-.pfx-gstudio .pfx-c-gradient-type-glyph.pfx-is-radial::before,
-.pfx-gstudio .pfx-c-gradient-type-glyph.pfx-is-conic::before { inset: 2px; }
-.pfx-gstudio__geometry-tools { display: flex; align-items: center; justify-content: flex-end; gap: 9px; min-width: 0; }
-.pfx-gstudio__angle {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 11px; color: var(--gs-muted); white-space: nowrap;
-}
-.pfx-gstudio__angle input {
-  padding: 0; width: clamp(65px,10vw,135px); min-width: 0;
-  height: 24px; border: 0; accent-color: var(--gs-focus);
-  background: transparent;
-}
+.pfx-gstudio .pfx-c-gradient-type-glyph.pfx-is-conic::before,
+.pfx-gstudio .pfx-c-gradient-type-glyph.pfx-is-radial::before { inset: 2px; }
+.pfx-gstudio__geometry-tools { display: flex; align-items: center; gap: 3px; }
+.pfx-gstudio__angle { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--ga-muted); }
+.pfx-gstudio__angle > span { display: none; }
+.pfx-gstudio__angle input { width: 46px; height: 22px; padding: 0; accent-color: var(--ga-focus); }
 .pfx-gstudio__angle output {
-  min-width: 38px; text-align: right; color: var(--gs-ink);
-  font: 620 12px ui-monospace,monospace;
+  min-width: 27px; text-align: right;
+  font: 600 10px ui-monospace, monospace;
+  color: var(--ga-ink);
 }
 .pfx-v2 .pfx-gstudio__toolstrip .pfx-gstudio__guide-toggle,
 .pfx-v2 .pfx-gstudio__toolstrip .pfx-gstudio__advanced-toggle {
-  min-height: 34px; padding: 7px 10px;
-  border-color: transparent; background: transparent; color: var(--gs-muted);
-  font-size: 11px;
+  min-height: 27px; padding: 4px 6px;
+  border: 1px solid transparent; border-radius: 4px;
+  background: transparent; color: var(--ga-muted);
+  font-size: 10px; white-space: nowrap;
 }
-.pfx-gstudio__guide-toggle > span { font-size: 15px; vertical-align: -1px; margin-right: 3px; }
-.pfx-gstudio__advanced-toggle > span { margin-left: 3px; font-size: 14px; }
+.pfx-gstudio__advanced-toggle { font-size: 0 !important; }
+.pfx-gstudio__advanced-toggle > span { font-size: 15px; line-height: 1; }
+.pfx-gstudio__guide-toggle > span { font-size: 14px; }
 .pfx-v2 .pfx-gstudio__toolstrip .is-active {
-  color: var(--gs-ink); background: var(--gs-field);
-  border-color: var(--gs-edge);
+  background: var(--ga-field); color: var(--ga-ink); border-color: var(--ga-hairline);
 }
+/* A color study, not a banner: exact square, no fluid growth. */
 .pfx-gstudio__canvas-wrap {
-  min-height: 0;
-  padding: 12px;
-  background: var(--gs-surface);
+  width: 354px; height: 354px; max-width: 100%;
+  flex: 0 0 auto;
+  padding: 0; overflow: visible; background: transparent;
 }
 .pfx-v2 .pfx-gstudio .pfx-gstudio__canvas {
-  display: block;
-  position: relative;
-  width: 100%; height: 100%; min-height: 250px;
-  margin: 0;
-  border: none;
-  border-radius: 10px;
-  overflow: hidden;
-  isolation: isolate;
-  box-shadow: none;
+  position: relative; display: block;
+  width: 100%; height: 100%; min-height: 0;
+  margin: 0; border: 0; border-radius: 5px;
+  overflow: hidden; isolation: isolate;
+  box-shadow: 0 2px 4px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.10);
 }
 .pfx-v2 .pfx-gstudio__canvas::after { display: none; }
 .pfx-gstudio__canvas-caption {
-  position: absolute; z-index: 7; bottom: 15px; left: 15px;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 11px; border-radius: 7px;
-  color: white; background: rgba(0,0,0,.37); backdrop-filter: blur(7px);
-  pointer-events: none; font-size: 11px; font-weight: 650;
-  text-transform: capitalize;
+  position: absolute; z-index: 8;
+  bottom: 10px; left: 10px;
+  color: white; background: rgba(0,0,0,.32);
+  border-radius: 3px; padding: 5px 8px;
+  pointer-events: none; backdrop-filter: blur(6px);
+  font: 600 10px ui-monospace,monospace; text-transform: capitalize;
 }
-.pfx-gstudio__canvas-caption > span { opacity: .75; }
+.pfx-gstudio__canvas-caption > span { opacity: .55; }
 .pfx-gstudio__canvas .pfx-c-gradient-geometry { z-index: 6; }
+
+/* Stop editing lives immediately below the artwork. */
 .pfx-gstudio__colors {
-  min-width: 0; padding: 13px 17px 14px;
-  border-top: 1px solid var(--gs-edge);
-  background: var(--gs-surface);
+  width: 100%; min-width: 0;
+  padding: 17px 0 0; border: 0; background: transparent;
 }
-.pfx-gstudio__colors-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; min-height: 28px;
-}
-.pfx-gstudio__colors-bar > div:first-child { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.pfx-gstudio__colors-bar strong { font-size: 13px; font-weight: 670; letter-spacing: -.02em; }
-.pfx-gstudio__colors-bar > div:first-child > span { font-size: 11px; color: var(--gs-muted); }
-.pfx-gstudio__stop-actions { display: flex; align-items: center; gap: 8px; }
+.pfx-gstudio__colors-bar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pfx-gstudio__colors-bar > div:first-child { display: flex; align-items: baseline; gap: 7px; }
+.pfx-gstudio__colors-bar strong { font-size: 12px; font-weight: 680; }
+.pfx-gstudio__colors-bar > div:first-child > span { font-size: 10px; color: var(--ga-muted); }
+.pfx-gstudio__stop-actions { display: flex; align-items: center; gap: 6px; }
 .pfx-v2 .pfx-gstudio__stop-actions button {
-  min-height: 29px; padding: 5px 9px; font-size: 11px;
-  border: 1px solid transparent; background: transparent; color: var(--gs-muted);
+  padding: 4px 5px; min-height: 28px;
+  border: 0; border-radius: 4px;
+  background: transparent; color: var(--ga-muted);
+  font-size: 10px; font-weight: 630;
 }
-.pfx-v2 .pfx-gstudio__stop-actions button:hover { color: var(--gs-ink); background: var(--gs-field); }
-.pfx-v2 .pfx-gstudio__stop-strip { height: 57px; padding: 0 16px; }
-.pfx-v2 .pfx-gstudio__rail { height: 57px; }
+.pfx-v2 .pfx-gstudio__stop-actions button:hover { color: var(--ga-ink); background: var(--ga-field); }
+.pfx-v2 .pfx-gstudio__stop-strip { height: 59px; padding: 0 14px; margin-top: 7px; }
+.pfx-v2 .pfx-gstudio__rail { height: 59px; }
 .pfx-v2 .pfx-gstudio__rail .pfx-c-gradient-rail__line {
-  top: 23px; height: 12px; border: 0; border-radius: 999px;
-  pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  top: 22px; height: 10px; border: 0; border-radius: 5px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
 }
 .pfx-v2 .pfx-gstudio__rail .pfx-c-gradient-stop-handle {
-  top: 13px; height: 42px; width: 34px;
+  top: 11px; width: 32px; height: 42px;
 }
 .pfx-v2 .pfx-gstudio__rail .pfx-c-gradient-stop-handle > span {
-  width: 22px; height: 22px;
-  left: 50%; top: 4px; border-radius: 50%;
-  transform: translateX(-50%); border: 3px solid var(--gs-surface);
-  box-shadow: 0 0 0 1px rgba(0,0,0,.3), 0 2px 6px rgba(0,0,0,.28);
+  left: 50%; top: 3px; width: 21px; height: 21px;
+  transform: translateX(-50%);
+  border: 3px solid var(--pfx-bg);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.45);
 }
 .pfx-v2 .pfx-gstudio__rail .pfx-c-gradient-stop-handle.pfx-is-selected > span {
-  box-shadow: 0 0 0 2px var(--gs-focus), 0 0 0 4px var(--gs-surface), 0 4px 12px rgba(0,0,0,.2);
+  box-shadow: 0 0 0 2px var(--ga-focus), 0 0 0 4px var(--pfx-bg);
 }
 .pfx-gstudio__swatches {
-  display: flex; align-items: center; flex-wrap: nowrap; gap: 7px;
-  overflow-x: auto; padding: 0 1px 2px; scrollbar-width: thin;
+  display: flex; align-items: center; gap: 5px;
+  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding: 3px 0 6px;
 }
 .pfx-v2 .pfx-gstudio__swatches button {
-  display: inline-flex; flex: 0 0 auto; align-items: center; gap: 7px;
-  min-height: 32px; padding: 5px 10px 5px 6px;
-  border: 1px solid transparent; border-radius: 8px;
-  background: transparent; color: var(--gs-muted);
+  display: flex; align-items: center; gap: 5px;
+  flex: 0 0 auto; min-height: 31px;
+  padding: 4px 7px 4px 5px;
+  border: 1px solid transparent; border-radius: 4px;
+  background: transparent; color: var(--ga-muted);
+  font: 600 10px ui-monospace,monospace;
 }
-.pfx-v2 .pfx-gstudio__swatches button:hover,
 .pfx-v2 .pfx-gstudio__swatches button.is-selected {
-  background: var(--gs-field);
-  border-color: var(--gs-edge); color: var(--gs-ink);
+  color: var(--ga-ink); border-color: var(--ga-hairline);
+  background: var(--ga-field);
 }
+.pfx-v2 .pfx-gstudio__swatches button:hover { background: var(--ga-field); }
 .pfx-gstudio__swatch {
-  flex: 0 0 19px; width: 19px; height: 19px;
-  border-radius: 6px; border: 1px solid rgba(127,127,127,.22);
+  display: inline-block; flex: 0 0 17px; width: 17px; height: 17px;
+  border-radius: 3px; border: 1px solid rgba(128,128,128,.3);
 }
-.pfx-gstudio__swatch-value { font: 610 10px ui-monospace,monospace; }
+
+/* A modest, permanently visible color instrument: no dashboard card. */
 .pfx-gstudio__inspector {
-  display: flex; flex-direction: column; min-width: 0; min-height: 0;
-  background: var(--gs-surface); border: 1px solid var(--gs-edge);
-  border-radius: 15px; overflow: hidden;
+  width: 265px; max-width: 100%; min-width: 0;
+  display: block; background: transparent;
+  border: 0; border-radius: 0;
+  padding: 0; margin-top: 0; overflow: visible;
 }
 .pfx-gstudio__inspector-head {
-  display: flex; justify-content: space-between; align-items: center;
-  min-height: 67px; padding: 13px 17px; border-bottom: 1px solid var(--gs-edge);
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 38px; padding: 0;
+  margin: 0 0 13px; border: 0;
 }
-.pfx-gstudio__inspector-head > div { display: grid; gap: 5px; }
+.pfx-gstudio__inspector-head > div { display: flex; flex-direction: column; gap: 4px; }
 .pfx-gstudio__inspector-head > div > span {
-  font-size: 10px; color: var(--gs-muted); letter-spacing: .08em; font-weight: 650;
+  color: var(--ga-muted);
+  font: 600 9px ui-monospace, monospace; letter-spacing: .12em;
 }
-.pfx-gstudio__inspector-head strong { font-size: 17px; letter-spacing: -.025em; }
+.pfx-gstudio__inspector-head strong { font-size: 14px; font-weight: 640; letter-spacing: -.025em; }
 .pfx-v2 .pfx-gstudio__inspector-head > button {
-  display: grid; place-items: center; min-height: 33px; height: 33px;
-  width: 33px; padding: 0; font-size: 22px;
-  border: 0; background: var(--gs-field); border-radius: 8px;
+  width: 27px; height: 27px; min-height: 27px; padding: 0;
+  border: 1px solid var(--ga-hairline); border-radius: 4px;
+  background: var(--ga-field); color: var(--ga-ink); font-size: 16px;
 }
 .pfx-gstudio__inspector-body {
-  display: flex; flex-direction: column; min-height: 0; flex: 1;
-  padding: 15px; overflow-y: auto; scrollbar-width: thin; gap: 14px;
+  display: flex; flex-direction: column; gap: 13px;
+  min-height: 0; padding: 0; background: transparent; overflow: visible;
 }
 .pfx-gstudio__selected-swatch {
-  display: flex; align-items: flex-end; min-height: 64px;
-  border-radius: 9px; padding: 10px;
-  border: 1px solid rgba(127,127,127,.18);
+  display: flex; align-items: flex-end;
+  height: 28px; min-height: 28px; border: 0; border-radius: 3px; padding: 5px;
 }
 .pfx-gstudio__selected-swatch span {
-  display: inline-flex; padding: 5px 7px;
-  border-radius: 5px; font: 610 10px ui-sans-serif,system-ui;
-  background: rgba(0,0,0,.35); color: #fff;
+  padding: 3px 4px; background: rgba(0,0,0,.35); color: #fff;
+  border-radius: 2px; font: 600 9px ui-monospace,monospace;
 }
 .pfx-v2 .pfx-gstudio .pfx-c-gradient-color-editor {
-  display: grid; grid-template-rows: minmax(132px,180px) 15px 34px 15px;
-  gap: 9px; padding: 0; border: 0; background: transparent;
-  min-height: 220px;
+  display: grid;
+  width: 100%;
+  grid-template-rows: 143px 13px 31px 13px;
+  gap: 8px; min-height: 0;
+  padding: 0; background: transparent; border: none;
 }
 .pfx-v2 .pfx-gstudio .pfx-c-gradient-color-editor__field {
-  border: 1px solid var(--gs-edge); border-radius: 9px;
-}
-.pfx-v2 .pfx-gstudio .pfx-c-gradient-color-editor__hex,
-.pfx-v2 .pfx-gstudio .pfx-c-gradient-color-editor__meta > output {
-  border: 1px solid var(--pfx-line-strong); border-radius: 7px;
-  background: var(--gs-field); color: var(--gs-ink);
-  font: 640 12px ui-monospace,monospace;
+  border: 1px solid var(--ga-hairline); border-radius: 4px;
 }
 .pfx-v2 .pfx-gstudio .pfx-c-gradient-color-editor__hue,
 .pfx-v2 .pfx-gstudio .pfx-c-gradient-color-editor__alpha {
-  border-radius: 7px; border: 1px solid var(--gs-edge);
+  border: 0; border-radius: 3px;
 }
-.pfx-gstudio__editor-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.pfx-v2 .pfx-gstudio__editor-buttons > button {
-  min-height: 36px; padding: 8px 7px; font-size: 11px; white-space: normal;
+.pfx-v2 .pfx-gstudio .pfx-c-gradient-color-editor__hex,
+.pfx-v2 .pfx-gstudio .pfx-c-gradient-color-editor__meta > output {
+  font: 620 11px ui-monospace,monospace;
+  color: var(--ga-ink); background: var(--ga-field);
+  border: 1px solid var(--ga-hairline); border-radius: 4px;
 }
-.pfx-gstudio__position { display: flex; align-items: center; gap: 14px; }
+.pfx-gstudio__editor-buttons { display: flex; gap: 6px; }
+.pfx-v2 .pfx-gstudio__editor-buttons button {
+  min-height: 29px; flex: 1; padding: 6px 5px;
+  border: 1px solid var(--ga-hairline); border-radius: 4px;
+  background: transparent; color: var(--ga-muted);
+  font-size: 10px; font-weight: 600; white-space: normal;
+}
+.pfx-v2 .pfx-gstudio__editor-buttons button:hover { color: var(--ga-ink); }
+.pfx-gstudio__position { display: flex; align-items: center; gap: 12px; }
 .pfx-gstudio__position > label {
-  flex: 0 0 57px; color: var(--gs-muted); font-size: 11px; font-weight: 620;
+  flex: 0 0 49px; font-size: 10px; font-weight: 600; color: var(--ga-muted);
 }
 .pfx-v2 .pfx-gstudio__position .pfx-c-gradient-position {
-  display: grid; grid-template-columns: 36px minmax(0,1fr) 36px;
-  flex: 1; width: auto; min-width: 0; min-height: 35px; padding: 0;
-  margin: 0; border: 1px solid var(--gs-edge);
-  border-radius: 9px; background: var(--gs-field); overflow: hidden;
+  display: grid; grid-template-columns: 31px minmax(0,1fr) 31px;
+  flex: 1; min-width: 0; margin: 0;
+  border: 1px solid var(--ga-hairline); border-radius: 4px;
+  background: var(--ga-field); overflow: hidden;
 }
 .pfx-v2 .pfx-gstudio__position .pfx-c-gradient-position > button {
-  min-height: 34px; border: 0; border-radius: 0; padding: 0;
-  background: transparent; font-size: 17px;
+  min-height: 29px; padding: 0; border: 0; background: transparent;
+  color: var(--ga-ink); font-size: 14px;
 }
 .pfx-v2 .pfx-gstudio__position .pfx-c-gradient-position > output {
-  min-width: 0; text-align: center; align-self: center;
-  font: 630 12px ui-monospace,monospace; color: var(--gs-ink);
+  display: grid; place-items: center; min-width: 0;
+  border: 0; color: var(--ga-ink); background: transparent;
+  font: 600 11px ui-monospace,monospace;
 }
 .pfx-v2 .pfx-gstudio__inspector .pfx-gstudio__remove {
-  width: 100%; min-height: 35px; border: 0;
-  border-radius: 8px; background: var(--gs-field); color: var(--gs-muted);
-  font-size: 11px; font-weight: 610;
+  align-self: flex-start; min-height: 28px; padding: 5px 7px;
+  border: 0; border-radius: 3px;
+  background: transparent; color: var(--ga-muted); font-size: 10px;
 }
-.pfx-gstudio__settings-group { display: grid; gap: 12px; padding-bottom: 19px; border-bottom: 1px solid var(--gs-edge); }
-.pfx-gstudio__settings-group strong { font-size: 12px; font-weight: 700; }
-.pfx-gstudio__settings-group > span { color: var(--gs-muted); font-size: 11px; line-height: 1.4; }
-.pfx-gstudio__spaces { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px; }
-.pfx-v2 .pfx-gstudio__spaces button { min-height: 37px; padding: 8px 3px; font-size: 11px; }
+.pfx-v2 .pfx-gstudio__inspector .pfx-gstudio__remove:hover { background: var(--ga-field); }
+.pfx-gstudio__settings-group {
+  display: grid; gap: 8px; padding-bottom: 18px;
+  border-bottom: 1px solid var(--ga-hairline);
+}
+.pfx-gstudio__settings-group strong { font-size: 12px; }
+.pfx-gstudio__settings-group > span { color: var(--ga-muted); font-size: 10px; }
+.pfx-gstudio__spaces { display: flex; gap: 4px; }
+.pfx-v2 .pfx-gstudio__spaces button,
+.pfx-v2 .pfx-gstudio__setting-action {
+  min-height: 30px; border: 1px solid var(--ga-hairline);
+  border-radius: 4px; background: transparent; color: var(--ga-muted);
+  font-size: 10px; padding: 5px 8px;
+}
 .pfx-v2 .pfx-gstudio__spaces button.is-active {
-  background: var(--pfx-accent-soft); color: var(--pfx-accent); border-color: var(--gs-focus);
-}
-.pfx-v2 .pfx-gstudio__inspector .pfx-gstudio__setting-action {
-  display: flex; justify-content: space-between; align-items: center;
-  min-height: 38px; font-size: 11px;
+  background: var(--pfx-accent-soft); border-color: var(--ga-focus);
+  color: var(--pfx-accent);
 }
 .pfx-gstudio__footer {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 14px; min-height: 35px; padding: 0 2px;
+  display: flex; align-items: baseline; justify-content: space-between;
+  width: min(100%, 730px); max-width: 100%;
+  gap: 15px; margin-top: 26px; min-height: 24px;
+  color: var(--ga-muted);
 }
-.pfx-gstudio__source { min-width: 0; flex: 1; position: relative; }
+.pfx-gstudio__source { position: relative; flex: 1; min-width: 0; }
 .pfx-gstudio__source summary {
-  display: inline-flex; align-items: center; gap: 8px;
-  list-style: none; cursor: pointer; color: var(--gs-muted);
-  font-size: 11px; font-weight: 600; line-height: 1.4;
+  display: inline-flex; align-items: center; gap: 6px;
+  list-style: none; cursor: pointer;
+  font-size: 10px; font-weight: 620; color: var(--ga-muted);
 }
 .pfx-gstudio__source summary::-webkit-details-marker { display: none; }
-.pfx-gstudio__source[open] summary span { transform: rotate(180deg); }
+.pfx-gstudio__source[open] summary > span { transform: rotate(180deg); }
 .pfx-gstudio__source .pfx-gradient__css {
-  position: absolute; bottom: calc(100% + 11px); left: 0; z-index: 10;
-  width: min(780px,calc(100vw - 42px)); max-height: 200px; overflow: auto;
-  padding: 15px; background: var(--gs-surface);
-  border: 1px solid var(--pfx-line-strong); border-radius: 10px;
-  box-shadow: 0 18px 36px rgba(0,0,0,.2);
+  position: absolute; z-index: 12; bottom: calc(100% + 8px); left: 0;
+  width: min(600px,calc(100vw - 48px)); max-height: 170px;
+  padding: 12px; overflow: auto; background: var(--ga-surface);
+  border: 1px solid var(--ga-hairline); border-radius: 5px;
+  box-shadow: 0 14px 30px rgba(0,0,0,.18);
 }
 .pfx-gstudio__source code {
-  overflow-wrap: anywhere; white-space: pre-wrap; font: 11px/1.6 ui-monospace,monospace;
-  color: var(--gs-ink);
+  overflow-wrap: anywhere; white-space: pre-wrap;
+  color: var(--ga-ink); font: 10px/1.6 ui-monospace,monospace;
 }
-.pfx-gstudio__footer p {
-  margin: 0; font-size: 11px; color: var(--gs-muted);
-  text-align: right;
-}
+.pfx-gstudio__footer p { margin: 0; font-size: 10px; color: var(--ga-muted); text-align: right; }
 
-/* Keep the artboard as the focus on narrower desktops; the editor follows it. */
-@media (max-width: 1120px) {
-  .pfx-gstudio__toolstrip { flex-wrap: wrap; }
-  .pfx-gstudio__geometry-tools { flex: 1 1 auto; }
-  .pfx-gstudio__workspace--editing { grid-template-columns: minmax(0,1fr) 305px; }
-  .pfx-gstudio__swatches { padding-bottom: 3px; }
-}
-@media (max-width: 930px) {
+/* Small screens rearrange instruments; nothing grows beyond its useful size. */
+@media (max-width: 950px) {
   .pfx-v2 .pfx-gstudio.pfx-c-workbench--gradient {
-    height: 100%; overflow-y: auto; overflow-x: hidden;
-    display: block; padding: 14px; 
+    padding: 22px 22px 48px; overflow-y: auto;
   }
-  .pfx-gstudio__header { margin-bottom: 12px; }
-  .pfx-gstudio__workspace, .pfx-gstudio__workspace--editing {
-    display: grid; grid-template-columns: minmax(0,1fr);
-    gap: 12px;
-  }
-  .pfx-gstudio__artboard { grid-template-rows: auto auto auto; }
-  .pfx-gstudio__canvas-wrap { height: min(46vh,450px); min-height: 275px; }
-  .pfx-v2 .pfx-gstudio .pfx-gstudio__canvas { min-height: 0; }
-  .pfx-gstudio__inspector { overflow: visible; }
-  .pfx-gstudio__inspector-body { overflow: visible; }
-  .pfx-gstudio__footer { margin-top: 14px; }
+  .pfx-gstudio__header { width: min(100%, 730px); }
 }
-@media (max-width: 580px) {
-  .pfx-v2 .pfx-gstudio.pfx-c-workbench--gradient { padding: 10px; }
-  .pfx-gstudio__header { display: grid; gap: 11px; }
-  .pfx-gstudio__identity { gap: 9px; }
-  .pfx-gstudio__identity > div > span { display: none; }
-  .pfx-gstudio__commands {
-    display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); width: 100%; gap: 5px;
+@media (max-width: 745px) {
+  .pfx-gstudio__workspace,
+  .pfx-gstudio__workspace--editing {
+    grid-template-columns: minmax(0, 354px);
+    row-gap: 31px; width: 100%;
   }
-  .pfx-gstudio__commands > button,
-  .pfx-gstudio__commands .pfx-gstudio__command-menu > button { width: 100%; }
-  .pfx-v2 .pfx-gstudio__commands button {
-    min-height: 35px; padding: 8px 4px; font-size: 11px;
+  .pfx-gstudio__inspector { width: min(100%, 265px); }
+  .pfx-gstudio__footer { width: min(100%, 354px); }
+  .pfx-gstudio__header { align-items: start; flex-wrap: wrap; gap: 12px; margin-bottom: 25px; }
+  .pfx-gstudio__canvas-wrap {
+    width: min(100%, 354px);
+    height: auto; aspect-ratio: 1;
   }
-  .pfx-gstudio__toolstrip {
-    padding: 10px; align-items: stretch; flex-direction: column;
-    gap: 10px;
-  }
-  .pfx-gstudio__types { align-self: stretch; display: grid; grid-template-columns: repeat(3,1fr); }
-  .pfx-v2 .pfx-gstudio__types button { justify-content: center; padding: 8px 5px; }
-  .pfx-gstudio__geometry-tools { justify-content: space-between; gap: 6px; }
-  .pfx-gstudio__angle { gap: 6px; }
-  .pfx-gstudio__angle input { width: clamp(35px,14vw,80px); }
-  .pfx-gstudio__angle output { min-width: 32px; }
-  .pfx-v2 .pfx-gstudio__toolstrip .pfx-gstudio__guide-toggle,
-  .pfx-v2 .pfx-gstudio__toolstrip .pfx-gstudio__advanced-toggle { padding: 7px 5px; font-size: 10px; }
-  .pfx-gstudio__canvas-wrap { padding: 8px; height: clamp(240px,39vh,330px); min-height: 0; }
-  .pfx-gstudio__canvas-caption { bottom: 10px; left: 10px; }
-  .pfx-gstudio__colors { padding: 10px 11px 12px; }
+}
+@media (max-width: 410px) {
+  .pfx-v2 .pfx-gstudio.pfx-c-workbench--gradient { padding: 15px 14px 32px; }
+  .pfx-gstudio__header { margin-bottom: 20px; }
+  .pfx-gstudio__commands { gap: 2px; flex-wrap: wrap; }
+  .pfx-v2 .pfx-gstudio__commands > button,
+  .pfx-v2 .pfx-gstudio__command-menu > button { font-size: 10px; padding-inline: 6px; }
+  .pfx-gstudio__identity strong { font-size: 19px; }
+  .pfx-gstudio__identity > div > span { font-size: 9px; }
+  .pfx-gstudio__artboard { width: 100%; }
+  .pfx-gstudio__toolstrip { gap: 3px; }
+  .pfx-v2 .pfx-gstudio__types button { padding-inline: 4px; font-size: 10px; }
+  .pfx-gstudio__types .pfx-c-gradient-type-glyph { width: 13px; height: 13px; flex-basis: 13px; }
+  .pfx-gstudio__angle input { width: 34px; }
+  .pfx-v2 .pfx-gstudio__toolstrip .pfx-gstudio__guide-toggle { font-size: 0; }
+  .pfx-gstudio__guide-toggle > span { font-size: 17px; }
   .pfx-gstudio__colors-bar > div:first-child > span { display: none; }
-  .pfx-gstudio__stop-actions { gap: 2px; }
-  .pfx-gstudio__inspector-head { min-height: 56px; }
-  .pfx-gstudio__inspector-body { padding: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pfx-gstudio * { scroll-behavior: auto !important; transition: none !important; }
+  .pfx-gstudio *, .pfx-gstudio *::before, .pfx-gstudio *::after { transition: none !important; }
 }
