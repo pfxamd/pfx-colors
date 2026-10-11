@@ -20,6 +20,9 @@ for (const [browserName, engine] of [["chromium", chromium], ["firefox", firefox
         assert.equal(response?.status(), 200);
         await page.locator('nav[aria-label="Color tools"] button')
           .filter({ hasText: "Gradient" }).click();
+        await page.getByRole("button", { name: /Guides/ }).click();
+        assert.ok(await page.getByRole("button", { name: "Rotate gradient from end" }).isVisible(),
+          "Canvas geometry becomes editable on demand");
         await page.locator('canvas[data-rust-gradient-preview="ready"]')
           .waitFor({ timeout: 30000 });
         const initial = await page.evaluate(() => ({
