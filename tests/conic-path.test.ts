@@ -44,6 +44,17 @@ describe("Periodic OKLCH path", () => {
     }
   });
 
+  it("honors the CSS Color 4 hue direction on an exact 180-degree tie", () => {
+    const stops = [
+      { position: 0, color: color(0.7, 0.15, 0) },
+      { position: 0.5, color: color(0.7, 0.15, 180) },
+    ];
+    const rendered = smoothConicStops(stops, converted);
+    const quarter = rendered.find(stop => stop.position === 0.25);
+    expect(quarter).toBeDefined();
+    expect(value(quarter!).coordinates[2]).toBeCloseTo(90, 6);
+  });
+
   it("keeps local lightness, chroma and alpha within each original segment", () => {
     const rendered = smoothConicStops(three, converted);
     for (const stop of rendered) {
