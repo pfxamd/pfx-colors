@@ -43,7 +43,7 @@ export function refineConicCenter(
       if (distance > radius) continue;
       // Extra sampling precisely where a single angular sample is least
       // representative. Beyond 2 pixels, 2x2 coverage is sufficient.
-      const axis = distance <= 2 ? 3 : 2;
+      const axis = distance <= 2 ? 4 : 2;
       const samples = axis * axis;
       let alpha = 0;
       const linear = [0, 0, 0];
