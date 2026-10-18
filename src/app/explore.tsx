@@ -54,7 +54,7 @@ export function Explore({ activeHex, select, favorites, toggleFavorite, saveSet 
   const [status, setStatus] = useState("");
 
   const searching = Boolean(query.trim());
-  const needColors = searching || view === "colors";
+  const needColors = searching || view !== "palettes";
   const ready = LIBRARIES.every(library => Boolean(catalogs[library.id]));
 
   useEffect(() => {
