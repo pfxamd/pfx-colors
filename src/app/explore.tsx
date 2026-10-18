@@ -199,12 +199,12 @@ export function Explore({ activeHex, select, favorites, toggleFavorite, saveSet 
           </label>
           <p className="pfx-explore__section-label">BROWSE</p>
           <button type="button" className={"pfx-explore__source-button" + (source === "all" ? " is-active" : "")}
-            aria-pressed={source === "all"} onClick={() => choose("all")}>
+            aria-label="All colors" aria-pressed={source === "all"} onClick={() => choose("all")}>
             <span className="pfx-explore__source-mark">◎</span><span>All colors</span>
             <small>{number(TOTAL_COLOR_ENTRIES)}</small>
           </button>
           <button type="button" className={"pfx-explore__source-button" + (source === "favorites" ? " is-active" : "")}
-            aria-pressed={source === "favorites"} onClick={() => choose("favorites")}>
+            aria-label="My favorites" aria-pressed={source === "favorites"} onClick={() => choose("favorites")}>
             <span className="pfx-explore__source-mark">♡</span><span>My favorites</span>
             <small>{favorites.length}</small>
           </button>
@@ -218,7 +218,7 @@ export function Explore({ activeHex, select, favorites, toggleFavorite, saveSet 
                 <div className="pfx-explore__source-row">
                   <button type="button"
                     className={"pfx-explore__source-button" + (source === library.id ? " is-active" : "")}
-                    aria-pressed={source === library.id} onClick={() => {
+                    aria-label={library.label} aria-pressed={source === library.id} onClick={() => {
                       choose(library.id);
                       setExpanded(library.id);
                     }}>
