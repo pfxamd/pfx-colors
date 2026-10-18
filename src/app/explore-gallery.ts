@@ -1,6 +1,7 @@
 import { INITIAL_CSS_COLORS, type ColorRecord } from "./explore-catalog";
 import { hexStats } from "./explore-model";
 import { EXPLORE_REDS } from "./explore-reds";
+import { EXPLORE_OTHER_FAMILIES } from "./explore-family-selections";
 import { hexToRgb, rgbToOklch } from "./explore-atlas";
 
 export type ColorFamily = "white" | "black" | "gray" | "red" | "orange" |
@@ -109,10 +110,23 @@ export const RED_GALLERY_COLORS: readonly GalleryColor[] = uniqueGalleryColors(
   EXPLORE_REDS.map(([name, hex]): ColorRecord => [name, hex, "Curated reds"]),
 ).map(color => ({ ...color, family: "red" as const }));
 
+/** Each of the other nine clickable color families has exactly 33 distinct, fixed HEX values. */
+const OTHER_GALLERY_COLORS: Partial<Record<ColorFamily, GalleryColor[]>> = {};
+for (const [family, samples] of Object.entries(EXPLORE_OTHER_FAMILIES)) {
+  OTHER_GALLERY_COLORS[family as ColorFamily] = uniqueGalleryColors(
+    samples.map(([name, hex]): ColorRecord => [name, hex, "Curated " + family]),
+  ).map(color => ({ ...color, family: family as ColorFamily }));
+}
+
+export const CURATED_GALLERY_COLORS: readonly GalleryColor[] = [
+  ...RED_GALLERY_COLORS,
+  ...Object.values(OTHER_GALLERY_COLORS).flatMap(colors => colors ?? []),
+];
+
 /** Show all unique existing colors while keeping the initial rows varied. */
 export function arrangeGalleryColors(colors: readonly GalleryColor[], family: ColorFamily | null): GalleryColor[] {
   if (family === "red") return [...RED_GALLERY_COLORS];
-  if (family !== null) return sortFamily(colors.filter(color => color.family === family), family);
+  if (family !== null) return [...(OTHER_GALLERY_COLORS[family] ?? [])];
   const buckets = COLOR_FAMILIES.map(item =>
     sortFamily(colors.filter(color => color.family === item.id), item.id));
   const mixed: GalleryColor[] = [];

@@ -6,7 +6,7 @@ import {
   loadColorCatalog, type CatalogId, type ColorRecord,
 } from "./explore-catalog";
 import {
-  COLOR_FAMILIES, GALLERY_PALETTES, arrangeGalleryColors, uniqueGalleryColors,
+  COLOR_FAMILIES, GALLERY_PALETTES, CURATED_GALLERY_COLORS, arrangeGalleryColors, uniqueGalleryColors,
   type ColorFamily, type GalleryColor, type GalleryPalette,
 } from "./explore-gallery";
 
@@ -54,7 +54,7 @@ export function Explore({ activeHex, select, favorites, toggleFavorite, saveSet 
   const [status, setStatus] = useState("");
 
   const searching = Boolean(query.trim());
-  const needColors = searching || view !== "palettes";
+  const needColors = searching || view === "saved" || (view === "colors" && family === null);
   const ready = LIBRARIES.every(library => Boolean(catalogs[library.id]));
 
   useEffect(() => {
@@ -94,7 +94,8 @@ export function Explore({ activeHex, select, favorites, toggleFavorite, saveSet 
   }, [delayedQuery, arranged, allColors]);
 
   const savedColors = useMemo<GalleryColor[]>(() =>
-    favorites.map(hex => allColors.find(item => item.hex === hex.toLowerCase()))
+    favorites.map(hex => allColors.find(item => item.hex === hex.toLowerCase()) ||
+      CURATED_GALLERY_COLORS.find(item => item.hex === hex.toLowerCase()))
       .filter((value): value is GalleryColor => Boolean(value)), [favorites, allColors]);
 
   const list = view === "saved" && !searching ? savedColors : matching;
@@ -254,13 +255,13 @@ export function Explore({ activeHex, select, favorites, toggleFavorite, saveSet 
             <div><h2>{heading}</h2>
               <p>{searching ? "Matching colors from all libraries." :
                 showingFavorites ? "Colors you have saved." :
-                family ? "Every matching color from our libraries, not generated shades." :
+                family ? "33 distinct, selected colors from this family." :
                 "A colorful mix from our libraries. Choose a family above to see more."}</p>
             </div>
             {!loading && !error && <span>{format(list.length)} colors</span>}
           </div>
           {loading ? <p className="pfx-explore__message" role="status">Opening color libraries…</p> :
-            error ? <div className="pfx-explore__message" role="alert">
+            error && needColors ? <div className="pfx-explore__message" role="alert">
               <p>Colors could not be loaded. Please try again.</p>
               <button type="button" onClick={() => { setError(""); setRetry(value => value + 1); }}>Try again</button>
             </div> : list.length === 0 ? <div className="pfx-explore__message">
