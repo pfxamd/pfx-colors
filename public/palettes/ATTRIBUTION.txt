@@ -1,0 +1,38 @@
+PFx COLORS / EXPLORE — SOURCE CREDITS AND LICENSES
+
+These palettes are bundled locally for browsing. Names and hex values remain attributed
+to their respective source projects. A color value itself does not imply ownership.
+
+CSS Named Colors — W3C CSS Color Module Level 4
+https://www.w3.org/TR/css-color-4/#named-colors
+148 CSS named entries (including standard aliases).
+
+Color Names — meodai/color-names — MIT
+https://github.com/meodai/color-names
+Source: src/colornames.csv (GitHub main snapshot 2026-10-18).
+
+Open Color — yeun/open-color — MIT
+https://github.com/yeun/open-color
+Source: open-color.json.
+
+Radix Colors — radix-ui/colors — MIT
+https://github.com/radix-ui/colors
+Source: src/light.ts and src/dark.ts, opaque sRGB HEX scales only (no alpha or Display-P3).
+
+Tailwind Colors — tailwindlabs/tailwindcss — MIT
+https://github.com/tailwindlabs/tailwindcss
+Source: tag v3.4.17, src/public/colors.js, HEX swatches.
+
+D3 Scale Chromatic — d3/d3-scale-chromatic — ISC + ColorBrewer Apache-2.0
+https://github.com/d3/d3-scale-chromatic
+Source: categorical, diverging and sequential multi-color discrete schemes.
+
+Redistributed license notices are linked below:
+palettes/LICENSE-color-names.txt — meodai/color-names
+palettes/LICENSE-open-color.txt — yeun/open-color
+palettes/LICENSE-colors.txt — radix-ui/colors
+palettes/LICENSE-tailwindcss.txt — tailwindlabs/tailwindcss
+palettes/LICENSE-d3-scale-chromatic.txt — d3/d3-scale-chromatic
+
+PFx Colors uses this content as an independent application and is not affiliated
+with or endorsed by the upstream projects.
