@@ -288,6 +288,9 @@ export function Explore({ activeHex, select, favorites, toggleFavorite, saveSet 
             </button>
           </div>
         </div>
+        <button type="button" className="pfx-explore__apply-mobile" onClick={() => setDrawerOpen(false)}>
+          Show {loading && !ready ? "results" : number(matching.length) + " colors"} →
+        </button>
         <a className="pfx-explore__credits" href="./palettes/ATTRIBUTION.txt"
           target="_blank" rel="noreferrer">Sources & licenses <span aria-hidden="true">↗</span></a>
       </aside>
