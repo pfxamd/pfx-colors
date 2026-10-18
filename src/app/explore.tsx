@@ -126,6 +126,7 @@ export function Explore({ activeHex, select, favorites, toggleFavorite, saveSet 
 
   function choose(next: Source, nextGroup = "all") {
     setSource(next);
+    setQuery("");
     setGroup(nextGroup);
     setLimit(PAGE_SIZE);
     setDrawerOpen(false);
