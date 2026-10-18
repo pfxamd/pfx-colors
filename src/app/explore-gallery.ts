@@ -1,5 +1,6 @@
 import { INITIAL_CSS_COLORS, type ColorRecord } from "./explore-catalog";
 import { hexStats } from "./explore-model";
+import { hexToRgb, rgbToOklch } from "./explore-atlas";
 
 export type ColorFamily = "white" | "black" | "gray" | "red" | "orange" |
   "yellow" | "green" | "blue" | "purple" | "pink";
@@ -12,6 +13,8 @@ export type GalleryColor = {
   hue: number;
   lightness: number;
   saturation: number;
+  chroma: number;
+  perceptualLightness: number;
 };
 
 export const COLOR_FAMILIES: readonly { id: ColorFamily; name: string; swatch: string }[] = [
@@ -27,12 +30,15 @@ export const COLOR_FAMILIES: readonly { id: ColorFamily; name: string; swatch: s
   { id: "pink", name: "Pink", swatch: "#e188b1" },
 ];
 
-export function classifyGalleryColor(hex: string): ColorFamily {
-  const { hue, saturation, lightness } = hexStats(hex);
-  if (lightness >= 92 && saturation < 28) return "white";
-  if (lightness <= 12 && saturation < 28) return "black";
-  if (saturation < 12) return "gray";
-  if (hue < 15 || hue >= 345) return "red";
+/**
+ * HSL hue alone is misleading near white: #FFF5F5 has a red hue despite
+ * looking white. Gate hue classification by perceptual OKLCH chroma first.
+ */
+function familyForAppearance(hue: number, chroma: number, lightness: number): ColorFamily {
+  if (lightness >= 0.89 && chroma < 0.065) return "white";
+  if (lightness <= 0.27 && chroma < 0.055) return "black";
+  if (chroma < 0.055) return "gray";
+  if (hue < 18 || hue >= 346) return "red";
   if (hue < 45) return "orange";
   if (hue < 70) return "yellow";
   if (hue < 165) return "green";
@@ -41,45 +47,72 @@ export function classifyGalleryColor(hex: string): ColorFamily {
   return "pink";
 }
 
-/** A color can have several names across sources, but should only occupy one tile. */
+export function classifyGalleryColor(hex: string): ColorFamily {
+  const { hue } = hexStats(hex);
+  const { c, l } = rgbToOklch(hexToRgb(hex));
+  return familyForAppearance(hue, c, l);
+}
+
+/** One tile per existing HEX value, keeping the original library color. */
 export function uniqueGalleryColors(records: readonly ColorRecord[]): GalleryColor[] {
   const distinct = new Map<string, GalleryColor>();
   for (const [name, raw, origin] of records) {
     const hex = raw.toLowerCase();
     if (distinct.has(hex)) continue;
     const { hue, lightness, saturation } = hexStats(hex);
+    const { c, l } = rgbToOklch(hexToRgb(hex));
     distinct.set(hex, {
-      name, hex, origin, family: classifyGalleryColor(hex),
-      hue, lightness, saturation,
+      name, hex, origin, family: familyForAppearance(hue, c, l),
+      hue, lightness, saturation, chroma: c, perceptualLightness: l,
     });
   }
   return [...distinct.values()];
 }
 
-/** Browse all colors in a visually mixed sequence rather than alphabetic source order. */
+/**
+ * Colored families start with clearly recognizable, vivid colors, but mix
+ * light/medium/dark tones. No near-white first page and no generated shades.
+ */
+function sortFamily(colors: readonly GalleryColor[], family: ColorFamily): GalleryColor[] {
+  if (family === "white") return [...colors].sort((a, b) =>
+    b.perceptualLightness - a.perceptualLightness || a.chroma - b.chroma);
+  if (family === "black") return [...colors].sort((a, b) =>
+    a.perceptualLightness - b.perceptualLightness || a.chroma - b.chroma);
+  if (family === "gray") return [...colors].sort((a, b) =>
+    Math.abs(a.perceptualLightness - 0.52) - Math.abs(b.perceptualLightness - 0.52) ||
+    b.perceptualLightness - a.perceptualLightness);
+
+  const bands: GalleryColor[][] = [[], [], [], [], []];
+  for (const color of colors) {
+    const lightness = color.perceptualLightness;
+    const index = lightness < 0.35 ? 0 : lightness < 0.51 ? 1 :
+      lightness < 0.69 ? 2 : lightness < 0.84 ? 3 : 4;
+    bands[index].push(color);
+  }
+  for (const band of bands) band.sort((a, b) =>
+    b.chroma - a.chroma ||
+    Math.abs(a.perceptualLightness - 0.62) - Math.abs(b.perceptualLightness - 0.62));
+
+  // The most legible medium tones lead; darker and lighter tones alternate.
+  const priority = [2, 1, 3, 0, 4];
+  const result: GalleryColor[] = [];
+  const longest = Math.max(...bands.map(band => band.length));
+  for (let index = 0; index < longest; index++)
+    for (const group of priority)
+      if (index < bands[group].length) result.push(bands[group][index]);
+  return result;
+}
+
+/** Show all unique existing colors while keeping the initial rows varied. */
 export function arrangeGalleryColors(colors: readonly GalleryColor[], family: ColorFamily | null): GalleryColor[] {
-  if (family !== null) {
-    return colors.filter(color => color.family === family)
-      .sort((a, b) => family === "white" || family === "black" || family === "gray"
-        ? b.lightness - a.lightness || a.hue - b.hue
-        : a.hue - b.hue || b.lightness - a.lightness);
-  }
+  if (family !== null) return sortFamily(colors.filter(color => color.family === family), family);
   const buckets = COLOR_FAMILIES.map(item =>
-    colors.filter(color => color.family === item.id)
-      .sort((a, b) => a.hue - b.hue || b.lightness - a.lightness));
+    sortFamily(colors.filter(color => color.family === item.id), item.id));
   const mixed: GalleryColor[] = [];
-  let position = 0;
-  while (mixed.length < colors.length) {
-    let added = false;
-    for (const bucket of buckets) {
-      if (position < bucket.length) {
-        mixed.push(bucket[position]);
-        added = true;
-      }
-    }
-    if (!added) break;
-    position++;
-  }
+  const longest = Math.max(...buckets.map(bucket => bucket.length));
+  for (let position = 0; position < longest; position++)
+    for (const bucket of buckets)
+      if (position < bucket.length) mixed.push(bucket[position]);
   return mixed;
 }
 
