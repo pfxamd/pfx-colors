@@ -220,6 +220,14 @@ export function WorkspaceShell(props: Props) {
         </div>
       </header>
       <main className="pfx-l-stage">{props.children}</main>
+      <footer className="pfx-v2__footer" aria-label="Site information">
+        <span className="pfx-v2__footer-product">PFx Colors</span>
+        <span className="pfx-v2__footer-credit">
+          Designed &amp; developed by{" "}
+          <a href="https://www.pfxamd.com/" target="_blank" rel="noopener noreferrer">pfxamd</a>
+        </span>
+        <small>© {new Date().getFullYear()} pfxamd. All rights reserved.</small>
+      </footer>
     </div>
   );
 }
