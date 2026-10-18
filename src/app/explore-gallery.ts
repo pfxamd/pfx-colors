@@ -1,5 +1,6 @@
 import { INITIAL_CSS_COLORS, type ColorRecord } from "./explore-catalog";
 import { hexStats } from "./explore-model";
+import { EXPLORE_REDS } from "./explore-reds";
 import { hexToRgb, rgbToOklch } from "./explore-atlas";
 
 export type ColorFamily = "white" | "black" | "gray" | "red" | "orange" |
@@ -103,8 +104,14 @@ function sortFamily(colors: readonly GalleryColor[], family: ColorFamily): Galle
   return result;
 }
 
+/** Exactly 33 named colors, including non-library entries in this curated list. */
+export const RED_GALLERY_COLORS: readonly GalleryColor[] = uniqueGalleryColors(
+  EXPLORE_REDS.map(([name, hex]): ColorRecord => [name, hex, "Curated reds"]),
+).map(color => ({ ...color, family: "red" as const }));
+
 /** Show all unique existing colors while keeping the initial rows varied. */
 export function arrangeGalleryColors(colors: readonly GalleryColor[], family: ColorFamily | null): GalleryColor[] {
+  if (family === "red") return [...RED_GALLERY_COLORS];
   if (family !== null) return sortFamily(colors.filter(color => color.family === family), family);
   const buckets = COLOR_FAMILIES.map(item =>
     sortFamily(colors.filter(color => color.family === item.id), item.id));
