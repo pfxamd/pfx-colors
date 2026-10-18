@@ -187,6 +187,7 @@
   background: var(--pfx-accent-soft);
   border-color: var(--pfx-accent);
 }
+.pfx-v2 .pfx-explore__apply-mobile { display: none; }
 .pfx-explore__credits {
   display: flex; justify-content: space-between;
   padding: 15px 20px;
@@ -365,6 +366,13 @@
   .pfx-explore__swatch-grid { grid-template-columns: repeat(auto-fill,minmax(126px,1fr)); }
 }
 @media (max-width: 900px) {
+  .pfx-v2 .pfx-explore__apply-mobile {
+    display: block; flex: 0 0 auto;
+    width: calc(100% - 24px); margin: 10px 12px;
+    padding: 12px; border: 0; border-radius: 9px;
+    background: var(--pfx-accent); color: var(--pfx-panel);
+    font-size: 12px; font-weight: 700;
+  }
   .pfx-v2 .pfx-explore.pfx-v2__page { padding: 9px 10px; }
   .pfx-explore__shell { display: block; position: relative; }
   .pfx-explore__workspace { height: 100%; }
