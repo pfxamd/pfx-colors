@@ -417,3 +417,21 @@
   }
   .pfx-v2__color-chip { width: 27px; height: 27px; flex-basis: 27px; }
 }
+
+/* Center desktop navigation against the viewport, regardless of side controls. */
+@media (min-width: 1251px) {
+  .pfx-v2 .pfx-c-header {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+  .pfx-v2 .pfx-c-tabs {
+    justify-content: center;
+  }
+  .pfx-v2__header-actions {
+    justify-content: flex-end;
+  }
+}
+@media (min-width: 771px) and (max-width: 1250px) {
+  .pfx-v2 .pfx-c-tabs {
+    justify-content: center;
+  }
+}
