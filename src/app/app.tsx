@@ -156,7 +156,9 @@ export function App({ workspaceFactory, engine = "legacy" }: {
         <Home state={state} commitColor={commitColor} />
       )}
       {activeTool === "explore" && (
-        <Explore activeHex={state.color.hex} select={commitColor} />
+        <Explore activeHex={state.color.hex} select={commitColor}
+          favorites={library.favorites} toggleFavorite={library.toggleFavorite}
+          saveSet={library.saveSet} />
       )}
       {activeTool === "picker" && (
         <Picker state={state} workspace={workspace} sync={sync}
