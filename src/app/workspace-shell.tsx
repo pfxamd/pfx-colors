@@ -1,3 +1,5 @@
+declare const __PFX_APP_RELEASE__: { version: string; channel: string; label: string; commit: string };
+
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { copyColorText } from "./clipboard";
 import type { ThemePreference, ResolvedTheme } from "./theme";
@@ -173,7 +175,7 @@ export function WorkspaceShell(props: Props) {
         <div className="pfx-c-brand">
           <img src="./logo.svg" alt="" />
           <strong>PFx Colors</strong>
-          <em className="pfx-v2__alpha-badge" aria-label="Alpha version 0.2">Alpha 0.2</em>
+          <em className="pfx-v2__alpha-badge" aria-label={__PFX_APP_RELEASE__.label}>{__PFX_APP_RELEASE__.label}</em>
           <span>COLOR WORKSPACE</span>
         </div>
         <nav className="pfx-c-tabs" ref={tabsRef} aria-label="Color tools">

@@ -1,0 +1,23 @@
+{
+  "product": "PFx Colors",
+  "channel": "Alpha",
+  "baseline": "09ac089f44e92d568b2056e5c90b9288fe68df96",
+  "baseVersion": "0.2.0",
+  "sourcePaths": [
+    "src",
+    "app",
+    "apps",
+    "public",
+    "assets",
+    "index.html",
+    "diagnostics",
+    "scripts",
+    "release.config.json",
+    "vite.config.ts",
+    "vite.config.js",
+    "package.json",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    ".github/workflows"
+  ]
+}
