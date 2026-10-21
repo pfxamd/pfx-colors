@@ -21,3 +21,5 @@ browser-evidence/
 rust-production-source/
 preview-source/
 rust-core-src/
+
+/.pfx-release-tools/
