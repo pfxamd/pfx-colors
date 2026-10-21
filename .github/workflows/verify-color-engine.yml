@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout application
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Checkout pinned Rust source
         uses: actions/checkout@v4
         with:
